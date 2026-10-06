@@ -6,8 +6,9 @@
 
 1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
 2. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
-3. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
-4. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
+3. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md): 입력·출력·미합의 항목과 계약 테스트 사례.
+4. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
+5. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
 
 ## 문서 구조
 
@@ -20,6 +21,7 @@ FullStack/Docs/
    ├─ STATUS.md                      # 현재 체크리스트
    ├─ NEXT-STEPS.md                  # 다음 작업·의존성
    ├─ HISTORY.md                     # 단계별 검증 이력
+   ├─ integration/                   # A·AI 연동 계약 제안과 미합의 항목
    ├─ catalog/                       # 릴리스·해시·스키마·호환 조합
    ├─ recommendation/                # 추천·도구/권한 선택
    └─ configuration/                 # 조립 → 비교·지문 → 승인·ZIP
@@ -59,6 +61,7 @@ B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 
 현재 코드는 도메인/메모리 경계의 구현이다. **실제 Catalog 데이터, PostgreSQL 영속화, 인증된 B API, AI 연동, 사용자 승인 흐름은 완료되지 않았다.**
+1차 실제 Catalog는 **Claude Code부터**, Codex는 후속이다. 현재 Java 테스트의 `codex`/`1.0` 값은 합성 환경 fixture이며 실제 지원 증거가 아니다. 각 Client의 지원 버전·템플릿·권한 매핑·조합은 검증된 Catalog가 준비되기 전까지 활성화하지 않는다.
 
 ## 재개할 때
 

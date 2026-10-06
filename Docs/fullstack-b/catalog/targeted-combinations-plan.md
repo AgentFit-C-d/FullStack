@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 target, JUnit 5, Jackson already provided by Spring Boot.
 
-**Spec:** `Docs/AgentFit_AB_1차통합_개발기준.pdf` sections 7–12, `Docs/fullstack-b/catalog/catalog-semantic-parser-plan.md`, and `Docs/fullstack-b/recommendation/configuration-selection-plan.md`. The JSON shape below remains a team-review proposal, not a claim that actual Codex tools have been verified.
+**Spec:** `Docs/AgentFit_AB_1차통합_개발기준.pdf` sections 7–12, `Docs/fullstack-b/catalog/catalog-semantic-parser-plan.md`, and `Docs/fullstack-b/recommendation/configuration-selection-plan.md`. The JSON shape below remains a team-review proposal, not a claim that actual Client tools have been verified.
 
 ## Global constraints
 
@@ -21,7 +21,7 @@
 
 ## Review focus
 
-- A Windows/Codex 1.0 combination must not become eligible on Codex 2.0 or macOS.
+- A synthetic Windows/example-client 1.0 combination must not become eligible on example-client 2.0 or macOS; these fixture versions do not claim Claude Code support.
 - Two different tool sets on one target remain distinct.
 - A `NOT_RUN` member support check cannot be upgraded by a combination declaration.
 - Incomplete dependencies, conflicts, and overlapping components invalidate a declared combination.

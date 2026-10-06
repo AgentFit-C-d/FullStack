@@ -14,4 +14,4 @@
 - `services/core-api/src/main/java/com/agentfit/coreapi/catalog/model/`: `CatalogRelease`, `CatalogTool`, `ToolSupport`, `VerifiedCombination`, `CatalogValidator`가 도구 지원·조합 모델을 표현하고 검사한다.
 - `services/core-api/src/test/java/com/agentfit/coreapi/catalog/`: 매니페스트·의미 검증·정적 템플릿·Preview 연결 테스트.
 
-현재 테스트 데이터는 합성 예시다. 실제 Codex/Client 지원 버전, 템플릿, 조합을 검증한 릴리스가 없으므로 제품에서 지원으로 표시하면 안 된다. 다음 작업은 [실제 릴리스 검증](../NEXT-STEPS.md)의 3번이다.
+현재 테스트 데이터는 합성 예시다. 1차 실제 Catalog는 Claude Code부터 검증하고 Codex는 후속이다. 실제 지원 버전, 템플릿, 권한 매핑, 조합을 검증한 릴리스가 없으므로 제품에서 지원으로 표시하면 안 된다. 다음 작업은 [실제 릴리스 검증](../NEXT-STEPS.md)의 3번이다.

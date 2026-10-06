@@ -1,6 +1,6 @@
 # Catalog semantic parser plan (proposed v1 contract)
 
-The hashed bundle is only an envelope. B must reject structurally valid files whose tool references, support checks, combination checks, or permission mappings are incomplete. This file shape is a **proposal for A/B/AI review**, not a claim that a real Codex tool has been verified.
+The hashed bundle is only an envelope. B must reject structurally valid files whose tool references, support checks, combination checks, or permission mappings are incomplete. This file shape is a **proposal for A/B/AI review**, not a claim that a real Client tool has been verified.
 
 Each of the six JSON files has exactly `schemaVersion: 1` and an `items` array, except `relations.json`, which has `schemaVersion`, `dependencies`, `conflicts`, and `verifiedCombinations` arrays. Unknown fields fail closed.
 

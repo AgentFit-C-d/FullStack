@@ -14,13 +14,13 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 
 ## Phase 2 — A and AI integration
 
-- [ ] B05 Agree on and implement A's authenticated, owner-checked snapshot reader and B1–B4 persistence. Preserve the confirmation event and immutable version basis.
-- [ ] B06 Agree on the AI Capability request/response contract; reject unknown keys and excluded profile fields before saving anything.
+- [ ] B05 Agree on and implement A's authenticated, owner-checked snapshot reader and B1–B4 persistence. Preserve the confirmation event and immutable version basis. A concrete [handoff proposal](integration/ab-ai-contract-proposal.md) is ready for review, not agreed.
+- [ ] B06 Agree on the AI Capability request/response contract; reject unknown keys and excluded profile fields before saving anything. The [handoff proposal](integration/ab-ai-contract-proposal.md) records the missing wire and omission semantics.
 - [x] B06a Add a pure AI Capability intake guard for the fixed nine IDs, required/optional/undetermined assessments, trusted A-provided source/question field paths, duplicates, and missing evidence. Wire parsing, failure envelopes, ownership, and persistence remain B06 work (see [intake boundary](recommendation/ai-capability-intake-plan.md)).
 - [ ] B07 Publish the read-only Catalog and recommendation endpoints after authentication, ownership, error envelope, and transaction boundaries exist.
-- [ ] B08 Load a real versioned Codex Catalog bundle with manifest hashes, reviewed support records, and source evidence. Keep unsupported combinations inactive.
+- [ ] B08 Load a real versioned Claude Code Catalog bundle with manifest hashes, reviewed support records, and source evidence. Codex is a subsequent target. Keep unsupported combinations inactive; exact OS/version support remains unverified.
 - [x] B08a Implement Catalog manifest/file hash and path validation before parsing release content (see [release validation](catalog/catalog-release-validation-plan.md)). The symlink rejection branch is implemented, but its filesystem test was skipped by local Windows permissions.
-- [x] B08b Parse the six hash-verified Catalog files against a proposed strict schema and reject unknown references, duplicate keys, missing support/permission evidence, and unscoped combination claims (see [semantic parsing](catalog/catalog-semantic-parser-plan.md)). This is synthetic-domain validation, not real Codex verification.
+- [x] B08b Parse the six hash-verified Catalog files against a proposed strict schema and reject unknown references, duplicate keys, missing support/permission evidence, and unscoped combination claims (see [semantic parsing](catalog/catalog-semantic-parser-plan.md)). This is synthetic-domain validation, not real Client verification.
 - [x] B08c Model verified combinations for one exact OS/Client/version target, preserve source evidence, and reject ambiguous support records and invalid combinations (see [targeted combinations](catalog/targeted-combinations-plan.md)). Real release verification is still B08 work.
 
 ## Phase 3 — permission and configuration
