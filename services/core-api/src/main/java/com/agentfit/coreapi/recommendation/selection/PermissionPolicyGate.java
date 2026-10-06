@@ -11,9 +11,13 @@ public final class PermissionPolicyGate {
     private PermissionPolicyGate() {}
 
     public static List<PermissionSelection> defaults(List<PermissionMapping> mappings) {
+        if (mappings == null) throw new BlockedSelectionException("missing reviewed mappings");
         List<PermissionSelection> result = new ArrayList<>();
         Set<Key> seen = new HashSet<>();
         for (PermissionMapping mapping : mappings) {
+            if (!valid(mapping)) {
+                throw new BlockedSelectionException("invalid reviewed mapping");
+            }
             Key key = new Key(mapping.toolKey(), mapping.mappingKey());
             if (!seen.add(key) || !mapping.supportedPolicies().contains(PermissionPolicy.ASK_EACH_TIME)) {
                 throw new BlockedSelectionException("missing unique verified Ask mapping");
@@ -26,11 +30,13 @@ public final class PermissionPolicyGate {
 
     public static List<PermissionSelection> validate(List<PermissionMapping> mappings,
                                                       List<PermissionSelection> selections) {
+        if (mappings == null || selections == null) {
+            throw new BlockedSelectionException("missing mapping selection");
+        }
         Map<Key, PermissionMapping> reviewed = new HashMap<>();
         for (PermissionMapping mapping : mappings) {
-            if (mapping.toolKey() == null || mapping.toolKey().isBlank()
-                || mapping.mappingKey() == null || mapping.mappingKey().isBlank()
-                || mapping.supportedPolicies().isEmpty()
+            if (!valid(mapping)
+                || !mapping.supportedPolicies().contains(PermissionPolicy.ASK_EACH_TIME)
                 || reviewed.putIfAbsent(new Key(mapping.toolKey(), mapping.mappingKey()), mapping) != null) {
                 throw new BlockedSelectionException("invalid or duplicate reviewed mapping");
             }
@@ -54,6 +60,12 @@ public final class PermissionPolicyGate {
             throw new BlockedSelectionException("missing mapping selection");
         }
         return List.copyOf(selections);
+    }
+
+    private static boolean valid(PermissionMapping mapping) {
+        return mapping != null && mapping.toolKey() != null && !mapping.toolKey().isBlank()
+            && mapping.mappingKey() != null && !mapping.mappingKey().isBlank()
+            && mapping.supportedPolicies() != null && !mapping.supportedPolicies().isEmpty();
     }
 
     public static final class BlockedSelectionException extends IllegalArgumentException {

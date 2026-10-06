@@ -16,6 +16,20 @@ class PermissionPolicyGateTest {
     }
 
     @Test
+    void malformedReviewedMappingCannotReceiveDefaultAsk() {
+        PermissionMapping missingTool = new PermissionMapping(" ", "external.connect", true,
+            Set.of(PermissionPolicy.ASK_EACH_TIME));
+        PermissionMapping missingAction = new PermissionMapping("tool", " ", true,
+            Set.of(PermissionPolicy.ASK_EACH_TIME));
+        assertThrows(PermissionPolicyGate.BlockedSelectionException.class,
+            () -> PermissionPolicyGate.defaults(List.of(missingTool)));
+        assertThrows(PermissionPolicyGate.BlockedSelectionException.class,
+            () -> PermissionPolicyGate.defaults(List.of(missingAction)));
+        assertThrows(PermissionPolicyGate.BlockedSelectionException.class,
+            () -> PermissionPolicyGate.defaults(java.util.Arrays.asList((PermissionMapping) null)));
+    }
+
+    @Test
     void unsupportedAskCannotBeDowngradedOrUpgraded() {
         PermissionMapping mapping = new PermissionMapping("tool", "external.connect", true,
             Set.of(PermissionPolicy.ALWAYS_ALLOW));
@@ -24,6 +38,9 @@ class PermissionPolicyGateTest {
         assertThrows(PermissionPolicyGate.BlockedSelectionException.class,
             () -> PermissionPolicyGate.validate(List.of(mapping),
                 List.of(new PermissionSelection("tool", "external.connect", PermissionPolicy.ASK_EACH_TIME))));
+        assertThrows(PermissionPolicyGate.BlockedSelectionException.class,
+            () -> PermissionPolicyGate.validate(List.of(mapping),
+                List.of(new PermissionSelection("tool", "external.connect", PermissionPolicy.ALWAYS_ALLOW))));
     }
 
     @Test

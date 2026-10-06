@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+권한 매핑 기본값 방어 (2026-10-06): 빈 tool/action 키에도 기본 Ask가 생성되는 반례를 재현하고, 유효하지 않은 매핑과 Ask 없는 Allow 전용 매핑을 차단했다. `PermissionPolicyGateTest`와 `ConfigurationSelectionValidatorTest`의 10개 테스트가 통과했다. 실제 Claude Code 정책 변환·집행 시험은 미수행이다.
+
 다중 도구 출력 누락 차단 (2026-10-06): 합성 Catalog에서 두 도구를 선택하고 한 도구의 템플릿만 인덱싱했을 때 기존 렌더러가 성공하는 반례를 재현했다. 선택한 모든 도구에 검토된 출력이 있어야 하도록 수정했다. `mvn clean verify`에서 102개 발견, 101개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. 실제 Client 템플릿과 릴리스 승인은 여전히 미완료다.
 
 Preview 대상 일치 검사 (2026-10-06): 요청의 OS/Client/버전이 A가 별도로 제공한 현재 Environment 대상과 다르면 Catalog를 읽기 전 거부한다. 이전 메서드 시그니처로는 새 테스트가 컴파일되지 않는 것을 확인하고 수정했다. `mvn clean verify`에서 101개 발견, 100개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. 실제 A 조회·인증 연결은 미완료다.
