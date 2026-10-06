@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+ZIP 재생성 입력 예산 (2026-10-06): 직접 지문·ZIP 경로에서는 100,001자 입력이 비교와 해시까지 진행되는 반례를 재현했다. 이제 선택·정책 수, 생성/기존 파일 수, 파일별 Unicode code points와 목록별 UTF-8 bytes를 먼저 제한한다. `mvn clean verify`에서 104개 발견, 103개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. HTTP 직렬화 본문 한도는 별도로 필요하다.
+
 접두어 Secret 변수 검사 (2026-10-06): `TEAM_API_KEY` 같은 키와 `export TEAM_TOKEN`, `AWS_SECRET_ACCESS_KEY` 리터럴이 이전에는 Preview를 통과하는 반례를 재현했다. 생성·기존 파일 양쪽에 적용되는 검사 패턴을 확장하고 환경 변수 참조는 유지했다. `mvn clean verify`에서 103개 발견, 102개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. 완전한 Secret 탐지는 아니다.
 
 권한 매핑 기본값 방어 (2026-10-06): 빈 tool/action 키에도 기본 Ask가 생성되는 반례를 재현하고, 유효하지 않은 매핑과 Ask 없는 Allow 전용 매핑을 차단했다. `PermissionPolicyGateTest`와 `ConfigurationSelectionValidatorTest`의 10개 테스트가 통과했다. 실제 Claude Code 정책 변환·집행 시험은 미수행이다.

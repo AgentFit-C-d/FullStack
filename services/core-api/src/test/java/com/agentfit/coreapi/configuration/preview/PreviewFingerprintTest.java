@@ -118,4 +118,26 @@ class PreviewFingerprintTest {
         generated.set(0, new PreviewInputFile("client", "config.txt", "changed"));
         assertEquals(fingerprint, PreviewFingerprint.compute(input).fingerprint());
     }
+
+    @Test
+    void refusesOversizedRegenerationInputBeforeComparisonOrHashing() {
+        PreviewInputFile normal = new PreviewInputFile("client", "config.txt", "hello");
+        assertThrows(IllegalArgumentException.class,
+            () -> PreviewFingerprint.compute(input(List.of("doc"), List.of(),
+                List.of(new PreviewInputFile("client", "config.txt", "a".repeat(100_001))))));
+
+        PreviewFingerprintInput oversizedOriginal = new PreviewFingerprintInput(basis(), "rec-1",
+            List.of("doc"), List.of(), "generator-1", List.of(normal), ExistingState.PROVIDED,
+            List.of(new PreviewInputFile("client", "config.txt", "a".repeat(100_001))));
+        assertThrows(IllegalArgumentException.class,
+            () -> PreviewFingerprint.compute(oversizedOriginal));
+
+        List<PreviewInputFile> oversizedBytes = new ArrayList<>();
+        for (int index = 0; index < 4; index++) {
+            oversizedBytes.add(new PreviewInputFile("target-" + index, "file-" + index + ".txt",
+                "한".repeat(100_000)));
+        }
+        assertThrows(IllegalArgumentException.class,
+            () -> PreviewFingerprint.compute(input(List.of("doc"), List.of(), oversizedBytes)));
+    }
 }

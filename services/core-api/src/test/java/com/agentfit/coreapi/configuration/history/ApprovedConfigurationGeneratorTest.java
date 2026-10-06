@@ -74,14 +74,13 @@ class ApprovedConfigurationGeneratorTest {
     }
 
     @Test
-    void refusesOversizedZipWithoutProducingGeneratedResult() {
+    void refusesOversizedInputBeforeProducingGeneratedResult() {
         List<PreviewInputFile> files = IntStream.range(0, 21)
             .mapToObj(i -> new PreviewInputFile("target-" + i, "config/" + i + ".txt", "value\n"))
             .toList();
         PreviewFingerprintInput input = new PreviewFingerprintInput(BASIS, "rec-1",
             List.of("tool-1"), List.of(), "static-v1", files, ExistingState.UNKNOWN, List.of());
-        String fingerprint = PreviewFingerprint.compute(input).fingerprint();
-        assertThrows(IllegalStateException.class,
-            () -> generate(input, fingerprint, NOW.plusSeconds(600)));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> generate(input, "a".repeat(64), NOW.plusSeconds(600)));
     }
 }

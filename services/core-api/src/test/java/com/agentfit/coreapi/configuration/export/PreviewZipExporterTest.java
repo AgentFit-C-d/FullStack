@@ -78,14 +78,13 @@ class PreviewZipExporterTest {
     }
 
     @Test
-    void rejectsOversizedUncompressedOutput() {
+    void rejectsOversizedRegenerationBeforeZipWriting() {
         PreviewFingerprintInput large = new PreviewFingerprintInput(basis(), "rec-1",
             List.of("doc"), List.of(), "generator-1",
             List.of(new PreviewInputFile("client", "settings/config.txt", "a".repeat(1_048_577))),
             ExistingState.UNKNOWN, List.of());
-        String fingerprint = PreviewFingerprint.compute(large).fingerprint();
-        assertThrows(PreviewZipExporter.InvalidExportException.class,
-            () -> PreviewZipExporter.export(large, fingerprint));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewZipExporter.export(large, "a".repeat(64)));
     }
 
     private static Map<String, byte[]> unzip(byte[] bytes) throws IOException {

@@ -3,6 +3,10 @@ package com.agentfit.coreapi.configuration.preview;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -17,6 +21,11 @@ import java.util.Set;
 /** Canonical, server-side hash of a regenerated Preview; no persistence or approval. */
 public final class PreviewFingerprint {
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final int MAX_TOOLS = 20;
+    private static final int MAX_POLICIES = 200;
+    private static final int MAX_FILES = 20;
+    private static final int MAX_CODE_POINTS_PER_FILE = 100_000;
+    private static final long MAX_CONTENT_BYTES = 1_048_576;
 
     private PreviewFingerprint() {}
 
@@ -27,6 +36,7 @@ public final class PreviewFingerprint {
             || input.generatedFiles() == null || input.generatedFiles().isEmpty()) {
             throw invalid("incomplete Preview fingerprint input");
         }
+        validateBudget(input);
         validateBasis(input.basis());
 
         List<String> selected = new ArrayList<>();
@@ -117,6 +127,41 @@ public final class PreviewFingerprint {
         }
     }
 
+    private static void validateBudget(PreviewFingerprintInput input) {
+        if (input.selectedToolIds().size() > MAX_TOOLS
+            || input.policies().size() > MAX_POLICIES
+            || input.providedFiles() == null) {
+            throw new LimitExceededException("Preview input exceeds budget");
+        }
+        validateFiles(input.generatedFiles());
+        validateFiles(input.providedFiles());
+    }
+
+    private static void validateFiles(List<PreviewInputFile> files) {
+        if (files.size() > MAX_FILES) throw new LimitExceededException("too many Preview files");
+        long bytes = 0;
+        for (PreviewInputFile file : files) {
+            if (file == null || file.content() == null) {
+                throw new LimitExceededException("invalid Preview file");
+            }
+            String content = file.content();
+            if (content.codePointCount(0, content.length()) > MAX_CODE_POINTS_PER_FILE) {
+                throw new LimitExceededException("Preview file too long");
+            }
+            try {
+                bytes += StandardCharsets.UTF_8.newEncoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .encode(CharBuffer.wrap(content)).remaining();
+            } catch (CharacterCodingException exception) {
+                throw new LimitExceededException("invalid Preview text");
+            }
+            if (bytes > MAX_CONTENT_BYTES) {
+                throw new LimitExceededException("Preview content too large");
+            }
+        }
+    }
+
     private static Map<String, Object> ordered() {
         return new LinkedHashMap<>();
     }
@@ -142,5 +187,9 @@ public final class PreviewFingerprint {
 
     public static final class InvalidFingerprintInputException extends IllegalArgumentException {
         public InvalidFingerprintInputException(String message) { super(message); }
+    }
+
+    public static final class LimitExceededException extends IllegalArgumentException {
+        public LimitExceededException(String message) { super(message); }
     }
 }
