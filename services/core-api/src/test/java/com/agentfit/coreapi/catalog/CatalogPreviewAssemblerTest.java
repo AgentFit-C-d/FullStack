@@ -104,13 +104,31 @@ class CatalogPreviewAssemblerTest {
             Status.RECOMMENDED, List.of("example-tool"));
         assertThrows(RecommendationPreviewGate.InvalidRecommendationException.class,
             () -> CatalogPreviewAssembler.assemble(directory, "a".repeat(64), unrelated,
-                request.basis(), request));
+                request.basis(), request.target(), request));
+    }
+
+    @Test
+    void rejectsClientSuppliedTargetThatDiffersFromTrustedEnvironment() throws IOException {
+        String hash = writeBundle();
+        CatalogPreviewRequest request = request(hash,
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
+            List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
+        assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
+            () -> assemble(hash, request, new EnvironmentTarget("MACOS", "example-client", "1.0")));
+        assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
+            () -> assemble(hash, request, null));
     }
 
     private PreviewFingerprintResult assemble(String approvedHash, CatalogPreviewRequest request) {
+        return assemble(approvedHash, request, request.target());
+    }
+
+    private PreviewFingerprintResult assemble(String approvedHash, CatalogPreviewRequest request,
+                                              EnvironmentTarget trustedTarget) {
         StoredRecommendationState stored = new StoredRecommendationState("rec-1", request.basis(),
             Status.RECOMMENDED, List.of("example-tool"));
-        return CatalogPreviewAssembler.assemble(directory, approvedHash, stored, request.basis(), request);
+        return CatalogPreviewAssembler.assemble(directory, approvedHash, stored, request.basis(),
+            trustedTarget, request);
     }
 
     private CatalogPreviewRequest request(String hash, EnvironmentTarget target, List<String> selected,

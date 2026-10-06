@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Preview 대상 일치 검사 (2026-10-06): 요청의 OS/Client/버전이 A가 별도로 제공한 현재 Environment 대상과 다르면 Catalog를 읽기 전 거부한다. 이전 메서드 시그니처로는 새 테스트가 컴파일되지 않는 것을 확인하고 수정했다. `mvn clean verify`에서 101개 발견, 100개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. 실제 A 조회·인증 연결은 미완료다.
+
 AI 빈 후보 방어 (2026-10-06): `AiCapabilityIntake`가 빈 claim 목록을 질문 유무와 관계없이 거부하도록 테스트를 먼저 추가했다. 추가 테스트의 예상 실패를 확인한 뒤 경계를 보완했다. `mvn clean verify`는 100개 발견, 99개 통과, Windows 심볼릭 링크 권한으로 1개 건너뜀. 9개 전량/부분 응답 의미, AI 전송 형식과 A 연동은 미합의다.
 
 The checked Phase 1 items are domain implementation only. They do not imply a verified real Catalog, production API, database persistence, or completed B feature.

@@ -5,6 +5,7 @@ import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintInput;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
+import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.selection.ConfigurationSelectionValidator;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import com.agentfit.coreapi.recommendation.selection.RecommendationPreviewGate;
@@ -17,18 +18,24 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/** Pure B Preview path; caller must provide A's owner-checked current basis and stored recommendation. */
+/** Pure B Preview path; caller must provide A's owner-checked basis, target, and stored recommendation. */
 public final class CatalogPreviewAssembler {
     private CatalogPreviewAssembler() {}
 
     public static PreviewFingerprintResult assemble(Path releaseDirectory, String approvedCatalogHash,
                                                      StoredRecommendationState storedRecommendation,
-                                                     PreviewBasis currentBasis, CatalogPreviewRequest request) {
+                                                     PreviewBasis currentBasis,
+                                                     EnvironmentTarget currentTarget,
+                                                     CatalogPreviewRequest request) {
         if (request == null || request.basis() == null || request.selectedToolKeys() == null
             || request.selectedToolKeys().isEmpty()
             || request.selectedToolKeys().stream().anyMatch(key -> key == null || key.isBlank())
             || request.permissionSelections() == null || request.providedFiles() == null) {
             throw new InvalidAssemblyException("incomplete Preview request");
+        }
+        if (currentTarget == null || !currentTarget.complete() || request.target() == null
+            || !request.target().complete() || !currentTarget.equals(request.target())) {
+            throw new InvalidAssemblyException("Preview target differs from current environment");
         }
         PreviewAssemblyLimits.validateRequest(request);
         Set<String> selected = new HashSet<>(request.selectedToolKeys());
