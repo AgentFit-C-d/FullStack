@@ -7,6 +7,7 @@
 | [릴리스 검증](catalog-release-validation-plan.md) | manifest, 파일별 SHA-256, 전체 Catalog 해시, 경로·크기·심볼릭 링크 거부 |
 | [의미 검증](catalog-semantic-parser-plan.md) | 6개 JSON 파일의 합성 v1 스키마, 참조·중복·근거 검사 |
 | [정확한 대상 조합](targeted-combinations-plan.md) | OS/Client/버전별 다중 도구 조합과 검증 근거 |
+| [Claude Code 공식 근거 조사](claude-code-evidence-seed.md) | 공식 구성 문서와 실제 릴리스 검증에 필요한 증거·미수행 항목 |
 
 ## 코드 위치
 

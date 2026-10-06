@@ -1,7 +1,7 @@
 package com.agentfit.coreapi.catalog.model;
 
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
-/** A single, exactly matched Codex product/OS/version verification record. */
+/** A single, exactly matched Client/OS/version verification record. */
 public record ToolSupport(
     String key,
     String osFamily,
