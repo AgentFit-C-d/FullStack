@@ -34,7 +34,7 @@ class CatalogSemanticParserTest {
         """;
     private static final String SUPPORT = """
         {"schemaVersion":1,"items":[{"key":"support-1","toolKey":"example-tool",
-        "osFamily":"WINDOWS","clientId":"codex","clientVersion":"1.0",
+        "osFamily":"WINDOWS","clientId":"example-client","clientVersion":"1.0",
         "documentation":"PASS","format":"PASS","standalone":"PASS",
         "evidenceUrl":"https://example.org/review/1","checkedAt":"2026-10-06"}]}
         """;
@@ -67,7 +67,7 @@ class CatalogSemanticParserTest {
             + "\"capabilityKeys\":[\"cap_test_execution\"],\"includedComponentKeys\":[\"second-component\"]}]}"));
         files.put("support-matrix.json", SUPPORT.replace("}]}",
             "},{\"key\":\"support-2\",\"toolKey\":\"second-tool\",\"osFamily\":\"WINDOWS\","
-                + "\"clientId\":\"codex\",\"clientVersion\":\"1.0\",\"documentation\":\"PASS\","
+                + "\"clientId\":\"example-client\",\"clientVersion\":\"1.0\",\"documentation\":\"PASS\","
                 + "\"format\":\"PASS\",\"standalone\":\"PASS\","
                 + "\"evidenceUrl\":\"https://example.org/review/2\",\"checkedAt\":\"2026-10-06\"}]}"));
         return files;
@@ -75,7 +75,7 @@ class CatalogSemanticParserTest {
 
     private String targetedCombination() {
         return "{\"toolKeys\":[\"example-tool\",\"second-tool\"],\"osFamily\":\"WINDOWS\","
-            + "\"clientId\":\"codex\",\"clientVersion\":\"1.0\","
+            + "\"clientId\":\"example-client\",\"clientVersion\":\"1.0\","
             + "\"evidenceUrl\":\"https://example.org/review/combination\",\"checkedAt\":\"2026-10-06\"}";
     }
 
@@ -85,9 +85,9 @@ class CatalogSemanticParserTest {
         assertEquals("test-hash", parsed.catalogHash());
         assertEquals("synthetic-1", parsed.release().releaseId());
         assertTrue(parsed.release().tools().get("example-tool").support().getFirst()
-            .verifiedFor(new EnvironmentTarget("WINDOWS", "codex", "1.0")));
+            .verifiedFor(new EnvironmentTarget("WINDOWS", "example-client", "1.0")));
         assertFalse(parsed.release().tools().get("example-tool").support().getFirst()
-            .verifiedFor(new EnvironmentTarget("WINDOWS", "codex", "2.0")));
+            .verifiedFor(new EnvironmentTarget("WINDOWS", "example-client", "2.0")));
         assertEquals(1, parsed.permissionMappings().size());
         assertTrue(parsed.permissionMappings().getFirst().supportedPolicies().contains(PermissionPolicy.ASK_EACH_TIME));
         assertThrows(UnsupportedOperationException.class, () -> parsed.permissionMappings().clear());
@@ -114,7 +114,7 @@ class CatalogSemanticParserTest {
         unchecked.put("support-matrix.json", SUPPORT.replace("\"documentation\":\"PASS\"", "\"documentation\":\"NOT_RUN\""));
         ParsedCatalog parsed = parse(unchecked);
         assertFalse(parsed.release().tools().get("example-tool").support().getFirst()
-            .verifiedFor(new EnvironmentTarget("WINDOWS", "codex", "1.0")));
+            .verifiedFor(new EnvironmentTarget("WINDOWS", "example-client", "1.0")));
     }
 
     @Test
@@ -177,10 +177,10 @@ class CatalogSemanticParserTest {
             "\"verifiedCombinations\":[" + targetedCombination() + "]"));
         ParsedCatalog catalog = parse(files);
         VerifiedCombination combination = new VerifiedCombination(Set.of("example-tool", "second-tool"),
-            new EnvironmentTarget("WINDOWS", "codex", "1.0"));
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"));
         assertTrue(catalog.release().verifiedCombinations().contains(combination));
         assertEquals("https://example.org/review/combination",
-            catalog.evidence().get("combination:WINDOWS:codex:1.0:example-tool,second-tool").sourceUrl());
+            catalog.evidence().get("combination:WINDOWS:example-client:1.0:example-tool,second-tool").sourceUrl());
     }
 
     @Test
@@ -209,7 +209,7 @@ class CatalogSemanticParserTest {
 
         Map<String, String> ambiguous = twoToolFiles();
         String duplicateTarget = "{\"key\":\"support-3\",\"toolKey\":\"second-tool\","
-            + "\"osFamily\":\"WINDOWS\",\"clientId\":\"codex\",\"clientVersion\":\"1.0\","
+            + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\",\"clientVersion\":\"1.0\","
             + "\"documentation\":\"FAIL\",\"format\":\"FAIL\",\"standalone\":\"FAIL\","
             + "\"evidenceUrl\":\"https://example.org/review/3\",\"checkedAt\":\"2026-10-06\"}";
         ambiguous.put("support-matrix.json", ambiguous.get("support-matrix.json")

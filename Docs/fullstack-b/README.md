@@ -61,7 +61,7 @@ B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 
 현재 코드는 도메인/메모리 경계의 구현이다. **실제 Catalog 데이터, PostgreSQL 영속화, 인증된 B API, AI 연동, 사용자 승인 흐름은 완료되지 않았다.**
-1차 실제 Catalog는 **Claude Code부터**, Codex는 후속이다. 현재 Java 테스트의 `codex`/`1.0` 값은 합성 환경 fixture이며 실제 지원 증거가 아니다. 각 Client의 지원 버전·템플릿·권한 매핑·조합은 검증된 Catalog가 준비되기 전까지 활성화하지 않는다.
+1차 실제 Catalog는 **Claude Code부터**, Codex는 후속이다. 현재 Java 테스트의 `example-client`/`1.0` 값은 합성 환경 fixture이며 실제 지원 증거가 아니다. 각 Client의 지원 버전·템플릿·권한 매핑·조합은 검증된 Catalog가 준비되기 전까지 활성화하지 않는다.
 
 ## 재개할 때
 

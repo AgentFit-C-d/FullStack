@@ -16,14 +16,14 @@ import java.util.HashMap;
 import org.junit.jupiter.api.Test;
 
 class RecommendationEngineTest {
-    private static final EnvironmentTarget TARGET = new EnvironmentTarget("WINDOWS", "codex", "1.0");
+    private static final EnvironmentTarget TARGET = new EnvironmentTarget("WINDOWS", "example-client", "1.0");
     private static final String DOC = "cap_document_reference";
     private static final String TEST = "cap_test_execution";
 
     private CatalogTool tool(String key, Set<String> capabilities, Set<String> dependencies,
                              Set<String> conflicts, Set<String> components, ToolSupport.Check check) {
         return new CatalogTool(key, "1", capabilities, dependencies, conflicts, components,
-            List.of(new ToolSupport(key + "-win", "WINDOWS", "codex", "1.0",
+            List.of(new ToolSupport(key + "-win", "WINDOWS", "example-client", "1.0",
                 check, check, check)));
     }
 
@@ -73,7 +73,7 @@ class RecommendationEngineTest {
             Set.of(new VerifiedCombination(Set.of("doc", "test"), TARGET))));
         assertEquals(RECOMMENDED, engine.decide(input(Set.of(DOC, TEST), Set.of())).status());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(new RecommendationInput(Set.of(DOC, TEST),
-            false, false, new EnvironmentTarget("WINDOWS", "codex", "2.0"), Map.of())).status());
+            false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of())).status());
     }
 
     @Test
@@ -121,7 +121,7 @@ class RecommendationEngineTest {
             Set.of(new VerifiedCombination(Set.of("alpha", "beta"), TARGET))));
         assertEquals(List.of("alpha"), engine.decide(input(Set.of(DOC), Set.of())).toolKeys());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(new RecommendationInput(Set.of(DOC),
-            false, false, new EnvironmentTarget("WINDOWS", "codex", "2.0"), Map.of())).status());
+            false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of())).status());
     }
 
     @Test
@@ -152,17 +152,17 @@ class RecommendationEngineTest {
         CatalogTool test = tool("test", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         doc = new CatalogTool(doc.key(), doc.version(), doc.capabilityKeys(), doc.dependencyKeys(),
             doc.conflictKeys(), doc.includedComponentKeys(), List.of(doc.support().getFirst(),
-                new ToolSupport("doc-win-v2", "WINDOWS", "codex", "2.0",
+                new ToolSupport("doc-win-v2", "WINDOWS", "example-client", "2.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS)));
         test = new CatalogTool(test.key(), test.version(), test.capabilityKeys(), test.dependencyKeys(),
             test.conflictKeys(), test.includedComponentKeys(), List.of(test.support().getFirst(),
-                new ToolSupport("test-win-v2", "WINDOWS", "codex", "2.0",
+                new ToolSupport("test-win-v2", "WINDOWS", "example-client", "2.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS)));
         RecommendationEngine engine = new RecommendationEngine(new CatalogRelease("r1",
             Map.of("doc", doc, "test", test),
             Set.of(new VerifiedCombination(Set.of("doc", "test"), TARGET))));
         assertEquals(RECOMMENDED, engine.decide(input(Set.of(DOC, TEST), Set.of())).status());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(new RecommendationInput(Set.of(DOC, TEST),
-            false, false, new EnvironmentTarget("WINDOWS", "codex", "2.0"), Map.of())).status());
+            false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of())).status());
     }
 }

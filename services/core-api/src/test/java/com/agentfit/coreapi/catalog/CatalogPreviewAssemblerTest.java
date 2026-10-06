@@ -32,7 +32,7 @@ class CatalogPreviewAssemblerTest {
     @Test
     void assemblesVerifiedSelectionAndStaticBytesIntoOnePreview() throws IOException {
         String hash = writeBundle();
-        CatalogPreviewRequest request = request(hash, new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+        CatalogPreviewRequest request = request(hash, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
             List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
 
         PreviewFingerprintResult preview = assemble(hash, request);
@@ -46,12 +46,12 @@ class CatalogPreviewAssemblerTest {
     void rejectsStaleCatalogBasisAndUnapprovedHash() throws IOException {
         String hash = writeBundle();
         CatalogPreviewRequest stale = request("0".repeat(64),
-            new EnvironmentTarget("WINDOWS", "codex", "1.0"), List.of("example-tool"),
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"), List.of("example-tool"),
             PermissionPolicy.ASK_EACH_TIME);
         assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
             () -> assemble(hash, stale));
         CatalogPreviewRequest current = request(hash,
-            new EnvironmentTarget("WINDOWS", "codex", "1.0"), List.of("example-tool"),
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"), List.of("example-tool"),
             PermissionPolicy.ASK_EACH_TIME);
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> assemble("f".repeat(64), current));
@@ -61,21 +61,21 @@ class CatalogPreviewAssemblerTest {
     void rejectsUnsupportedTargetDeniedRequiredPolicyAndDuplicateSelection() throws IOException {
         String hash = writeBundle();
         assertThrows(IllegalArgumentException.class, () -> assemble(
-            hash, request(hash, new EnvironmentTarget("WINDOWS", "codex", "2.0"),
+            hash, request(hash, new EnvironmentTarget("WINDOWS", "example-client", "2.0"),
                 List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME)));
         assertThrows(IllegalArgumentException.class, () -> assemble(
-            hash, request(hash, new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+            hash, request(hash, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
                 List.of("example-tool"), PermissionPolicy.DENY)));
         assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
             () -> assemble(hash, request(hash,
-                new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
                 List.of("example-tool", "example-tool"), PermissionPolicy.ASK_EACH_TIME)));
     }
 
     @Test
     void screensProvidedOriginalBeforeReturningPreview() throws IOException {
         String hash = writeBundle();
-        CatalogPreviewRequest base = request(hash, new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+        CatalogPreviewRequest base = request(hash, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
             List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
         CatalogPreviewRequest supplied = new CatalogPreviewRequest(base.basis(), base.recommendationId(),
             base.target(), base.selectedToolKeys(), base.permissionSelections(),
@@ -91,14 +91,14 @@ class CatalogPreviewAssemblerTest {
         String hash = writeBundle("a".repeat(100_001));
         assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
             () -> assemble(hash, request(hash,
-                new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
                 List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME)));
     }
 
     @Test
     void rejectsRecommendationOutsideCurrentProjectSelectionBeforeCatalogLoad() {
         CatalogPreviewRequest request = request("a".repeat(64),
-            new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
             List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
         StoredRecommendationState unrelated = new StoredRecommendationState("rec-other", request.basis(),
             Status.RECOMMENDED, List.of("example-tool"));
@@ -136,7 +136,7 @@ class CatalogPreviewAssemblerTest {
             + "\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],"
             + "\"includedComponentKeys\":[\"example-component\"]}]}");
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","
-            + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"codex\","
+            + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
             + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\",\"format\":\"PASS\","
             + "\"standalone\":\"PASS\",\"evidenceUrl\":\"https://example.org/support\","
             + "\"checkedAt\":\"2026-10-06\"}]}");

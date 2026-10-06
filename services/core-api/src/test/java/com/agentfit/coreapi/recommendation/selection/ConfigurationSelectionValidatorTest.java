@@ -15,12 +15,12 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class ConfigurationSelectionValidatorTest {
-    private static final EnvironmentTarget TARGET = new EnvironmentTarget("WINDOWS", "codex", "1.0");
+    private static final EnvironmentTarget TARGET = new EnvironmentTarget("WINDOWS", "example-client", "1.0");
 
     private CatalogTool tool(String key, Set<String> dependencies, Set<String> conflicts,
                              Set<String> components, ToolSupport.Check check) {
         return new CatalogTool(key, "1", Set.of("cap_document_reference"), dependencies,
-            conflicts, components, List.of(new ToolSupport(key + "-support", "WINDOWS", "codex", "1.0",
+            conflicts, components, List.of(new ToolSupport(key + "-support", "WINDOWS", "example-client", "1.0",
                 check, check, check)));
     }
 
@@ -50,7 +50,7 @@ class ConfigurationSelectionValidatorTest {
             () -> validator(release).validate(Set.of("missing"), TARGET, List.of(), List.of()));
         assertThrows(ConfigurationSelectionValidator.InvalidSelectionException.class,
             () -> validator(release).validate(Set.of("doc"),
-                new EnvironmentTarget("WINDOWS", "codex", "2.0"), List.of(), List.of()));
+                new EnvironmentTarget("WINDOWS", "example-client", "2.0"), List.of(), List.of()));
         CatalogRelease unverified = new CatalogRelease("r2", Map.of("doc",
             tool("doc", Set.of(), Set.of(), Set.of(), ToolSupport.Check.NOT_RUN)), Set.of());
         assertThrows(ConfigurationSelectionValidator.InvalidSelectionException.class,
@@ -91,14 +91,14 @@ class ConfigurationSelectionValidatorTest {
             List.of(), List.of()));
         assertThrows(ConfigurationSelectionValidator.InvalidSelectionException.class,
             () -> validator(release).validate(Set.of("doc", "test"),
-                new EnvironmentTarget("WINDOWS", "codex", "2.0"), List.of(), List.of()));
+                new EnvironmentTarget("WINDOWS", "example-client", "2.0"), List.of(), List.of()));
     }
 
     private CatalogTool dualVersionTool(String key) {
         return new CatalogTool(key, "1", Set.of("cap_document_reference"), Set.of(), Set.of(), Set.of(),
-            List.of(new ToolSupport(key + "-v1", "WINDOWS", "codex", "1.0",
+            List.of(new ToolSupport(key + "-v1", "WINDOWS", "example-client", "1.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS),
-                new ToolSupport(key + "-v2", "WINDOWS", "codex", "2.0",
+                new ToolSupport(key + "-v2", "WINDOWS", "example-client", "2.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS)));
     }
 
