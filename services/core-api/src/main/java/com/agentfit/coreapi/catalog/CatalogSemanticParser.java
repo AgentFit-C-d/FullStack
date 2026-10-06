@@ -13,6 +13,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -28,7 +29,8 @@ import java.util.Set;
 /** Strict proposed v1 schema. All references and review sources are checked before use. */
 public final class CatalogSemanticParser {
     private static final ObjectMapper JSON = new ObjectMapper(
-        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION));
+        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION))
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Set<String> ROOT_ITEMS = Set.of("schemaVersion", "items");
     private static final Set<String> REQUIRED_FILES = Set.of("capabilities.json", "tools.json",
         "support-matrix.json", "relations.json", "permissions.json", "client-capabilities.json");

@@ -2,6 +2,7 @@ package com.agentfit.coreapi.catalog;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
@@ -27,7 +28,8 @@ import java.util.Set;
 /** Verifies a local, immutable release envelope before any Catalog schema is parsed. */
 public final class CatalogBundleLoader {
     private static final ObjectMapper JSON = new ObjectMapper(
-        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION));
+        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION))
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Set<String> REQUIRED = Set.of("capabilities.json", "tools.json",
         "support-matrix.json", "relations.json", "permissions.json", "client-capabilities.json");
     private static final Set<String> MANIFEST_FIELDS = Set.of("schemaVersion", "releaseId", "catalogHash", "files");

@@ -114,6 +114,15 @@ class CatalogBundleLoaderTest {
     }
 
     @Test
+    void rejectsTrailingJsonAfterManifest() throws IOException {
+        fixture(PATHS);
+        Path manifestPath = directory.resolve("manifest.json");
+        Files.writeString(manifestPath, Files.readString(manifestPath) + " {\"extra\":true}");
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogBundleLoader.load(directory));
+    }
+
+    @Test
     void rejectsSymlinkedFileWhenPlatformAllowsCreatingOne() throws IOException {
         fixture(PATHS);
         Path target = directory.resolve("real-tools.json");

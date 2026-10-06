@@ -158,6 +158,13 @@ class CatalogSemanticParserTest {
     }
 
     @Test
+    void rejectsTrailingJsonAfterCatalogFile() {
+        Map<String, String> files = files();
+        files.put("tools.json", TOOLS + " {\"extra\":true}");
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(files));
+    }
+
+    @Test
     void allowsDependencyOnlyToolWithNoDirectCapability() {
         Map<String, String> files = files();
         files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"runtime\",\"version\":\"1.0\","

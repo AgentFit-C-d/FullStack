@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -21,7 +22,8 @@ import java.util.Set;
 /** Copies static Catalog text into Preview candidates only after an external release hash pin matches. */
 public final class CatalogStaticTemplateRenderer {
     private static final ObjectMapper JSON = new ObjectMapper(
-        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION));
+        new JsonFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION))
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final String INDEX = "templates/index.json";
     private static final Set<String> ROOT_FIELDS = Set.of("schemaVersion", "items");
     private static final Set<String> ITEM_FIELDS = Set.of("toolKey", "targetKey", "relativePath", "sourcePath");
