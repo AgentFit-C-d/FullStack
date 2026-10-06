@@ -43,9 +43,9 @@ public final class ConfigurationGenerationHistory {
     }
 
     /** Call only after the approved ZIP was generated successfully; persistence belongs to A. */
-    public static ConfigurationGenerationHistory capture(String generationId, String previewId,
-                                                         String approvalId, String expectedFingerprint,
-                                                         PreviewFingerprintInput input, Clock serverClock) {
+    static ConfigurationGenerationHistory capture(String generationId, String previewId,
+                                                  String approvalId, String expectedFingerprint,
+                                                  PreviewFingerprintInput input, Clock serverClock) {
         if (blank(generationId) || blank(previewId) || blank(approvalId)
             || expectedFingerprint == null || !expectedFingerprint.matches("[0-9a-f]{64}")
             || input == null || serverClock == null) {
