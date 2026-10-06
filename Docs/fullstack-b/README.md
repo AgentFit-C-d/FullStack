@@ -7,9 +7,10 @@
 1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
 2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): B05–B12의 완료 조건과 A·AI·Catalog 인계 입력.
 3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
-4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md): 입력·출력·미합의 항목과 계약 테스트 사례.
+4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
 5. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
 6. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
+7. 중간 공유에는 [발표용 핵심 문구](PRESENTATION-MIDPOINT.md)를 사용하되, 구현/미구현 경계를 유지한다.
 
 ## 문서 구조
 
@@ -57,7 +58,7 @@ B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관
 | Catalog | 매니페스트 SHA-256 검증, 엄격한 합성 v1 스키마, 템플릿 출처·승인 해시 확인 | 실제 Client 지원·템플릿 검증과 승인된 릴리스 |
 | Preview·설정 | 임시 비교·Diff, 식별 가능한 Secret 검사, 지문 계산, 저장된 승인 메타데이터를 검사하는 동일 바이트 ZIP 재생성, Catalog 기반 임시 Preview 연결, 사용자 적용 보고 값 검증, 최소 생성 이력 메타데이터 | 인증/소유권, 승인·만료·감사·DB, 공개 API·화면 연동 |
 
-마지막 전체 검증은 `mvn clean verify`에서 **112개 테스트 발견, 111개 통과, 1개 건너뜀**이었다. 건너뛴 테스트는 이 Windows 환경에서 심볼릭 링크 생성 권한이 없어 실행되지 않은 파일시스템 테스트다. JDK 24로 Java 21 대상 바이트코드를 만들었으며 Java 21 런타임 실행은 아직 확인하지 못했다. 세부 검증은 [HISTORY.md](HISTORY.md)에 기록했다.
+마지막 전체 검증은 `mvn clean verify`에서 **119개 테스트 발견, 118개 통과, 1개 건너뜀**이었다. 건너뛴 테스트는 이 Windows 환경에서 심볼릭 링크 생성 권한이 없어 실행되지 않은 파일시스템 테스트다. JDK 24로 Java 21 대상 바이트코드를 만들었으며 Java 21 런타임 실행은 아직 확인하지 못했다. 세부 검증은 [HISTORY.md](HISTORY.md)에 기록했다.
 
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 
