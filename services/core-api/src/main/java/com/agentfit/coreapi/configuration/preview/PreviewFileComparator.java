@@ -79,6 +79,13 @@ public final class PreviewFileComparator {
                 throw invalid("duplicate or conflicting file target/path");
             }
         }
+        for (String path : foldedPaths) {
+            for (int slash = path.indexOf('/'); slash >= 0; slash = path.indexOf('/', slash + 1)) {
+                if (foldedPaths.contains(path.substring(0, slash))) {
+                    throw invalid("file path is also a parent directory");
+                }
+            }
+        }
         return indexed;
     }
 

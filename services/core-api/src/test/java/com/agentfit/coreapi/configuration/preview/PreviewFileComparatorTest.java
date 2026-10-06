@@ -118,4 +118,14 @@ class PreviewFileComparatorTest {
             () -> PreviewFileComparator.compare(List.of(file("one", "Settings.json", "a"),
                 file("two", "settings.json", "b")), ExistingState.UNKNOWN, List.of()));
     }
+
+    @Test
+    void rejectsFileThatMustAlsoBeAnAncestorDirectoryInTheSameZip() {
+        assertThrows(PreviewFileComparator.InvalidPreviewInputException.class,
+            () -> PreviewFileComparator.compare(List.of(file("one", "config", "a"),
+                file("two", "config/settings.json", "b")), ExistingState.UNKNOWN, List.of()));
+        assertThrows(PreviewFileComparator.InvalidPreviewInputException.class,
+            () -> PreviewFileComparator.compare(List.of(file("one", "CONFIG/settings.json", "b"),
+                file("two", "config", "a")), ExistingState.UNKNOWN, List.of()));
+    }
 }

@@ -14,6 +14,7 @@
 
 - `UNKNOWN` and `USER_SAYS_EMPTY` require no provided files; their outputs are `PROPOSAL` with null `beforeHash`/diff and `EXISTING_UNKNOWN` scope.
 - `PROVIDED` requires at least one file. Only an exact `(targetKey, relativePath)` match may become `UPDATE` with `PROVIDED_FILE` scope.
+- Generated paths share one ZIP namespace. A file such as `config` and another at `config/settings.json` cannot coexist on extraction, so reject the pair even when target keys differ or path casing differs. Validate the entire Catalog template index, including unselected tools.
 - A path cannot be absolute, traverse a parent, contain backslash/NUL, or have empty, `.` or `..` segments.
 - The same target key cannot map to two paths and the same path cannot map to two target keys. Duplicates and unmatched provided files are rejected.
 - Hashes cover exact UTF-8 bytes; no newline or BOM normalization. Reject malformed UTF-16 strings rather than replacing characters during encoding.

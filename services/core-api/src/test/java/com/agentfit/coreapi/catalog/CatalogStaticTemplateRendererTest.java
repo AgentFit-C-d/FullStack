@@ -86,6 +86,18 @@ class CatalogStaticTemplateRendererTest {
     }
 
     @Test
+    void rejectsTemplateFileThatWouldBeAnAncestorOfAnotherZipFile() throws IOException {
+        Map<String, String> files = files();
+        files.put("templates/second.txt", "second\n");
+        files.put("templates/index.json", index(row("example-tool", "main", "config",
+            "templates/main.txt") + "," + row("second-tool", "second", "config/settings.json",
+            "templates/second.txt")));
+        String hash = writeBundle(files);
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogStaticTemplateRenderer.render(directory, hash, Set.of("example-tool")));
+    }
+
+    @Test
     void rejectsSelectedToolWithNoReviewedOutput() throws IOException {
         Map<String, String> files = files();
         files.put("templates/index.json", index(row("example-tool", "main", "config/main.txt",
