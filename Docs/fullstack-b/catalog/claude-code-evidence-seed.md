@@ -2,6 +2,8 @@
 
 > 2026-10-06 공식 문서 확인. **실제 Catalog 릴리스 아님.** 아래는 구성 종류별 조사 출처이며 특정 도구·버전·OS·권한 매핑의 `PASS` 판정이나 실행 시험 결과가 아니다. 1차 실제 Catalog는 Claude Code부터 만들고 Codex는 후속으로 둔다.
 
+이 개발 PC에서 읽기 전용 `claude --version`은 `2.1.270 (Claude Code)`을 반환했다. 이는 **시험 대상 후보를 찾은 것**일 뿐이며, 팀의 기준 버전 채택·설정 형식 시험·도구 실행 검증으로 보지 않는다. `claude doctor`와 후보 도구의 실제 연결 시험은 수행하지 않았다.
+
 | 조사 대상 | 공식 문서에서 확인한 범위 | Catalog에 넣기 전 필요한 검증 |
 | --- | --- | --- |
 | 설치/버전 | [`claude --version`, `claude doctor` 확인 절차](https://code.claude.com/docs/en/setup#verify-your-installation) | 팀이 고를 정확한 Claude Code 버전과 OS별 실행 환경·재현 기록. 사용자 선언 버전과 실제 검사 결과는 구분 |
