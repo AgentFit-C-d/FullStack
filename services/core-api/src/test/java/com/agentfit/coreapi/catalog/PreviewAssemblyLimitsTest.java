@@ -65,4 +65,21 @@ class PreviewAssemblyLimitsTest {
         assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
             () -> PreviewAssemblyLimits.validateRequest(request(List.of("tool"), policies, List.of())));
     }
+
+    @Test
+    void rejectsOversizedChoiceMetadataBeforeCatalogLoading() {
+        PreviewAssemblyLimits.validateRequest(new CatalogPreviewRequest(null, "r".repeat(128),
+            null, List.of("tool"), List.of(), ExistingState.UNKNOWN, List.of(), "v1"));
+        assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
+            () -> PreviewAssemblyLimits.validateRequest(new CatalogPreviewRequest(null,
+                "r".repeat(129), null, List.of("tool"), List.of(), ExistingState.UNKNOWN,
+                List.of(), "v1")));
+        assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
+            () -> PreviewAssemblyLimits.validateRequest(request(List.of("t".repeat(129)),
+                List.of(), List.of())));
+        assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
+            () -> PreviewAssemblyLimits.validateRequest(request(List.of("tool"), List.of(),
+                files(1, "ok").stream().map(file -> new PreviewInputFile("t".repeat(201),
+                    file.relativePath(), file.content())).toList())));
+    }
 }

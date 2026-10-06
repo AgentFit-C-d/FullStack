@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Preview 조립 메타데이터 예산 (2026-10-06): Preview 요청의 긴 추천·도구 ID와 기존 파일 대상 키가 Catalog 로딩 전 예산 검사에서 통과하는 반례를 재현했다. 조립 입구에도 재생성 경로와 같은 128/200-code-point 상한을 적용했다. `mvn clean verify`에서 106개 발견, 105개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.
+
 ZIP 재생성 메타데이터 예산 (2026-10-06): 추천·도구 ID와 파일 대상 키에 길이 제한이 없어 큰 문자열이 지문 해시까지 전달되는 반례를 재현했다. 초안 API의 ID 128 code points, 키 200 code points 한도를 직접 지문·ZIP 경로에 적용했다. `mvn clean verify`에서 105개 발견, 104개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. HTTP 요청 본문 한도는 아직 연결되지 않았다.
 
 ZIP 재생성 입력 예산 (2026-10-06): 직접 지문·ZIP 경로에서는 100,001자 입력이 비교와 해시까지 진행되는 반례를 재현했다. 이제 선택·정책 수, 생성/기존 파일 수, 파일별 Unicode code points와 목록별 UTF-8 bytes를 먼저 제한한다. `mvn clean verify`에서 104개 발견, 103개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. HTTP 직렬화 본문 한도는 별도로 필요하다.

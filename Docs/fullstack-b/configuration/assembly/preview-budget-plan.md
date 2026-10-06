@@ -8,6 +8,8 @@ The regeneration path now enforces those same limits inside `PreviewFingerprint.
 
 The direct regeneration path also bounds project/profile/confirmation/Catalog/recommendation/tool/generator IDs to 128 Unicode code points and permission mapping/file target keys to 200. This follows the configuration API draft and prevents oversized metadata from reaching canonical JSON hashing. The request body and all public DTO fields still need separate HTTP validation.
 
+The Catalog Preview assembly entry now applies the same ID/key limits to request metadata before loading a release, in addition to its earlier file-content limits. These are still two internal guards with duplicated provisional constants; keep the values synchronized until the public contract is approved and consolidated.
+
 These numbers come from the configuration API draft and are provisional until the team approves that contract. No public API or A-owned persistence is introduced.
 
 - [x] Write failing boundary tests for exact limit, overflow, Unicode byte count, and too many choices/files.
