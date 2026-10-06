@@ -8,8 +8,11 @@ import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.RecommendationDecision.Status;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
+import com.agentfit.coreapi.recommendation.selection.RecommendationPreviewGate;
+import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -32,7 +35,7 @@ class CatalogPreviewAssemblerTest {
         CatalogPreviewRequest request = request(hash, new EnvironmentTarget("WINDOWS", "codex", "1.0"),
             List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
 
-        PreviewFingerprintResult preview = CatalogPreviewAssembler.assemble(directory, hash, request);
+        PreviewFingerprintResult preview = assemble(hash, request);
         assertEquals(1, preview.files().size());
         assertEquals("literal config\n", preview.files().getFirst().content());
         assertEquals("config/main.txt", preview.files().getFirst().relativePath());
@@ -46,25 +49,25 @@ class CatalogPreviewAssemblerTest {
             new EnvironmentTarget("WINDOWS", "codex", "1.0"), List.of("example-tool"),
             PermissionPolicy.ASK_EACH_TIME);
         assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
-            () -> CatalogPreviewAssembler.assemble(directory, hash, stale));
+            () -> assemble(hash, stale));
         CatalogPreviewRequest current = request(hash,
             new EnvironmentTarget("WINDOWS", "codex", "1.0"), List.of("example-tool"),
             PermissionPolicy.ASK_EACH_TIME);
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
-            () -> CatalogPreviewAssembler.assemble(directory, "f".repeat(64), current));
+            () -> assemble("f".repeat(64), current));
     }
 
     @Test
     void rejectsUnsupportedTargetDeniedRequiredPolicyAndDuplicateSelection() throws IOException {
         String hash = writeBundle();
-        assertThrows(IllegalArgumentException.class, () -> CatalogPreviewAssembler.assemble(directory,
+        assertThrows(IllegalArgumentException.class, () -> assemble(
             hash, request(hash, new EnvironmentTarget("WINDOWS", "codex", "2.0"),
                 List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME)));
-        assertThrows(IllegalArgumentException.class, () -> CatalogPreviewAssembler.assemble(directory,
+        assertThrows(IllegalArgumentException.class, () -> assemble(
             hash, request(hash, new EnvironmentTarget("WINDOWS", "codex", "1.0"),
                 List.of("example-tool"), PermissionPolicy.DENY)));
         assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
-            () -> CatalogPreviewAssembler.assemble(directory, hash, request(hash,
+            () -> assemble(hash, request(hash,
                 new EnvironmentTarget("WINDOWS", "codex", "1.0"),
                 List.of("example-tool", "example-tool"), PermissionPolicy.ASK_EACH_TIME)));
     }
@@ -80,16 +83,34 @@ class CatalogPreviewAssemblerTest {
             List.of(new PreviewInputFile("main", "config/main.txt", "api_key=literal-secret\n")),
             base.generatorVersion());
         assertThrows(IllegalArgumentException.class,
-            () -> CatalogPreviewAssembler.assemble(directory, hash, supplied));
+            () -> assemble(hash, supplied));
     }
 
     @Test
     void rejectsGeneratedTemplateBeyondPreviewBudget() throws IOException {
         String hash = writeBundle("a".repeat(100_001));
         assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
-            () -> CatalogPreviewAssembler.assemble(directory, hash, request(hash,
+            () -> assemble(hash, request(hash,
                 new EnvironmentTarget("WINDOWS", "codex", "1.0"),
                 List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME)));
+    }
+
+    @Test
+    void rejectsRecommendationOutsideCurrentProjectSelectionBeforeCatalogLoad() {
+        CatalogPreviewRequest request = request("a".repeat(64),
+            new EnvironmentTarget("WINDOWS", "codex", "1.0"),
+            List.of("example-tool"), PermissionPolicy.ASK_EACH_TIME);
+        StoredRecommendationState unrelated = new StoredRecommendationState("rec-other", request.basis(),
+            Status.RECOMMENDED, List.of("example-tool"));
+        assertThrows(RecommendationPreviewGate.InvalidRecommendationException.class,
+            () -> CatalogPreviewAssembler.assemble(directory, "a".repeat(64), unrelated,
+                request.basis(), request));
+    }
+
+    private PreviewFingerprintResult assemble(String approvedHash, CatalogPreviewRequest request) {
+        StoredRecommendationState stored = new StoredRecommendationState("rec-1", request.basis(),
+            Status.RECOMMENDED, List.of("example-tool"));
+        return CatalogPreviewAssembler.assemble(directory, approvedHash, stored, request.basis(), request);
     }
 
     private CatalogPreviewRequest request(String hash, EnvironmentTarget target, List<String> selected,

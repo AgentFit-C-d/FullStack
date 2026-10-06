@@ -4,12 +4,13 @@
 
 - [설정 선택 검증](configuration-selection-plan.md): 추천 후 선택한 도구의 정확한 환경 지원, 의존성·충돌·포함 컴포넌트, 권한 매핑·정책을 재검사한다.
 - [AI Capability 내부 검증](ai-capability-intake-plan.md): AI 후보의 고정 ID·분류·근거와 A가 허용한 필드 경로를 저장 전 검증한다. 전송 계약은 아직 미확정이다.
+- [Preview 추천 소속 검증](preview-recommendation-gate-plan.md): 현재 추천 기록·basis·선택 도구 소속을 Preview 조립 전에 대조한다.
 - [대상별 다중 도구 조합](../catalog/targeted-combinations-plan.md): 함께 설치할 조합의 검증 조건은 Catalog 설계에 있다.
 
 ## 코드 위치
 
 - `services/core-api/src/main/java/com/agentfit/coreapi/recommendation/`: `CapabilityKey`(고정 9개 Capability), `EnvironmentTarget`, `RecommendationEngine`, `RecommendationInput`, `RecommendationDecision`(4가지 추천 결과).
-- `services/core-api/src/main/java/com/agentfit/coreapi/recommendation/selection/`: `ConfigurationSelectionValidator`, `PermissionPolicyGate`, `PermissionMapping`, `PermissionPolicy`, `PermissionSelection`이 도구·권한 선택을 재검증한다.
+- `services/core-api/src/main/java/com/agentfit/coreapi/recommendation/selection/`: `ConfigurationSelectionValidator`, `PermissionPolicyGate`, `RecommendationPreviewGate`와 관련 모델이 도구·권한·추천 소속을 재검증한다.
 - `services/core-api/src/main/java/com/agentfit/coreapi/recommendation/ai/`: `AiCapabilityIntake`가 AI 후보를 신뢰된 필드 범위로 검증한다.
 - 테스트는 `services/core-api/src/test/java/com/agentfit/coreapi/recommendation/`와 그 아래 `ai/`, `selection/`에 있다.
 

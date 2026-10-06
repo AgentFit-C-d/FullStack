@@ -1,11 +1,14 @@
 package com.agentfit.coreapi.catalog;
 
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprint;
+import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintInput;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.selection.ConfigurationSelectionValidator;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
+import com.agentfit.coreapi.recommendation.selection.RecommendationPreviewGate;
+import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -14,12 +17,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/** Pure B Preview path; caller must provide an authenticated current basis and recommendation. */
+/** Pure B Preview path; caller must provide A's owner-checked current basis and stored recommendation. */
 public final class CatalogPreviewAssembler {
     private CatalogPreviewAssembler() {}
 
     public static PreviewFingerprintResult assemble(Path releaseDirectory, String approvedCatalogHash,
-                                                     CatalogPreviewRequest request) {
+                                                     StoredRecommendationState storedRecommendation,
+                                                     PreviewBasis currentBasis, CatalogPreviewRequest request) {
         if (request == null || request.basis() == null || request.selectedToolKeys() == null
             || request.selectedToolKeys().isEmpty()
             || request.selectedToolKeys().stream().anyMatch(key -> key == null || key.isBlank())
@@ -31,6 +35,8 @@ public final class CatalogPreviewAssembler {
         if (selected.size() != request.selectedToolKeys().size()) {
             throw new InvalidAssemblyException("duplicate selected tool");
         }
+        RecommendationPreviewGate.requireEligible(storedRecommendation, currentBasis,
+            request.recommendationId(), request.basis(), request.selectedToolKeys());
 
         VerifiedCatalogBundle bundle = CatalogBundleLoader.load(releaseDirectory);
         if (approvedCatalogHash == null || !approvedCatalogHash.matches("[0-9a-f]{64}")
