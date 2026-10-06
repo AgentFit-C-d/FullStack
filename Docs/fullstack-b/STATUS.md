@@ -9,7 +9,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B01 Define the fixed nine Capability IDs and four recommendation outcomes in `services/core-api`.
 - [x] B02 Reject malformed Catalog references, unsupported Capability IDs, dependency cycles, and unverified support in a pure domain validator.
 - [x] B03 Implement deterministic recommendation planning for required capabilities, declared installed tool versions, environment matching, dependencies, conflicts, component overlap, and combination verification. A catalog ID alone never proves an existing usable capability.
-- [x] B03a Return deterministic reason codes for both `NO_ADDITIONS_NEEDED` paths and exhausted `NO_COMPATIBLE_TOOLS` search. These are internal B verdicts; user-facing explanations and response DTO remain subject to A·AI·Frontend contract.
+- [x] B03a Return deterministic reason codes for both `NO_ADDITIONS_NEEDED` paths, absent verified Capability support, and exhausted compatible-combination search. These are internal B verdicts; user-facing explanations and response DTO remain subject to A·AI·Frontend contract.
 - [x] B04 Cover the four outcomes and fail-closed edge cases with unit tests.
 - [x] B04a Validate reviewed permission mappings separately from the AI decision: ASK_EACH_TIME defaults, unsupported Ask, required DENY, missing/duplicate mappings.
 

@@ -67,6 +67,10 @@ public final class RecommendationEngine {
             return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of(),
                 List.of("installed_components_cover_required"));
         }
+        if (!capabilities(available).containsAll(input.requiredCapabilityKeys())) {
+            return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
+                List.of("no_verified_capability_support"));
+        }
 
         List<String> candidates = available.stream().filter(key -> !installed.contains(key)).toList();
         // MVP catalog target is about 15–20 entries; bound exponential search until a

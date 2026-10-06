@@ -47,7 +47,7 @@ class RecommendationEngineTest {
         assertEquals(NEEDS_INFORMATION,
             engine.decide(new RecommendationInput(Set.of(DOC), false, false, null, Map.of())).status());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(input(Set.of(TEST), Set.of())).status());
-        assertEquals(List.of("no_verified_compatible_combination"),
+        assertEquals(List.of("no_verified_capability_support"),
             engine.decide(input(Set.of(TEST), Set.of())).reasonCodes());
     }
 
@@ -80,7 +80,9 @@ class RecommendationEngineTest {
         CatalogTool verifiedTest = tool("test", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         engine = new RecommendationEngine(new CatalogRelease("r2",
             Map.of("doc", verifiedDoc, "test", verifiedTest), Set.of()));
-        assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(input(Set.of(DOC, TEST), Set.of())).status());
+        RecommendationDecision unsupportedCombination = engine.decide(input(Set.of(DOC, TEST), Set.of()));
+        assertEquals(NO_COMPATIBLE_TOOLS, unsupportedCombination.status());
+        assertEquals(List.of("no_verified_compatible_combination"), unsupportedCombination.reasonCodes());
         engine = new RecommendationEngine(new CatalogRelease("r3",
             Map.of("doc", verifiedDoc, "test", verifiedTest),
             Set.of(new VerifiedCombination(Set.of("doc", "test"), TARGET))));
