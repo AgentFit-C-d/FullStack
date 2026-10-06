@@ -165,6 +165,22 @@ class CatalogSemanticParserTest {
     }
 
     @Test
+    void rejectsDistinctPermissionMappingsWithCollidingEvidenceKeys() {
+        Map<String, String> files = files();
+        files.put("tools.json", TOOLS.replace("}]}",
+            "},{\"key\":\"example-tool:part\",\"version\":\"1.0\","
+                + "\"capabilityKeys\":[],\"includedComponentKeys\":[\"second-component\"]}]}"));
+        files.put("permissions.json", PERMISSIONS
+            .replace("\"mappingKey\":\"network\"", "\"mappingKey\":\"part:tail\"")
+            .replace("}]}", "},{\"toolKey\":\"example-tool:part\","
+                + "\"mappingKey\":\"tail\",\"required\":false,"
+                + "\"supportedPolicies\":[\"ASK_EACH_TIME\"],"
+                + "\"evidenceUrl\":\"https://example.org/review/other\","
+                + "\"checkedAt\":\"2026-10-06\"}]}"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(files));
+    }
+
+    @Test
     void allowsDependencyOnlyToolWithNoDirectCapability() {
         Map<String, String> files = files();
         files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"runtime\",\"version\":\"1.0\","

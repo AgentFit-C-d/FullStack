@@ -90,7 +90,7 @@ public final class CatalogSemanticParser {
                 String evidenceKey = "combination:" + target.osFamily() + ":" + target.clientId()
                     + ":" + target.clientVersion() + ":"
                     + String.join(",", toolKeys.stream().sorted().toList());
-                evidence.put(evidenceKey, evidence(item));
+                putEvidence(evidence, evidenceKey, evidence(item));
             }
 
             Map<String, List<ToolSupport>> support = new HashMap<>();
@@ -108,7 +108,7 @@ public final class CatalogSemanticParser {
                     value(item, "clientVersion"), check(item, "documentation"), check(item, "format"),
                     check(item, "standalone"));
                 support.computeIfAbsent(toolKey, ignored -> new ArrayList<>()).add(row);
-                evidence.put("support:" + key, source);
+                putEvidence(evidence, "support:" + key, source);
             }
 
             List<PermissionMapping> mappings = new ArrayList<>();
@@ -130,7 +130,8 @@ public final class CatalogSemanticParser {
                 }
                 mappings.add(new PermissionMapping(toolKey, mappingKey,
                     item.path("required").booleanValue(), policies));
-                evidence.put("permission:" + toolKey + ":" + mappingKey, evidence(item));
+                putEvidence(evidence, "permission:" + toolKey + ":" + mappingKey,
+                    evidence(item));
             }
 
             if (items(bundle, "client-capabilities.json").size() != 0) {
@@ -229,6 +230,13 @@ public final class CatalogSemanticParser {
             || uri.getUserInfo() != null || uri.getFragment() != null) throw unavailable("invalid evidence URL");
         try { return new VerificationEvidence(url, LocalDate.parse(value(item, "checkedAt"))); }
         catch (DateTimeParseException exception) { throw unavailable("invalid verification date"); }
+    }
+
+    private static void putEvidence(Map<String, VerificationEvidence> evidence, String key,
+                                    VerificationEvidence source) {
+        if (evidence.putIfAbsent(key, source) != null) {
+            throw unavailable("ambiguous verification evidence key");
+        }
     }
 
     private static CatalogBundleLoader.CatalogUnavailableException unavailable(String reason) {

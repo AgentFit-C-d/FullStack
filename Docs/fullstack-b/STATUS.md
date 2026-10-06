@@ -25,6 +25,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08c Model verified combinations for one exact OS/Client/version target, preserve source evidence, and reject ambiguous support records and invalid combinations (see [targeted combinations](catalog/targeted-combinations-plan.md)). Real release verification is still B08 work.
 - [x] B08d Reject oversized JSON integers that truncate to schema version 1 in the manifest, semantic files, and static template index. This does not establish a real supported Client release.
 - [x] B08e Reject trailing JSON tokens after the manifest, semantic file roots, and template index; a hashed file must parse as one complete document. Real Catalog review remains open.
+- [x] B08f Reject ambiguous verification evidence keys so distinct support, permission, or combination records cannot silently overwrite one another. Real Client evidence is still pending.
 
 ## Phase 3 — permission and configuration
 
