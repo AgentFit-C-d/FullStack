@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-api:
+    name: Core API (Java 21)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/core-api
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: services/core-api/pom.xml
+      - name: Build and test
+        run: mvn -B -ntp clean verify
+      - name: Save tested application JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-api-jar
+          path: services/core-api/target/core-api-*.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  ai-service:
+    name: AI service (Python 3.11)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai-service
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Run tests
+        run: python -m pytest -q
