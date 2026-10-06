@@ -16,6 +16,9 @@ class PreviewSensitiveContentTest {
             "api_key = very-secret-value\n",
             "{\"client_secret\":\"secret-value\"}",
             "password: hunter2\n",
+            "TEAM_API_KEY=synthetic-secret-value\n",
+            "export TEAM_TOKEN=synthetic-secret-value\n",
+            "AWS_SECRET_ACCESS_KEY=synthetic-secret-value\n",
             "Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456\n",
             "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----",
             "token=ghp_123456789012345678901234567890123456\n",
@@ -39,12 +42,16 @@ class PreviewSensitiveContentTest {
             () -> PreviewFileComparator.compare(List.of(file("api_key=${SERVICE_API_KEY}\n")),
                 ExistingState.PROVIDED, List.of(file("api_key=old-secret\n"))));
         assertEquals("sensitive content detected", error.getMessage());
+        assertThrows(PreviewFileComparator.InvalidPreviewInputException.class,
+            () -> PreviewFileComparator.compare(List.of(file("TEAM_API_KEY=${TEAM_API_KEY}\n")),
+                ExistingState.PROVIDED, List.of(file("TEAM_API_KEY=synthetic-old-value\n"))));
     }
 
     @Test
     void permitsEnvironmentReferencesPlaceholdersAndOrdinaryValues() {
         List<String> cases = List.of(
             "api_key=${SERVICE_API_KEY}\n",
+            "TEAM_API_KEY=${TEAM_API_KEY}\n",
             "{\"client_secret\":\"$SERVICE_SECRET\"}",
             "password: <set-locally>\n",
             "api_key=\n",

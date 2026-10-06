@@ -14,7 +14,9 @@ final class PreviewSensitiveContentGuard {
         "(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,19}://[^\\s/@:]+:[^\\s/@]+@");
     private static final Pattern BEARER = Pattern.compile("(?i)\\bBearer[ \\t]+([^\\s\"']+)");
     private static final Pattern ASSIGNMENT = Pattern.compile(
-        "(?im)^[ \\t]*\\{?[ \\t]*[\"']?(?:api[_-]?key|client[_-]?secret|secret(?:[_-]?key)?"
+        "(?im)^[ \\t]*(?:export[ \\t]+)?\\{?[ \\t]*[\"']?"
+            + "(?:[A-Za-z][A-Za-z0-9]*[_-])*"
+            + "(?:api[_-]?key|client[_-]?secret|secret(?:[_-]?key|[_-]?access[_-]?key)?"
             + "|access[_-]?token|auth[_-]?token|password|token)[\"']?[ \\t]*[:=][ \\t]*(.*)$");
     private static final Pattern ENVIRONMENT_REFERENCE = Pattern.compile(
         "(?:\\$\\{[A-Za-z_][A-Za-z0-9_]*}|\\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%)");
