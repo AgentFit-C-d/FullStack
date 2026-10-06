@@ -13,6 +13,8 @@ Each of the six JSON files has exactly `schemaVersion: 1` and an `items` array, 
 
 The public `load(Path)` method chains hash verification and semantic parsing before returning an immutable `CatalogRelease` and reviewed permission mappings, tagged with the verified release hash and source metadata. An empty tool set is valid but cannot recommend any tools. The package-private `parse(VerifiedCatalogBundle)` method exists for isolated tests; no public endpoint accepts a caller-supplied bundle.
 
+문자열 필드는 앞뒤 공백뿐 아니라 내부 ISO 제어 문자도 거부한다. JSON `\n` 또는 `\u007f`처럼 구문상 유효한 이스케이프가 도구 버전·컴포넌트 키에 들어와도 식별자로 사용하지 않는다. 정적 템플릿 인덱스의 대상 키에도 같은 검사를 적용한다.
+
 ## Execution
 
 - [x] Write tests for a valid synthetic one-tool release and rejection of unknown capability, dangling reference, absent support evidence, duplicate JSON keys, environment-agnostic combination, and unknown client capability. Target-specific combination tests were added in `targeted-combinations-plan.md`.

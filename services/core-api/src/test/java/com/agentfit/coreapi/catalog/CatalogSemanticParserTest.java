@@ -142,6 +142,18 @@ class CatalogSemanticParserTest {
     }
 
     @Test
+    void rejectsEmbeddedControlCharactersInScalarAndArrayMetadata() {
+        Map<String, String> version = files();
+        version.put("tools.json", TOOLS.replace("\"version\":\"1.0\"",
+            "\"version\":\"1.0\\nx\""));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(version));
+
+        Map<String, String> component = files();
+        component.put("tools.json", TOOLS.replace("example-component", "example\\u007fcomponent"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(component));
+    }
+
+    @Test
     void rejectsDuplicateJsonKeys() {
         Map<String, String> files = files();
         files.put("tools.json", TOOLS.replace("\"version\":\"1.0\"",

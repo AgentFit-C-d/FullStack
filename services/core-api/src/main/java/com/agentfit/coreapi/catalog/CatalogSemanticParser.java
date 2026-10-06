@@ -201,7 +201,7 @@ public final class CatalogSemanticParser {
 
     private static String value(JsonNode parent, String field) {
         JsonNode node = parent.path(field);
-        if (!node.isTextual() || node.textValue().isBlank() || !node.textValue().equals(node.textValue().trim())) {
+        if (!validText(node)) {
             throw unavailable("invalid field: " + field);
         }
         return node.textValue();
@@ -210,12 +210,17 @@ public final class CatalogSemanticParser {
     private static Set<String> uniqueStrings(JsonNode parent, String field) {
         Set<String> values = new HashSet<>();
         for (JsonNode item : array(parent, field)) {
-            if (!item.isTextual() || item.textValue().isBlank()
-                || !item.textValue().equals(item.textValue().trim()) || !values.add(item.textValue())) {
+            if (!validText(item) || !values.add(item.textValue())) {
                 throw unavailable("invalid or duplicate: " + field);
             }
         }
         return Set.copyOf(values);
+    }
+
+    private static boolean validText(JsonNode node) {
+        return node.isTextual() && !node.textValue().isBlank()
+            && node.textValue().equals(node.textValue().trim())
+            && node.textValue().codePoints().noneMatch(Character::isISOControl);
     }
 
     private static ToolSupport.Check check(JsonNode parent, String field) {

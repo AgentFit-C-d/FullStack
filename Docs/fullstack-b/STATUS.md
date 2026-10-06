@@ -28,6 +28,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08d Reject oversized JSON integers that truncate to schema version 1 in the manifest, semantic files, and static template index. This does not establish a real supported Client release.
 - [x] B08e Reject trailing JSON tokens after the manifest, semantic file roots, and template index; a hashed file must parse as one complete document. Real Catalog review remains open.
 - [x] B08f Reject ambiguous verification evidence keys so distinct support, permission, or combination records cannot silently overwrite one another. Real Client evidence is still pending.
+- [x] B08g Reject embedded ISO control characters in Catalog scalar/array metadata and static template index fields before identifiers reach recommendation or Preview. Real Client evidence is still pending.
 
 ## Phase 3 — permission and configuration
 

@@ -111,7 +111,8 @@ public final class CatalogStaticTemplateRenderer {
     private static String value(JsonNode node, String field) {
         JsonNode value = node.path(field);
         if (!value.isTextual() || value.textValue().isBlank()
-            || !value.textValue().equals(value.textValue().trim())) {
+            || !value.textValue().equals(value.textValue().trim())
+            || value.textValue().codePoints().anyMatch(Character::isISOControl)) {
             throw unavailable("invalid template field: " + field);
         }
         return value.textValue();
