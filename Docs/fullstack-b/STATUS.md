@@ -16,6 +16,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 
 - [ ] B05 Agree on and implement A's authenticated, owner-checked snapshot reader and B1–B4 persistence. Preserve the confirmation event and immutable version basis.
 - [ ] B06 Agree on the AI Capability request/response contract; reject unknown keys and excluded profile fields before saving anything.
+- [x] B06a Add a pure AI Capability intake guard for the fixed nine IDs, required/optional/undetermined assessments, trusted A-provided source/question field paths, duplicates, and missing evidence. Wire parsing, failure envelopes, ownership, and persistence remain B06 work (see [intake boundary](recommendation/ai-capability-intake-plan.md)).
 - [ ] B07 Publish the read-only Catalog and recommendation endpoints after authentication, ownership, error envelope, and transaction boundaries exist.
 - [ ] B08 Load a real versioned Codex Catalog bundle with manifest hashes, reviewed support records, and source evidence. Keep unsupported combinations inactive.
 - [x] B08a Implement Catalog manifest/file hash and path validation before parsing release content (see [release validation](catalog/catalog-release-validation-plan.md)). The symlink rejection branch is implemented, but its filesystem test was skipped by local Windows permissions.

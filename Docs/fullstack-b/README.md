@@ -37,21 +37,22 @@ FullStack/Docs/
 | 릴리스 파일·스키마·템플릿 검증과 Preview 조립 | `catalog/` | [Catalog](catalog/README.md) · [설정 조립](configuration/README.md) |
 | Catalog의 도구·지원·조합 모델 | `catalog/model/` | [Catalog](catalog/README.md) |
 | Capability 및 결정적 추천 | `recommendation/` | [추천](recommendation/README.md) |
+| AI Capability 후보의 내부 검증 | `recommendation/ai/` | [AI 후보 검증](recommendation/ai-capability-intake-plan.md) |
 | 도구 선택·권한 정책 검증 | `recommendation/selection/` | [선택·권한](recommendation/README.md) |
 | 파일 비교·민감정보·지문 | `configuration/preview/` | [Preview](configuration/README.md) |
 | 만료·승인·ZIP 내보내기 | `configuration/export/` | [내보내기](configuration/README.md) |
 
-B 코드 전체가 아직 커밋되지 않은 공유 작업 트리에 있다. 기존 파일을 복제해 별도 버전을 만들지 않고, 기능별 패키지와 문서 링크를 함께 정리했다.
+B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관리한다. 이 문서에서 말하는 구현은 외부 서비스·DB에 연결되지 않은 경계 코드다.
 
 ## 현재 구현 수준
 
 | 영역 | 구현된 범위 | 아직 필요한 것 |
 | --- | --- | --- |
-| 추천·선택 | 9개 Capability, 결정적 추천 결과, 정확한 OS/Client/버전 지원·조합·의존성·충돌·권한 검증 | A의 현재 스냅샷, AI Capability 계약, 추천 저장·API |
+| 추천·선택 | 9개 Capability, AI 후보의 내부 검증, 결정적 추천 결과, 정확한 OS/Client/버전 지원·조합·의존성·충돌·권한 검증 | A의 현재 스냅샷, AI 전송 계약·실패 처리, 추천 저장·API |
 | Catalog | 매니페스트 SHA-256 검증, 엄격한 합성 v1 스키마, 템플릿 출처·승인 해시 확인 | 실제 Client 지원·템플릿 검증과 승인된 릴리스 |
 | Preview·설정 | 임시 비교·Diff, 식별 가능한 Secret 검사, 지문 계산, 저장된 승인 메타데이터를 검사하는 동일 바이트 ZIP 재생성, Catalog 기반 임시 Preview 연결 | 인증/소유권, 승인·만료·감사·DB, 공개 API·화면 연동 |
 
-마지막 전체 검증은 `mvn package`에서 **80개 테스트 발견, 79개 통과, 1개 건너뜀**이었다. 건너뛴 테스트는 이 Windows 환경에서 심볼릭 링크 생성 권한이 없어 실행되지 않은 파일시스템 테스트다. JDK 24로 Java 21 대상 바이트코드를 만들었으며 Java 21 런타임 실행은 아직 확인하지 못했다. 세부 검증은 [HISTORY.md](HISTORY.md)에 기록했다.
+마지막 전체 검증은 `mvn clean verify`에서 **85개 테스트 발견, 84개 통과, 1개 건너뜀**이었다. 건너뛴 테스트는 이 Windows 환경에서 심볼릭 링크 생성 권한이 없어 실행되지 않은 파일시스템 테스트다. JDK 24로 Java 21 대상 바이트코드를 만들었으며 Java 21 런타임 실행은 아직 확인하지 못했다. 세부 검증은 [HISTORY.md](HISTORY.md)에 기록했다.
 
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 
