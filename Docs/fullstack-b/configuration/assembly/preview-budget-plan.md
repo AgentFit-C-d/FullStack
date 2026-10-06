@@ -6,6 +6,8 @@
 
 The regeneration path now enforces those same limits inside `PreviewFingerprint.compute` before comparison, Diff, hashing, or ZIP generation. This closes the direct B export entry point when it receives a large generated/provided file list, even before the public HTTP body limit exists. `PreviewAssemblyLimits` and the fingerprint guard currently duplicate the provisional numeric limits; keep them aligned when the team fixes the contract.
 
+The direct regeneration path also bounds project/profile/confirmation/Catalog/recommendation/tool/generator IDs to 128 Unicode code points and permission mapping/file target keys to 200. This follows the configuration API draft and prevents oversized metadata from reaching canonical JSON hashing. The request body and all public DTO fields still need separate HTTP validation.
+
 These numbers come from the configuration API draft and are provisional until the team approves that contract. No public API or A-owned persistence is introduced.
 
 - [x] Write failing boundary tests for exact limit, overflow, Unicode byte count, and too many choices/files.

@@ -140,4 +140,36 @@ class PreviewFingerprintTest {
         assertThrows(IllegalArgumentException.class,
             () -> PreviewFingerprint.compute(input(List.of("doc"), List.of(), oversizedBytes)));
     }
+
+    @Test
+    void refusesOversizedMetadataBeforeCanonicalHashing() {
+        PreviewInputFile normal = new PreviewInputFile("client", "config.txt", "hello");
+        assertDoesNotThrow(() -> PreviewFingerprint.compute(new PreviewFingerprintInput(basis(),
+            "r".repeat(128), List.of("doc"), List.of(), "generator-1", List.of(normal),
+            ExistingState.UNKNOWN, List.of())));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(new PreviewFingerprintInput(basis(), "r".repeat(129),
+                List.of("doc"), List.of(), "generator-1", List.of(normal),
+                ExistingState.UNKNOWN, List.of())));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(input(List.of("도".repeat(129)), List.of(),
+                List.of(normal))));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(input(List.of("doc"), List.of(),
+                List.of(new PreviewInputFile("t".repeat(201), "config.txt", "hello")))));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(input(List.of("doc"),
+                List.of(new PermissionSelection("doc", "m".repeat(201),
+                    PermissionPolicy.ASK_EACH_TIME)), List.of(normal))));
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(new PreviewFingerprintInput(basis(), "rec-1",
+                List.of("doc"), List.of(), "g".repeat(129), List.of(normal),
+                ExistingState.UNKNOWN, List.of())));
+        PreviewBasis oversizedBasis = new PreviewBasis("p".repeat(129), 7, "profile-1", 3,
+            "event-1", 2, 0, 5, "release-1", CATALOG_HASH);
+        assertThrows(PreviewFingerprint.LimitExceededException.class,
+            () -> PreviewFingerprint.compute(new PreviewFingerprintInput(oversizedBasis, "rec-1",
+                List.of("doc"), List.of(), "generator-1", List.of(normal),
+                ExistingState.UNKNOWN, List.of())));
+    }
 }

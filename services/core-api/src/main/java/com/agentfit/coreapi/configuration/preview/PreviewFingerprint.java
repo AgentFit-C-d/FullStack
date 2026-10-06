@@ -25,6 +25,8 @@ public final class PreviewFingerprint {
     private static final int MAX_POLICIES = 200;
     private static final int MAX_FILES = 20;
     private static final int MAX_CODE_POINTS_PER_FILE = 100_000;
+    private static final int MAX_ID_CODE_POINTS = 128;
+    private static final int MAX_KEY_CODE_POINTS = 200;
     private static final long MAX_CONTENT_BYTES = 1_048_576;
 
     private PreviewFingerprint() {}
@@ -133,8 +135,30 @@ public final class PreviewFingerprint {
             || input.providedFiles() == null) {
             throw new LimitExceededException("Preview input exceeds budget");
         }
+        PreviewBasis basis = input.basis();
+        validateLength(basis.projectId(), MAX_ID_CODE_POINTS);
+        validateLength(basis.confirmedProfileId(), MAX_ID_CODE_POINTS);
+        validateLength(basis.confirmationEventId(), MAX_ID_CODE_POINTS);
+        validateLength(basis.catalogReleaseId(), MAX_ID_CODE_POINTS);
+        validateLength(input.recommendationId(), MAX_ID_CODE_POINTS);
+        validateLength(input.generatorVersion(), MAX_ID_CODE_POINTS);
+        for (String toolId : input.selectedToolIds()) {
+            validateLength(toolId, MAX_ID_CODE_POINTS);
+        }
+        for (PermissionSelection policy : input.policies()) {
+            if (policy != null) {
+                validateLength(policy.toolKey(), MAX_ID_CODE_POINTS);
+                validateLength(policy.mappingKey(), MAX_KEY_CODE_POINTS);
+            }
+        }
         validateFiles(input.generatedFiles());
         validateFiles(input.providedFiles());
+    }
+
+    private static void validateLength(String value, int maximum) {
+        if (value != null && value.codePointCount(0, value.length()) > maximum) {
+            throw new LimitExceededException("Preview metadata too long");
+        }
     }
 
     private static void validateFiles(List<PreviewInputFile> files) {
@@ -144,6 +168,7 @@ public final class PreviewFingerprint {
             if (file == null || file.content() == null) {
                 throw new LimitExceededException("invalid Preview file");
             }
+            validateLength(file.targetKey(), MAX_KEY_CODE_POINTS);
             String content = file.content();
             if (content.codePointCount(0, content.length()) > MAX_CODE_POINTS_PER_FILE) {
                 throw new LimitExceededException("Preview file too long");
