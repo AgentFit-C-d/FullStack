@@ -13,12 +13,14 @@
 | 5a. 신선도 | [Preview 상태 재검사](preview/preview-freshness-plan.md) | 현재 basis·만료·저장/제출/재생성 지문·확인값 판정 |
 | 6. 내보내기 | [ZIP 재생성](export/preview-zip-export-plan.md) | 지문이 같을 때 Preview 경로와 동일한 파일 bytes만 압축 |
 | 6a. 승인 경계 | [승인된 ZIP 내보내기](export/approved-export-plan.md) | 저장 승인 ID·Preview ID·지문·만료를 재검사한 뒤 ZIP 생성 |
+| 7. 사용자 진술 | [적용 보고 검증](report/user-application-report-plan.md) | APPLIED/FAILED·실패 사유를 제한하고 출처·시각을 서버가 지정 |
 
 ## 코드 위치
 
 - `services/core-api/src/main/java/com/agentfit/coreapi/catalog/`: `CatalogStaticTemplateRenderer`, `CatalogPreviewRequest`, `CatalogPreviewAssembler`, `PreviewAssemblyLimits`. Catalog 릴리스와 밀접하게 연결된 조립 경계다.
 - `services/core-api/src/main/java/com/agentfit/coreapi/configuration/preview/`: 비교(`PreviewFileComparator`), 민감정보 검사, 지문(`PreviewFingerprint`)과 입력·결과 모델.
 - `services/core-api/src/main/java/com/agentfit/coreapi/configuration/export/`: 저장 Preview/승인 상태, 신선도 검사, 승인된 ZIP 경계와 내부 ZIP 작성기.
-- 테스트는 `services/core-api/src/test/java/com/agentfit/coreapi/catalog/`, `configuration/preview/`, `configuration/export/`에 같은 단위로 배치했다.
+- `services/core-api/src/main/java/com/agentfit/coreapi/configuration/report/`: 사용자 적용 진술의 내부 검증 경계.
+- 테스트는 `services/core-api/src/test/java/com/agentfit/coreapi/catalog/`, `configuration/preview/`, `configuration/export/`, `configuration/report/`에 같은 단위로 배치했다.
 
-현재는 **메모리 내 Preview 경계**까지만 연결됐다. 서버 승인·만료·현재 basis 재확인·감사·HTTP 다운로드는 구현되지 않았다. 사용자 제공 원본과 Diff를 영속화해서는 안 되며, Secret 검사는 모든 비밀값을 찾는 보증이 아니다. [다음 작업](../NEXT-STEPS.md)의 5번에서 A 계약과 함께 완성해야 한다.
+현재는 **메모리 내 Preview·승인/내보내기·사용자 보고 검증 경계**까지만 연결됐다. 서버 저장·인증/소유권·감사·HTTP 다운로드 및 보고 API는 구현되지 않았다. 사용자 제공 원본과 Diff를 영속화해서는 안 되며, Secret 검사는 모든 비밀값을 찾는 보증이 아니다. [다음 작업](../NEXT-STEPS.md)의 4·5번에서 A 계약과 함께 완성해야 한다.

@@ -40,5 +40,6 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B11c Reject stale/expired Preview metadata and mismatched submitted/regenerated fingerprints before approval or reuse; require explicit confirmation for approval. A's trusted current snapshot, ownership, recommendation status, persisted approval, and transaction remain open (see [freshness](configuration/preview/preview-freshness-plan.md)).
 - [x] B11d Guard ZIP generation with server-stored approval metadata bound to the same Preview ID, fingerprint, current basis, and expiration; raw ZIP helper is package-private. A's owner-checked approval lookup, transaction, audit, and HTTP response remain open (see [approved export](configuration/export/approved-export-plan.md)).
 - [ ] B12 Persist only B5–B9 metadata, audit, generation history, and user reports; verify deletion and stale-state handling.
+- [x] B12a Validate a user's APPLIED/FAILED report and its allowed failure reason; assign USER source and report time on the server without treating the statement as verified installation (see [report boundary](configuration/report/user-application-report-plan.md)). Persistence, ownership, audit, and deletion remain B12 work.
 
 Detailed milestone results and test counts: [HISTORY.md](HISTORY.md).
