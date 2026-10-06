@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+AI 빈 후보 방어 (2026-10-06): `AiCapabilityIntake`가 빈 claim 목록을 질문 유무와 관계없이 거부하도록 테스트를 먼저 추가했다. 추가 테스트의 예상 실패를 확인한 뒤 경계를 보완했다. `mvn clean verify`는 100개 발견, 99개 통과, Windows 심볼릭 링크 권한으로 1개 건너뜀. 9개 전량/부분 응답 의미, AI 전송 형식과 A 연동은 미합의다.
+
 The checked Phase 1 items are domain implementation only. They do not imply a verified real Catalog, production API, database persistence, or completed B feature.
 
 Phase 1 verification: `mvn test` passed with 13 tests (twelve B domain tests and the existing health test) using a local Maven cache and Java 24 to compile for the project's Java 21 target. `javap` confirmed class-file major version 65 (Java 21). Execution on a Java 21 runtime remains untested because this workstation currently has JDK 17 and 24. No live Catalog, PostgreSQL, AI, or external Client checks ran.

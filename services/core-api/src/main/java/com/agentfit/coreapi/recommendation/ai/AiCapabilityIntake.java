@@ -42,7 +42,7 @@ public final class AiCapabilityIntake {
 
     public static Validated validate(List<Claim> claims, List<Question> questions,
                                      Set<String> allowedSourceFields) {
-        if (claims == null || questions == null || allowedSourceFields == null) {
+        if (claims == null || claims.isEmpty() || questions == null || allowedSourceFields == null) {
             throw invalid();
         }
         if (allowedSourceFields.stream().anyMatch(AiCapabilityIntake::blank)) throw invalid();

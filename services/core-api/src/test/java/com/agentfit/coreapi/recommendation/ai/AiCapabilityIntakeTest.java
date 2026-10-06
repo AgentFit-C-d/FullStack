@@ -17,6 +17,14 @@ class AiCapabilityIntakeTest {
     }
 
     @Test
+    void rejectsEmptyAssessmentEvenWhenItContainsOnlyQuestions() {
+        assertThrows(IllegalArgumentException.class, () -> AiCapabilityIntake.validate(
+            List.of(), List.of(), ALLOWED_FIELDS));
+        assertThrows(IllegalArgumentException.class, () -> AiCapabilityIntake.validate(
+            List.of(), List.of(new AiCapabilityIntake.Question("environment.client", "확인 필요")), ALLOWED_FIELDS));
+    }
+
+    @Test
     void preservesOnlyValidatedRequiredOptionalAndUndeterminedAssessments() {
         var result = AiCapabilityIntake.validate(List.of(
             claim("cap_document_reference", AiCapabilityIntake.Need.REQUIRED, List.of("project.purpose")),
