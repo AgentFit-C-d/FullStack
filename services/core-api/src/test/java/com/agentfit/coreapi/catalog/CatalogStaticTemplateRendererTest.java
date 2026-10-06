@@ -86,6 +86,17 @@ class CatalogStaticTemplateRendererTest {
     }
 
     @Test
+    void rejectsSelectedToolWithNoReviewedOutput() throws IOException {
+        Map<String, String> files = files();
+        files.put("templates/index.json", index(row("example-tool", "main", "config/main.txt",
+            "templates/main.txt")));
+        String hash = writeBundle(files);
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogStaticTemplateRenderer.render(directory, hash,
+                Set.of("example-tool", "second-tool")));
+    }
+
+    @Test
     void rejectsUnknownIndexFieldsAndMissingIndex() throws IOException {
         Map<String, String> files = files();
         String hash = writeBundle(files);

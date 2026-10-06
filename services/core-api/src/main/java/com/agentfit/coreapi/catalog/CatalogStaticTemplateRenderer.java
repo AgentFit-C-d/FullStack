@@ -57,6 +57,7 @@ public final class CatalogStaticTemplateRenderer {
                 || !root.path("items").isArray()) throw unavailable("invalid template index schema");
 
             Set<String> sourcePaths = new HashSet<>();
+            Set<String> coveredSelectedTools = new HashSet<>();
             List<PreviewInputFile> all = new ArrayList<>();
             List<PreviewInputFile> selected = new ArrayList<>();
             for (JsonNode item : root.path("items")) {
@@ -73,15 +74,18 @@ public final class CatalogStaticTemplateRenderer {
                 PreviewInputFile file = new PreviewInputFile(value(item, "targetKey"),
                     value(item, "relativePath"), content);
                 all.add(file);
-                if (selectedToolKeys.contains(toolKey)) selected.add(file);
+                if (selectedToolKeys.contains(toolKey)) {
+                    coveredSelectedTools.add(toolKey);
+                    selected.add(file);
+                }
             }
             Set<String> listedSources = new HashSet<>();
             for (String path : bundle.files().keySet()) {
                 if ((path.startsWith("templates/") || path.startsWith("guides/"))
                     && !path.equals(INDEX)) listedSources.add(path);
             }
-            if (!listedSources.equals(sourcePaths) || selected.isEmpty()) {
-                throw unavailable("orphan source or no selected template");
+            if (!listedSources.equals(sourcePaths) || !coveredSelectedTools.equals(selectedToolKeys)) {
+                throw unavailable("orphan source or selected tool without template");
             }
             // Reuse the Preview boundary to reject traversal, device names, duplicate targets,
             // and ambiguous output paths before any candidate can enter Preview.
