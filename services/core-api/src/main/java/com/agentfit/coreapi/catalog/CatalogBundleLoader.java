@@ -48,7 +48,7 @@ public final class CatalogBundleLoader {
             byte[] manifestBytes = read(root.resolve("manifest.json"), MAX_MANIFEST_BYTES);
             JsonNode manifest = JSON.readTree(strictText(manifestBytes));
             if (manifest == null || !manifest.isObject() || !fields(manifest).equals(MANIFEST_FIELDS)
-                || !manifest.path("schemaVersion").isIntegralNumber()
+                || !manifest.path("schemaVersion").isInt()
                 || manifest.path("schemaVersion").intValue() != 1) {
                 throw unavailable("unsupported manifest schema");
             }

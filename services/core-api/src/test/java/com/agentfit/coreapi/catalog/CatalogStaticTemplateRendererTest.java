@@ -110,6 +110,17 @@ class CatalogStaticTemplateRendererTest {
             () -> CatalogStaticTemplateRenderer.render(directory, malformedHash, Set.of("example-tool")));
     }
 
+    @Test
+    void rejectsTemplateIndexSchemaVersionThatTruncatesToOne() throws IOException {
+        Map<String, String> files = files();
+        files.put("templates/index.json", index(row("example-tool", "main", "main.txt",
+            "templates/main.txt")).replace("\"schemaVersion\":1",
+                "\"schemaVersion\":4294967297"));
+        String hash = writeBundle(files);
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogStaticTemplateRenderer.render(directory, hash, Set.of("example-tool")));
+    }
+
     private static String row(String tool, String target, String output, String source) {
         return "{\"toolKey\":\"" + tool + "\",\"targetKey\":\"" + target
             + "\",\"relativePath\":\"" + output + "\",\"sourcePath\":\"" + source + "\"}";

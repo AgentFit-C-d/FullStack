@@ -52,7 +52,7 @@ public final class CatalogStaticTemplateRenderer {
             if (indexText == null) throw unavailable("template index missing");
             JsonNode root = JSON.readTree(indexText);
             exact(root, ROOT_FIELDS);
-            if (!root.path("schemaVersion").isIntegralNumber()
+            if (!root.path("schemaVersion").isInt()
                 || root.path("schemaVersion").intValue() != 1
                 || !root.path("items").isArray()) throw unavailable("invalid template index schema");
 

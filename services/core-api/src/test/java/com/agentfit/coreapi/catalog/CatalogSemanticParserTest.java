@@ -150,6 +150,14 @@ class CatalogSemanticParserTest {
     }
 
     @Test
+    void rejectsSchemaVersionThatTruncatesToOne() {
+        Map<String, String> files = files();
+        files.put("tools.json", TOOLS.replace("\"schemaVersion\":1",
+            "\"schemaVersion\":4294967297"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(files));
+    }
+
+    @Test
     void allowsDependencyOnlyToolWithNoDirectCapability() {
         Map<String, String> files = files();
         files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"runtime\",\"version\":\"1.0\","

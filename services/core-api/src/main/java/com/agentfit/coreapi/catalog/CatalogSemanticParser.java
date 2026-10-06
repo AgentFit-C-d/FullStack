@@ -171,7 +171,7 @@ public final class CatalogSemanticParser {
             JsonNode root = JSON.readTree(bundle.files().get(name));
             exact(root, expected);
             JsonNode version = root.path("schemaVersion");
-            if (!version.isIntegralNumber() || version.intValue() != 1) throw unavailable("unsupported schema");
+            if (!version.isInt() || version.intValue() != 1) throw unavailable("unsupported schema");
             return root;
         } catch (java.io.IOException exception) {
             throw new CatalogBundleLoader.CatalogUnavailableException("invalid catalog JSON", exception);

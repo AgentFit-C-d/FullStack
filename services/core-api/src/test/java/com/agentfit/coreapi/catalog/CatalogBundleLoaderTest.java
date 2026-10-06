@@ -94,6 +94,13 @@ class CatalogBundleLoaderTest {
             manifest.replace("\"schemaVersion\":1", "\"schemaVersion\":1.5"));
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogBundleLoader.load(directory));
+
+        fixture(PATHS);
+        manifest = Files.readString(directory.resolve("manifest.json"));
+        Files.writeString(directory.resolve("manifest.json"),
+            manifest.replace("\"schemaVersion\":1", "\"schemaVersion\":4294967297"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogBundleLoader.load(directory));
     }
 
     @Test

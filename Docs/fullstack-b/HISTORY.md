@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Catalog 스키마 버전 정수 절단 차단 (2026-10-06): `4294967297`이 `intValue()`에서 `1`이 되어 매니페스트·내용·템플릿 인덱스의 v1 검사에 통과하는 반례 세 개를 재현했다. 세 경계 모두 정확한 JSON int `1`만 허용한다. `mvn clean verify`에서 108개 발견, 107개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.
+
 Preview 조립 메타데이터 예산 (2026-10-06): Preview 요청의 긴 추천·도구 ID와 기존 파일 대상 키가 Catalog 로딩 전 예산 검사에서 통과하는 반례를 재현했다. 조립 입구에도 재생성 경로와 같은 128/200-code-point 상한을 적용했다. `mvn clean verify`에서 106개 발견, 105개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.
 
 ZIP 재생성 메타데이터 예산 (2026-10-06): 추천·도구 ID와 파일 대상 키에 길이 제한이 없어 큰 문자열이 지문 해시까지 전달되는 반례를 재현했다. 초안 API의 ID 128 code points, 키 200 code points 한도를 직접 지문·ZIP 경로에 적용했다. `mvn clean verify`에서 105개 발견, 104개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀. HTTP 요청 본문 한도는 아직 연결되지 않았다.
