@@ -42,9 +42,22 @@ class RecommendationEngineTest {
         assertEquals(RECOMMENDED, engine.decide(input(Set.of(DOC), Set.of())).status());
         assertEquals(List.of("doc"), engine.decide(input(Set.of(DOC), Set.of())).toolKeys());
         assertEquals(NO_ADDITIONS_NEEDED, engine.decide(input(Set.of(DOC), Set.of("doc"))).status());
+        assertEquals(List.of("installed_components_cover_required"),
+            engine.decide(input(Set.of(DOC), Set.of("doc"))).reasonCodes());
         assertEquals(NEEDS_INFORMATION,
             engine.decide(new RecommendationInput(Set.of(DOC), false, false, null, Map.of())).status());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(input(Set.of(TEST), Set.of())).status());
+        assertEquals(List.of("no_verified_compatible_combination"),
+            engine.decide(input(Set.of(TEST), Set.of())).reasonCodes());
+    }
+
+    @Test
+    void emptyRequiredCapabilitiesHaveDistinctNoAdditionReason() {
+        RecommendationEngine engine = new RecommendationEngine(new CatalogRelease("r1", Map.of(), Set.of()));
+        RecommendationDecision decision = engine.decide(input(Set.of(), Set.of()));
+        assertEquals(NO_ADDITIONS_NEEDED, decision.status());
+        assertEquals(List.of("no_required_capabilities"), decision.reasonCodes());
+        assertEquals(List.of(), decision.questionCodes());
     }
 
     @Test

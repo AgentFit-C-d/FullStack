@@ -43,10 +43,11 @@ public final class RecommendationEngine {
             }
         }
         if (!questions.isEmpty()) {
-            return new RecommendationDecision(NEEDS_INFORMATION, List.of(), questions);
+            return new RecommendationDecision(NEEDS_INFORMATION, List.of(), questions, List.of());
         }
         if (input.requiredCapabilityKeys().isEmpty()) {
-            return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of());
+            return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of(),
+                List.of("no_required_capabilities"));
         }
 
         // Unknown installed names are user declarations, not Catalog support evidence.
@@ -63,7 +64,8 @@ public final class RecommendationEngine {
         }
         if (validSelection(installed, available, input.environment())
             && capabilities(installed).containsAll(input.requiredCapabilityKeys())) {
-            return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of());
+            return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of(),
+                List.of("installed_components_cover_required"));
         }
 
         List<String> candidates = available.stream().filter(key -> !installed.contains(key)).toList();
@@ -76,10 +78,11 @@ public final class RecommendationEngine {
             List<String> chosen = search(candidates, size, 0, new ArrayList<>(),
                 installed, available, input.requiredCapabilityKeys(), input.environment());
             if (chosen != null) {
-                return new RecommendationDecision(RECOMMENDED, chosen, List.of());
+                return new RecommendationDecision(RECOMMENDED, chosen, List.of(), List.of());
             }
         }
-        return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of());
+        return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
+            List.of("no_verified_compatible_combination"));
     }
 
     private List<String> search(List<String> candidates, int count, int start,
