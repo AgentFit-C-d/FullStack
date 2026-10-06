@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: AgentFit AI Service
+  version: 0.1.0
+servers:
+  - url: http://localhost:8001
+paths:
+  /health:
+    get:
+      summary: AI service health check
+      operationId: getAiServiceHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                service: ai-service
+                status: ok
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - service
+        - status
+      properties:
+        service:
+          type: string
+        status:
+          type: string

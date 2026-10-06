@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: AgentFit Core API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Core API health check
+      operationId: getCoreApiHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                service: core-api
+                status: ok
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - service
+        - status
+      properties:
+        service:
+          type: string
+        status:
+          type: string
