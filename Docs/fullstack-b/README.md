@@ -5,10 +5,11 @@
 ## 먼저 읽을 파일
 
 1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
-2. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
-3. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md): 입력·출력·미합의 항목과 계약 테스트 사례.
-4. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
-5. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
+2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): B05–B12의 완료 조건과 A·AI·Catalog 인계 입력.
+3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
+4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md): 입력·출력·미합의 항목과 계약 테스트 사례.
+5. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
+6. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
 
 ## 문서 구조
 
