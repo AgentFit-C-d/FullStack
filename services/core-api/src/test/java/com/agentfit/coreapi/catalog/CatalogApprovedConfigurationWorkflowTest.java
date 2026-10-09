@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
+import com.agentfit.coreapi.configuration.export.ApprovedPreviewZipExporter;
+import com.agentfit.coreapi.configuration.export.PreviewFreshnessGate;
 import com.agentfit.coreapi.configuration.history.ConfigurationGenerationHistory;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
@@ -45,7 +47,8 @@ class CatalogApprovedConfigurationWorkflowTest {
             preview, request.basis(), previewResult.fingerprint(), true, "approval-1", CLOCK);
 
         var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
-            request.basis(), TARGET, request, preview, approval, "approval-1", "generation-1", CLOCK);
+            request.basis(), TARGET, request, preview, approval, "approval-1",
+            "preview-1", previewResult.fingerprint(), "generation-1", CLOCK);
 
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(generated.zipBytes()),
             StandardCharsets.UTF_8)) {
@@ -71,11 +74,13 @@ class CatalogApprovedConfigurationWorkflowTest {
 
         assertThrows(IllegalStateException.class, () -> CatalogApprovedConfigurationWorkflow.generate(
             directory, hash, recommendation, request.basis(), TARGET,
-            request(hash, PermissionPolicy.DENY), preview, approval, "approval-1", "generation-1", CLOCK));
+            request(hash, PermissionPolicy.DENY), preview, approval, "approval-1",
+            "preview-1", result.fingerprint(), "generation-1", CLOCK));
         Files.writeString(directory.resolve("templates/main.txt"), "changed config\n");
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
-                request.basis(), TARGET, request, preview, approval, "approval-1", "generation-1", CLOCK));
+                request.basis(), TARGET, request, preview, approval, "approval-1",
+                "preview-1", result.fingerprint(), "generation-1", CLOCK));
     }
 
     @Test
@@ -95,7 +100,8 @@ class CatalogApprovedConfigurationWorkflowTest {
             preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
 
         var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
-            request.basis(), TARGET, request, preview, approval, "approval-1", "generation-1", CLOCK);
+            request.basis(), TARGET, request, preview, approval, "approval-1",
+            "preview-1", result.fingerprint(), "generation-1", CLOCK);
         assertEquals("generation-1", generated.history().id());
         CatalogPreviewRequest changedOriginal = new CatalogPreviewRequest(base.basis(), base.recommendationId(),
             base.target(), base.selectedToolKeys(), base.permissionSelections(), ExistingState.PROVIDED,
@@ -104,7 +110,29 @@ class CatalogApprovedConfigurationWorkflowTest {
         assertThrows(IllegalStateException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
                 request.basis(), TARGET, changedOriginal, preview, approval,
-                "approval-1", "generation-2", CLOCK));
+                "approval-1", "preview-1", result.fingerprint(), "generation-2", CLOCK));
+    }
+
+    @Test
+    void rejectsSubmittedPreviewIdentityOrFingerprintThatDiffersFromStoredApproval() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        CatalogPreviewRequest request = request(hash, PermissionPolicy.ASK_EACH_TIME);
+        StoredRecommendationState recommendation = recommendation(request);
+        PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
+            recommendation, request.basis(), TARGET, request);
+        StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
+            result.fingerprint(), NOW.plusSeconds(600));
+        StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
+            preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
+
+        assertThrows(ApprovedPreviewZipExporter.InvalidApprovalException.class,
+            () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
+                request.basis(), TARGET, request, preview, approval, "approval-1",
+                "other-preview", result.fingerprint(), "generation-1", CLOCK));
+        assertThrows(PreviewFreshnessGate.StalePreviewException.class,
+            () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
+                request.basis(), TARGET, request, preview, approval, "approval-1",
+                "preview-1", "f".repeat(64), "generation-1", CLOCK));
     }
 
     private static CatalogPreviewRequest request(String hash, PermissionPolicy policy) {

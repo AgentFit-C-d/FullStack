@@ -19,11 +19,12 @@ public final class CatalogApprovedConfigurationWorkflow {
         StoredRecommendationState storedRecommendation, PreviewBasis currentBasis,
         EnvironmentTarget currentTarget, CatalogPreviewRequest request,
         StoredPreviewState preview, StoredApprovalState approval,
-        String requestedApprovalId, String generationId, Clock serverClock) {
+        String requestedApprovalId, String requestedPreviewId,
+        String submittedFingerprint, String generationId, Clock serverClock) {
         PreviewFingerprintInput regenerated = CatalogPreviewAssembler.prepare(releaseDirectory,
             approvedCatalogHash, storedRecommendation, currentBasis, currentTarget, request);
         return ApprovedConfigurationGenerator.generate(preview, approval, currentBasis,
-            requestedApprovalId, preview.previewId(), preview.fingerprint(),
+            requestedApprovalId, requestedPreviewId, submittedFingerprint,
             regenerated, generationId, serverClock);
     }
 }

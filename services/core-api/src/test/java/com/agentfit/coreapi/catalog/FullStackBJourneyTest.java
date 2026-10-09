@@ -68,10 +68,10 @@ class FullStackBJourneyTest {
         assertThrows(IllegalStateException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash,
                 storedRecommendation, changedEnvironment, target, request, preview, approval,
-                "approval-1", "obsolete-generation", clock));
+                "approval-1", "preview-1", result.fingerprint(), "obsolete-generation", clock));
         var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash,
             storedRecommendation, basis, target, request, preview, approval,
-            "approval-1", "generation-1", clock);
+            "approval-1", "preview-1", result.fingerprint(), "generation-1", clock);
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(generated.zipBytes()),
             StandardCharsets.UTF_8)) {
             assertEquals("config/main.txt", zip.getNextEntry().getName());
