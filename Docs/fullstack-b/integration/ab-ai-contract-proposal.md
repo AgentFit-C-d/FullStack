@@ -19,7 +19,7 @@
 | 환경 | Environment Profile의 현재 값·버전·유효 상태, OS·Client·Client 버전, 선언된 설치 구성 및 버전 또는 미확인 표시 | 정확한 지원 대상 판정. 사용자 진술은 실제 로컬 검증과 구분 |
 | Catalog | 서버가 검토·활성화한 release ID와 독립 승인 SHA-256 | 클라이언트 제공 해시나 단순 manifest 존재만으로 활성화하지 않음 |
 | 저장 추천 | 프로젝트에 속한 추천 ID, 네 가지 상태, 생성 당시 전체 basis, 제공한 도구 키 | Preview에 현재 RECOMMENDED 결과의 도구만 사용 |
-| 설정 흐름 | 프로젝트에 속한 Preview·승인 메타데이터, fingerprint·만료·선택·정책·basis | 승인 및 ZIP 재생성 시 신선도·내용 일치 확인 |
+| 설정 흐름 | 프로젝트에 속한 READY Preview·승인 메타데이터, fingerprint·만료·선택·정책·basis | 승인 시 저장 지문·현재성, export 시 재제출 입력의 내용 일치 확인 |
 
 현재 B의 `PreviewBasis`는 `projectId`, `projectVersion`, `confirmedProfileId`, `confirmedProfileVersion`, `confirmationEventId`, `reviewVersion`, `developerVersion`, `environmentVersion`, `catalogReleaseId`, `catalogHash`를 요구한다. 필드 의미와 증가 시점은 A가 DB 모델에 맞춰 확인해야 한다. A는 Preview 생성·승인·내보내기 직전 **현재** 값을 재조회해야 한다. Project 삭제 시 B 메타데이터·감사·사용자 보고도 함께 삭제한다.
 

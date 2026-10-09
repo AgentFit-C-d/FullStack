@@ -10,16 +10,19 @@
 | 4. 민감정보 | [Secret 패턴 검사](preview/preview-sensitive-input-plan.md) | 알려진 민감값을 Diff/해시 전에 차단 |
 | 4a. 크기 제한 | [Preview 크기 예산](assembly/preview-budget-plan.md) | 파일·선택 수, 파일별 글자 수, UTF-8 내용 합계를 미리 제한 |
 | 5. 확정 대상 | [Preview 지문](preview/preview-fingerprint-plan.md) | 버전 basis·선택·내용 해시를 묶는 결정적 SHA-256 |
-| 5a. 신선도 | [Preview 상태 재검사](preview/preview-freshness-plan.md) | 현재 basis·만료·저장/제출/재생성 지문·확인값 판정 |
+| 5a. 신선도 | [Preview 상태 재검사](preview/preview-freshness-plan.md) | 승인 시 저장/제출 지문·현재 basis·만료를 검사하고, export에서 재생성 지문도 검사 |
+| 5b. 최종 승인 | [원문 비보관 승인](export/approval-issuance.md) | READY Preview와 활성 Catalog를 확인해 승인 저장 후보 생성 |
 | 6. 내보내기 | [ZIP 재생성](export/preview-zip-export-plan.md) | 지문이 같을 때 Preview 경로와 동일한 파일 bytes만 압축 |
 | 6a. 승인 경계 | [승인된 ZIP 내보내기](export/approved-export-plan.md) | 저장 승인 ID·Preview ID·지문·만료를 재검사한 뒤 ZIP 생성 |
+| 6b. Catalog 내보내기 | [승인 Catalog 기반 ZIP](export/catalog-approved-workflow.md) | 승인된 릴리스를 다시 읽고 입력을 재제출받아 정확한 ZIP과 이력 생성 |
 | 7. 사용자 진술 | [적용 보고 검증](report/user-application-report-plan.md) | APPLIED/FAILED·실패 사유를 제한하고 출처·시각을 서버가 지정 |
 | 8. 최소 이력 | [생성 이력 메타데이터](history/generation-history-plan.md) | 지문을 재검사하고 내용·Diff 없이 생성 상태와 파일 해시만 남김 |
 | 8a. 성공 후 이력 | [승인 생성 결합](history/approved-generation-plan.md) | 승인 ZIP 생성 성공 후 방어 복사된 bytes와 최소 이력을 함께 반환 |
+| 8b. 이력 조회 | [생성 이력 조회 모델](history/history-read-model.md) | CURRENT/STALE 및 USER 적용 보고를 검증 상태와 분리 |
 
 ## 코드 위치
 
-- `services/core-api/src/main/java/com/agentfit/coreapi/catalog/`: `CatalogStaticTemplateRenderer`, `CatalogPreviewRequest`, `CatalogPreviewAssembler`, `PreviewAssemblyLimits`. Catalog 릴리스와 밀접하게 연결된 조립 경계다.
+- `services/core-api/src/main/java/com/agentfit/coreapi/catalog/`: `CatalogStaticTemplateRenderer`, `CatalogPreviewRequest`, `CatalogPreviewAssembler`, `CatalogReadyPreviewApprovalWorkflow`, `CatalogApprovedConfigurationWorkflow`, `PreviewAssemblyLimits`. Catalog 릴리스와 밀접하게 연결된 조립·승인·내보내기 경계다.
 - `services/core-api/src/main/java/com/agentfit/coreapi/configuration/preview/`: 비교(`PreviewFileComparator`), 민감정보 검사, 지문(`PreviewFingerprint`)과 입력·결과 모델.
 - `services/core-api/src/main/java/com/agentfit/coreapi/configuration/export/`: 저장 Preview/승인 상태, 신선도 검사, 승인된 ZIP 경계와 내부 ZIP 작성기.
 - `services/core-api/src/main/java/com/agentfit/coreapi/configuration/report/`: 사용자 적용 진술의 내부 검증 경계.
