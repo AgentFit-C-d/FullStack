@@ -176,6 +176,18 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void rejectsMalformedInstalledComponentEntriesInsteadOfTreatingThemAsAbsent() {
+        Map<String, String> nullKey = new HashMap<>();
+        nullKey.put(null, "1");
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationInput(Set.of(DOC), false, false, TARGET, nullKey));
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationInput(Set.of(DOC), false, false, TARGET, Map.of(" ", "1")));
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationInput(Set.of(DOC), false, false, TARGET, Map.of("doc", " ")));
+    }
+
+    @Test
     void combinationIsNotSharedAcrossOtherwiseSupportedClientVersions() {
         CatalogTool doc = tool("doc", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         CatalogTool test = tool("test", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);

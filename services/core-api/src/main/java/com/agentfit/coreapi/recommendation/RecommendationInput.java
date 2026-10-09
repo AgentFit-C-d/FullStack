@@ -16,6 +16,11 @@ public record RecommendationInput(
     public RecommendationInput {
         requiredCapabilityKeys = Set.copyOf(requiredCapabilityKeys);
         // Null values mean a declared component whose version is unknown.
+        if (installedToolVersions != null && installedToolVersions.entrySet().stream()
+            .anyMatch(entry -> entry.getKey() == null || entry.getKey().isBlank()
+                || entry.getValue() != null && entry.getValue().isBlank())) {
+            throw new IllegalArgumentException("invalid installed component declaration");
+        }
         installedToolVersions = installedToolVersions == null ? null
             : Collections.unmodifiableMap(new HashMap<>(installedToolVersions));
     }
