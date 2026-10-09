@@ -163,6 +163,29 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void rejectsConflictInsideTransitiveDependencyClosure() {
+        CatalogTool doc = tool("doc", Set.of(DOC), Set.of("helper"), Set.of("runtime"),
+            Set.of(), ToolSupport.Check.PASS);
+        CatalogTool helper = tool("helper", Set.of(), Set.of("runtime"), Set.of(),
+            Set.of(), ToolSupport.Check.PASS);
+        CatalogTool runtime = tool("runtime", Set.of(), Set.of(), Set.of(),
+            Set.of(), ToolSupport.Check.PASS);
+
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r1",
+                Map.of("doc", doc, "helper", helper, "runtime", runtime), Set.of())));
+
+        CatalogTool twoDependencies = tool("doc", Set.of(DOC), Set.of("helper", "runtime"),
+            Set.of(), Set.of(), ToolSupport.Check.PASS);
+        CatalogTool conflictingHelper = tool("helper", Set.of(), Set.of(), Set.of("runtime"),
+            Set.of(), ToolSupport.Check.PASS);
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r2",
+                Map.of("doc", twoDependencies, "helper", conflictingHelper, "runtime", runtime),
+                Set.of())));
+    }
+
+    @Test
     void selectsFewestToolsThenStableKeyOrderAndDoesNotGuessOtherVersions() {
         CatalogTool alpha = tool("alpha", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         CatalogTool beta = tool("beta", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);

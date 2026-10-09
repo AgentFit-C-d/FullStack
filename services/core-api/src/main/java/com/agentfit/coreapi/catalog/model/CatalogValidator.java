@@ -30,11 +30,6 @@ public final class CatalogValidator {
                 || !release.tools().keySet().containsAll(tool.conflictKeys())) {
                 throw new InvalidCatalogException("missing relation target: " + tool.key());
             }
-            if (!java.util.Collections.disjoint(tool.dependencyKeys(), tool.conflictKeys())
-                || tool.dependencyKeys().stream().anyMatch(dependency ->
-                    release.tools().get(dependency).conflictKeys().contains(tool.key()))) {
-                throw new InvalidCatalogException("contradictory dependency/conflict: " + tool.key());
-            }
             Set<EnvironmentTarget> supportTargets = new HashSet<>();
             for (ToolSupport support : tool.support()) {
                 if (blank(support.key()) || blank(support.osFamily()) || blank(support.clientId())
@@ -50,6 +45,16 @@ public final class CatalogValidator {
         Set<String> visited = new HashSet<>();
         for (String key : release.tools().keySet()) {
             visit(key, release.tools(), visited, new HashSet<>());
+        }
+        for (String key : release.tools().keySet()) {
+            Set<String> requiredTogether = new HashSet<>();
+            includeDependencies(key, release.tools(), requiredTogether);
+            for (String member : requiredTogether) {
+                if (!java.util.Collections.disjoint(release.tools().get(member).conflictKeys(),
+                    requiredTogether)) {
+                    throw new InvalidCatalogException("contradictory dependency/conflict: " + key);
+                }
+            }
         }
         for (VerifiedCombination combination : release.verifiedCombinations()) {
             if (combination == null || combination.toolKeys().size() < 2
@@ -87,6 +92,14 @@ public final class CatalogValidator {
         }
         active.remove(key);
         visited.add(key);
+    }
+
+    private static void includeDependencies(String key, Map<String, CatalogTool> tools,
+                                            Set<String> requiredTogether) {
+        if (!requiredTogether.add(key)) return;
+        for (String dependency : tools.get(key).dependencyKeys()) {
+            includeDependencies(dependency, tools, requiredTogether);
+        }
     }
 
     private static boolean blank(String value) {

@@ -74,7 +74,9 @@ Installed component declaration boundary (2026-10-10): `RecommendationInput` now
 
 Single-tool recommendation before combination cap (2026-10-10): a 21-tool synthetic Catalog previously raised the planner limit error before discovering a verified one-tool answer. The engine now tests single additions first, retaining stable key order and the 20-candidate cap for larger combination searches. This is an internal algorithm boundary, not real Claude Code Catalog support or an unbounded solver.
 
-Contradictory Catalog relations (2026-10-10): a tool could directly depend on another tool while either side declared the other conflicting, leaving an impossible definition that reached recommendation as ordinary no-candidate. The domain validator now rejects both direct orientations before planning. Transitive relation consistency still requires review when building a real release.
+Contradictory Catalog relations (2026-10-10): a tool could directly depend on another tool while either side declared the other conflicting, leaving an impossible definition that reached recommendation as ordinary no-candidate. The domain validator rejects both direct orientations before planning.
+
+Transitive Catalog relation consistency (2026-10-10): a tool could depend on a second tool that depends on a third, then conflict with that third tool. The validator now checks every tool's complete dependency closure for any conflict among members. The rule prevents impossible releases from appearing as an ordinary recommendation miss; it does not replace real combination testing.
 
 Generation-history read projection (2026-10-09): a pure B12 view now combines a generated history record with an optional latest USER report after checking generation association, report time, and project identity. APPLIED remains separate from NOT_RUN/NONE verification; changed basis is STALE. A's DB query, ownership, pagination, deletion, and HTTP response remain open, so B12 and the B01–B12 count remain unchanged.
 
