@@ -63,15 +63,20 @@ public final class CatalogRecommendationWorkflow {
             request.questions(), request.allowedSourceFields());
         var input = RecommendationInputAssembler.assemble(assessment,
             request.hasRelevantPendingConflict(), request.environment(), request.installedToolVersions());
-        RecommendationDecision decision = new RecommendationEngine(catalog.release()).decide(input);
-        if (decision.status() == RecommendationDecision.Status.RECOMMENDED) {
+        boolean[] overBudget = {false};
+        RecommendationDecision decision = new RecommendationEngine(catalog.release()).decide(input, additions -> {
             try {
                 PreviewAssemblyLimits.validateGenerated(CatalogStaticTemplateRenderer.render(
-                    bundle, approvedCatalogHash, Set.copyOf(decision.toolKeys())));
+                    bundle, approvedCatalogHash, Set.copyOf(additions)));
+                return true;
             } catch (PreviewAssemblyLimits.LimitExceededException exception) {
-                throw new CatalogBundleLoader.CatalogUnavailableException(
-                    "recommended configuration exceeds Preview budget", exception);
+                overBudget[0] = true;
+                return false;
             }
+        });
+        if (decision.status() == RecommendationDecision.Status.NO_COMPATIBLE_TOOLS && overBudget[0]) {
+            throw new CatalogBundleLoader.CatalogUnavailableException(
+                "all matching configurations exceed Preview budget");
         }
         return new Result(catalog.release().releaseId(), catalog.catalogHash(),
             decision, assessment.claims(), assessment.questions(),

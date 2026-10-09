@@ -22,6 +22,15 @@ final class SyntheticCatalogBundle {
     }
 
     static String write(Path directory, boolean includeTemplate, String templateContent) throws Exception {
+        return write(directory, includeTemplate, templateContent, false);
+    }
+
+    static String writeWithFallback(Path directory, String firstTemplateContent) throws Exception {
+        return write(directory, true, firstTemplateContent, true);
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -29,24 +38,42 @@ final class SyntheticCatalogBundle {
         files.put("capabilities.json", "{\"schemaVersion\":1,\"items\":[" + capabilities + "]}");
         files.put("tools.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"example-tool\","
             + "\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],"
-            + "\"includedComponentKeys\":[\"example-component\"]}]}");
+            + "\"includedComponentKeys\":[\"example-component\"]}"
+            + (includeFallback ? ", {\"key\":\"fallback-tool\",\"version\":\"1.0\","
+                + "\"capabilityKeys\":[\"cap_document_reference\"],"
+                + "\"includedComponentKeys\":[\"fallback-component\"]}" : "") + "]}");
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","
             + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
             + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\",\"format\":\"PASS\","
             + "\"standalone\":\"PASS\",\"evidenceUrl\":\"https://example.org/review\","
-            + "\"checkedAt\":\"2026-10-09\"}]}");
+            + "\"checkedAt\":\"2026-10-09\"}"
+            + (includeFallback ? ", {\"key\":\"support-2\",\"toolKey\":\"fallback-tool\","
+                + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
+                + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\","
+                + "\"format\":\"PASS\",\"standalone\":\"PASS\","
+                + "\"evidenceUrl\":\"https://example.org/review-fallback\","
+                + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
             + "\"verifiedCombinations\":[]}");
         files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[{\"toolKey\":\"example-tool\","
             + "\"mappingKey\":\"read\",\"required\":false,"
             + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
-            + "\"evidenceUrl\":\"https://example.org/permission\",\"checkedAt\":\"2026-10-09\"}]}");
+            + "\"evidenceUrl\":\"https://example.org/permission\",\"checkedAt\":\"2026-10-09\"}"
+            + (includeFallback ? ", {\"toolKey\":\"fallback-tool\","
+                + "\"mappingKey\":\"read\",\"required\":false,"
+                + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
+                + "\"evidenceUrl\":\"https://example.org/permission-fallback\","
+                + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
         files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
         if (includeTemplate) {
             files.put("templates/index.json", "{\"schemaVersion\":1,\"items\":[{"
                 + "\"toolKey\":\"example-tool\",\"targetKey\":\"main\","
-                + "\"relativePath\":\"config/main.txt\",\"sourcePath\":\"templates/main.txt\"}]}");
+                + "\"relativePath\":\"config/main.txt\",\"sourcePath\":\"templates/main.txt\"}"
+                + (includeFallback ? ", {\"toolKey\":\"fallback-tool\","
+                    + "\"targetKey\":\"fallback\",\"relativePath\":\"config/fallback.txt\","
+                    + "\"sourcePath\":\"templates/fallback.txt\"}" : "") + "]}");
             files.put("templates/main.txt", templateContent);
+            if (includeFallback) files.put("templates/fallback.txt", "fallback config\n");
         }
         StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
         StringBuilder entries = new StringBuilder();

@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 /** Pure B decision logic. The caller owns authentication, A/AI contracts, and persistence. */
 public final class RecommendationEngine {
@@ -24,6 +25,12 @@ public final class RecommendationEngine {
     }
 
     public RecommendationDecision decide(RecommendationInput input) {
+        return decide(input, keys -> true);
+    }
+
+    public RecommendationDecision decide(RecommendationInput input,
+                                         Predicate<List<String>> configurationFits) {
+        if (configurationFits == null) throw new IllegalArgumentException("configuration check required");
         if (!CapabilityKey.keys().containsAll(input.requiredCapabilityKeys())) {
             throw new IllegalArgumentException("unknown required capability ID");
         }
@@ -77,7 +84,8 @@ public final class RecommendationEngine {
             Set<String> selected = new HashSet<>(installed);
             selected.add(key);
             if (validSelection(selected, available, input.environment())
-                && capabilities(selected).containsAll(input.requiredCapabilityKeys())) {
+                && capabilities(selected).containsAll(input.requiredCapabilityKeys())
+                && configurationFits.test(List.of(key))) {
                 return new RecommendationDecision(RECOMMENDED, List.of(key), List.of(), List.of());
             }
         }
@@ -94,9 +102,10 @@ public final class RecommendationEngine {
         }
         reviewedAdditions.sort(Comparator.comparingInt((List<String> keys) -> keys.size())
             .thenComparing(RecommendationEngine::compareKeys));
-        if (!reviewedAdditions.isEmpty()) {
-            return new RecommendationDecision(RECOMMENDED, reviewedAdditions.getFirst(),
-                List.of(), List.of());
+        for (List<String> additions : reviewedAdditions) {
+            if (configurationFits.test(additions)) {
+                return new RecommendationDecision(RECOMMENDED, additions, List.of(), List.of());
+            }
         }
         return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
             List.of("no_verified_compatible_combination"));

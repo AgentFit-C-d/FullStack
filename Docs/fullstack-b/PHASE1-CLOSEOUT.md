@@ -1,10 +1,12 @@
 # 풀스택 B 1차 완료 게이트
 
-> 2026-10-09 점검. 기준은 [B 현재 상태](STATUS.md), [A·AI 계약 제안](integration/ab-ai-contract-proposal.md), `D:/capstone/Docs/api/02-recommendations.draft.md`, `D:/capstone/Docs/api/03-configuration.draft.md`다. API 초안과 제안은 확정 계약이 아니다. 완료 표시에는 실제 구현과 검증 결과가 필요하다.
+> 2026-10-10 점검. 기준은 [B 현재 상태](STATUS.md), [A·AI 계약 제안](integration/ab-ai-contract-proposal.md), `D:/capstone/Docs/api/02-recommendations.draft.md`, `D:/capstone/Docs/api/03-configuration.draft.md`다. API 초안과 제안은 확정 계약이 아니다. 완료 표시에는 실제 구현과 검증 결과가 필요하다.
 
 **완료 범위:** B01–B12 상위 목표 중 현재 B01–B04가 완료됐고 B05–B12는 열려 있다. B08–B11의 순수 Java 검증·생성 코드는 상당 부분 준비됐지만, 인증된 요청부터 DB 저장·다운로드까지 작동하는 경로는 없다. 2026-10-07에 확인한 원격 `develop`에는 백엔드 기본 구조와 CI만 있으며 A의 인증·스냅샷·영속화 코드와 AI 연동 계약은 아직 없다. 이를 임시 요청 값이나 합성 Catalog로 대체해 완료 처리하지 않는다.
 
 상위 목표 기준 진행도는 **4/12 완료(33%)**, 8개가 미완료다. 2026-10-09에는 B 내부 추천 평가와 승인 Catalog 읽기 모델까지 추가했으나, A·AI 계약/실데이터/공개 API/저장 검증이 없어 B05–B12를 완료로 올리지 않았다. 이 수치는 코드 줄 수나 전체 개발 시간의 비율이 아니다.
+
+2026-10-10에는 추천 후보의 정적 설정 출력이 Preview 한도를 넘으면 다음 검증 후보를 계속 평가하도록 보완했다. 모든 일치 후보가 한도를 넘는 경우에는 Catalog를 사용할 수 없다고 처리한다. 이는 B 내부 추천 경로의 오류 수정이며 실제 Catalog 릴리스나 공개 추천 API의 완료 근거는 아니다.
 
 최신 추천의 `CURRENT`/`STALE` 내부 판정도 추가했다. A가 같은 프로젝트의 저장 추천과 현재 버전 basis를 소유권 검사 후 제공해야 사용할 수 있으므로, 공개 조회 API 완료로 세지 않는다.
 

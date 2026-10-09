@@ -108,6 +108,16 @@ class CatalogRecommendationWorkflowTest {
             () -> CatalogRecommendationWorkflow.evaluate(directory, approvedHash, request()));
     }
 
+    @Test
+    void recommendsNextVerifiedToolWhenFirstToolExceedsPreviewBudget() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.writeWithFallback(directory, "x".repeat(100_001));
+        var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, request());
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, outcome.decision().status());
+        assertEquals(List.of("fallback-tool"), outcome.decision().toolKeys());
+        assertEquals(List.of("fallback-tool"), outcome.items().stream()
+            .map(CatalogRecommendationDetails.Item::toolKey).toList());
+    }
+
     private CatalogRecommendationWorkflow.Request request() {
         var claims = CapabilityKey.keys().stream().sorted().map(key ->
             new AiCapabilityIntake.Claim(key,
