@@ -252,7 +252,7 @@ class RecommendationEngineTest {
     }
 
     @Test
-    void findsSingleToolAnswerBeforeRejectingLargeCombinationSearch() {
+    void findsSingleToolAnswerAndDoesNotTreatLargeCatalogWithoutReviewedCombinationAsBroken() {
         Map<String, CatalogTool> tools = new HashMap<>();
         IntStream.range(0, 20).forEach(index -> {
             String key = "unrelated-" + index;
@@ -266,8 +266,42 @@ class RecommendationEngineTest {
 
         assertEquals(RECOMMENDED, result.status());
         assertEquals(List.of("doc"), result.toolKeys());
-        assertThrows(CatalogValidator.InvalidCatalogException.class,
-            () -> new RecommendationEngine(new CatalogRelease("r1", tools, Set.of()))
-                .decide(input(Set.of(DOC, TEST), Set.of())));
+        assertEquals(NO_COMPATIBLE_TOOLS,
+            new RecommendationEngine(new CatalogRelease("r1", tools, Set.of()))
+                .decide(input(Set.of(DOC, TEST), Set.of())).status());
+    }
+
+    @Test
+    void findsReviewedPairInsideLargeCatalogWithoutEnumeratingAllSubsets() {
+        Map<String, CatalogTool> tools = new HashMap<>();
+        IntStream.range(0, 20).forEach(index -> {
+            String key = "unrelated-" + index;
+            tools.put(key, tool(key, Set.of(TEST), Set.of(), Set.of(), Set.of(),
+                ToolSupport.Check.PASS));
+        });
+        tools.put("doc", tool("doc", Set.of(DOC), Set.of(), Set.of(), Set.of(),
+            ToolSupport.Check.PASS));
+        CatalogRelease release = new CatalogRelease("r1", tools,
+            Set.of(new VerifiedCombination(Set.of("doc", "unrelated-7"), TARGET)));
+
+        RecommendationDecision result = new RecommendationEngine(release)
+            .decide(input(Set.of(DOC, TEST), Set.of()));
+        assertEquals(RECOMMENDED, result.status());
+        assertEquals(List.of("doc", "unrelated-7"), result.toolKeys());
+    }
+
+    @Test
+    void selectsOnlyMissingMembersOfReviewedCombinationInStableOrder() {
+        CatalogTool doc = tool("doc", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
+        CatalogTool alpha = tool("alpha", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
+        CatalogTool beta = tool("beta", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
+        CatalogRelease release = new CatalogRelease("r1", Map.of("doc", doc, "alpha", alpha, "beta", beta),
+            Set.of(new VerifiedCombination(Set.of("doc", "beta"), TARGET),
+                new VerifiedCombination(Set.of("doc", "alpha"), TARGET)));
+
+        RecommendationDecision result = new RecommendationEngine(release)
+            .decide(input(Set.of(DOC, TEST), Set.of("doc")));
+        assertEquals(RECOMMENDED, result.status());
+        assertEquals(List.of("alpha"), result.toolKeys());
     }
 }

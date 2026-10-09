@@ -8,6 +8,7 @@ import com.agentfit.coreapi.catalog.model.VerifiedCombination;
 import static com.agentfit.coreapi.recommendation.RecommendationDecision.Status.*;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -73,45 +74,41 @@ public final class RecommendationEngine {
         }
 
         List<String> candidates = available.stream().filter(key -> !installed.contains(key)).toList();
-        // A single addition is linear even when the Catalog has many unrelated tools.
-        List<String> single = search(candidates, 1, 0, new ArrayList<>(),
-            installed, available, input.requiredCapabilityKeys(), input.environment());
-        if (single != null) {
-            return new RecommendationDecision(RECOMMENDED, single, List.of(), List.of());
-        }
-        // MVP catalog target is about 15–20 entries; bound combinatorial search until a
-        // larger catalog has a dedicated solver and performance budget.
-        if (candidates.size() > 20) {
-            throw new CatalogValidator.InvalidCatalogException("catalog exceeds planner limit");
-        }
-        for (int size = 2; size <= candidates.size(); size++) {
-            List<String> chosen = search(candidates, size, 0, new ArrayList<>(),
-                installed, available, input.requiredCapabilityKeys(), input.environment());
-            if (chosen != null) {
-                return new RecommendationDecision(RECOMMENDED, chosen, List.of(), List.of());
+        for (String key : candidates) {
+            Set<String> selected = new HashSet<>(installed);
+            selected.add(key);
+            if (validSelection(selected, available, input.environment())
+                && capabilities(selected).containsAll(input.requiredCapabilityKeys())) {
+                return new RecommendationDecision(RECOMMENDED, List.of(key), List.of(), List.of());
             }
+        }
+        List<List<String>> reviewedAdditions = new ArrayList<>();
+        for (VerifiedCombination combination : release.verifiedCombinations()) {
+            if (!combination.target().equals(input.environment())
+                || !combination.toolKeys().containsAll(installed)
+                || !available.containsAll(combination.toolKeys())
+                || !capabilities(combination.toolKeys()).containsAll(input.requiredCapabilityKeys())
+                || !validSelection(combination.toolKeys(), available, input.environment())) continue;
+            List<String> missing = combination.toolKeys().stream()
+                .filter(key -> !installed.contains(key)).sorted().toList();
+            if (!missing.isEmpty()) reviewedAdditions.add(missing);
+        }
+        reviewedAdditions.sort(Comparator.comparingInt((List<String> keys) -> keys.size())
+            .thenComparing(RecommendationEngine::compareKeys));
+        if (!reviewedAdditions.isEmpty()) {
+            return new RecommendationDecision(RECOMMENDED, reviewedAdditions.getFirst(),
+                List.of(), List.of());
         }
         return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
             List.of("no_verified_compatible_combination"));
     }
 
-    private List<String> search(List<String> candidates, int count, int start,
-                                List<String> chosen, Set<String> installed,
-                                Set<String> available, Set<String> required, EnvironmentTarget target) {
-        if (chosen.size() == count) {
-            Set<String> all = new HashSet<>(installed);
-            all.addAll(chosen);
-            return validSelection(all, available, target) && capabilities(all).containsAll(required)
-                ? List.copyOf(chosen) : null;
+    private static int compareKeys(List<String> left, List<String> right) {
+        for (int index = 0; index < Math.min(left.size(), right.size()); index++) {
+            int comparison = left.get(index).compareTo(right.get(index));
+            if (comparison != 0) return comparison;
         }
-        for (int i = start; i <= candidates.size() - (count - chosen.size()); i++) {
-            chosen.add(candidates.get(i));
-            List<String> found = search(candidates, count, i + 1, chosen, installed, available,
-                required, target);
-            if (found != null) return found;
-            chosen.remove(chosen.size() - 1);
-        }
-        return null;
+        return Integer.compare(left.size(), right.size());
     }
 
     private boolean supports(String key, EnvironmentTarget target) {
