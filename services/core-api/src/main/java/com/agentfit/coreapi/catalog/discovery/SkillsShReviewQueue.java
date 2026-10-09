@@ -14,12 +14,14 @@ public final class SkillsShReviewQueue {
     public enum Disposition { SHORTLISTED, REJECTED }
     public enum Status { PENDING, SHORTLISTED, REJECTED, CHANGED }
 
-    public record Decision(String externalId, String reviewedHash, Disposition disposition,
+    public record Decision(String externalId, String reviewedHash, String reviewedName,
+                           Disposition disposition,
                            String reviewerId, Instant reviewedAt) {
         public Decision {
             if (externalId == null
                 || !externalId.matches("[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)?")
                 || reviewedHash == null || !reviewedHash.matches("[0-9a-f]{64}")
+                || reviewedName == null || reviewedName.isBlank() || reviewedName.length() > 200
                 || disposition == null || reviewerId == null || reviewerId.isBlank()
                 || reviewerId.length() > 128 || reviewedAt == null) {
                 throw new IllegalArgumentException("invalid candidate review decision");
@@ -41,7 +43,8 @@ public final class SkillsShReviewQueue {
         for (SkillCandidate candidate : SkillsShCandidateSnapshot.load(snapshot)) {
             Decision decision = byId.remove(candidate.externalId());
             Status status = decision == null ? Status.PENDING
-                : !decision.reviewedHash().equals(candidate.contentHash()) ? Status.CHANGED
+                : !decision.reviewedHash().equals(candidate.contentHash())
+                    || !decision.reviewedName().equals(candidate.name()) ? Status.CHANGED
                 : decision.disposition() == Disposition.SHORTLISTED ? Status.SHORTLISTED : Status.REJECTED;
             result.add(new Item(candidate, status));
         }

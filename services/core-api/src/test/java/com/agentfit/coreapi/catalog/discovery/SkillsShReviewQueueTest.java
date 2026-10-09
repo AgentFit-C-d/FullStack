@@ -20,7 +20,7 @@ class SkillsShReviewQueueTest {
             var queue = SkillsShReviewQueue.classify(snapshot, List.of());
             assertEquals(SkillsShReviewQueue.Status.PENDING, queue.getFirst().status());
 
-            var decision = new SkillsShReviewQueue.Decision(first.externalId(), first.contentHash(),
+            var decision = new SkillsShReviewQueue.Decision(first.externalId(), first.contentHash(), first.name(),
                 SkillsShReviewQueue.Disposition.SHORTLISTED, "reviewer-1", now);
             queue = SkillsShReviewQueue.classify(snapshot, List.of(decision));
             assertEquals(SkillsShReviewQueue.Status.SHORTLISTED, queue.getFirst().status());
@@ -44,16 +44,45 @@ class SkillsShReviewQueueTest {
         SkillCandidate candidate = candidate("a".repeat(64), now);
         try {
             SkillsShCandidateSnapshot.refresh(snapshot, List.of(candidate));
-            var decision = new SkillsShReviewQueue.Decision(candidate.externalId(), candidate.contentHash(),
+            var decision = new SkillsShReviewQueue.Decision(candidate.externalId(), candidate.contentHash(), candidate.name(),
                 SkillsShReviewQueue.Disposition.REJECTED, "reviewer-1", now);
             assertEquals(SkillsShReviewQueue.Status.REJECTED,
                 SkillsShReviewQueue.classify(snapshot, List.of(decision)).getFirst().status());
             assertThrows(IllegalArgumentException.class,
                 () -> SkillsShReviewQueue.classify(snapshot, List.of(decision, decision)));
-            var orphan = new SkillsShReviewQueue.Decision("owner/repo/missing", candidate.contentHash(),
+            var orphan = new SkillsShReviewQueue.Decision("owner/repo/missing", candidate.contentHash(), candidate.name(),
                 SkillsShReviewQueue.Disposition.SHORTLISTED, "reviewer-1", now);
             assertThrows(IllegalArgumentException.class,
                 () -> SkillsShReviewQueue.classify(snapshot, List.of(orphan)));
+        } finally {
+            Files.deleteIfExists(snapshot);
+            Files.deleteIfExists(directory);
+        }
+    }
+
+    @Test
+    void reopensDecisionWhenCandidateNameChangesWithoutContentChange() throws Exception {
+        Path directory = Files.createTempDirectory(Path.of("target"), "skills-review-");
+        Path snapshot = directory.resolve("candidates.json");
+        Instant now = Instant.parse("2026-10-09T00:00:00Z");
+        SkillCandidate original = candidate("a".repeat(64), now);
+        try {
+            SkillsShCandidateSnapshot.refresh(snapshot, List.of(original));
+            var decision = new SkillsShReviewQueue.Decision(original.externalId(), original.contentHash(), original.name(),
+                SkillsShReviewQueue.Disposition.SHORTLISTED, "reviewer-1", now);
+            assertEquals(SkillsShReviewQueue.Status.SHORTLISTED,
+                SkillsShReviewQueue.classify(snapshot, List.of(decision)).getFirst().status());
+
+            SkillCandidate reobserved = candidate(original.contentHash(), now.plusSeconds(30));
+            SkillsShCandidateSnapshot.refresh(snapshot, List.of(reobserved));
+            assertEquals(SkillsShReviewQueue.Status.SHORTLISTED,
+                SkillsShReviewQueue.classify(snapshot, List.of(decision)).getFirst().status());
+
+            SkillCandidate renamed = new SkillCandidate(original.externalId(), "Renamed",
+                original.source(), original.sourceUrl(), original.contentHash(), now.plusSeconds(60));
+            SkillsShCandidateSnapshot.refresh(snapshot, List.of(renamed));
+            assertEquals(SkillsShReviewQueue.Status.CHANGED,
+                SkillsShReviewQueue.classify(snapshot, List.of(decision)).getFirst().status());
         } finally {
             Files.deleteIfExists(snapshot);
             Files.deleteIfExists(directory);
