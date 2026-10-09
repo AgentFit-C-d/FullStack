@@ -13,3 +13,9 @@
 [Claude Code 공식 설치·검증 문서](https://code.claude.com/docs/en/setup#verify-your-installation)는 `claude --version`과 읽기 전용 `claude doctor`를 설치 확인 절차로 설명한다. [설정 범위 문서](https://code.claude.com/docs/en/settings)는 프로젝트 공유 `.claude/settings.json`과 개인·관리 설정을 구분한다. [MCP 문서](https://code.claude.com/docs/en/mcp)는 프로젝트 `.mcp.json`의 별도 승인과 연결 상태 확인을 설명한다. 이 문서들은 조사 출처이며 이 PC의 특정 후보 도구가 동작한다는 증거가 아니다.
 
 이번 조사에서는 사용자·프로젝트의 설정 파일 내용, 인증 정보, MCP 서버 목록을 읽거나 수정하지 않았고 외부 연결·명령 실행 시험도 하지 않았다. 후보 도구가 정해지기 전에는 `documentation`, `format`, `standalone`, `combination`, 권한 변환·집행을 모두 `NOT_RUN`으로 둔다. 실제 릴리스에는 도구별 고정 버전·공식 출처·시험 단계와 결과·검증 담당·시각·독립 승인 해시가 필요하다.
+
+## 2026-10-10 로컬 Skill 호출 파일럿
+
+팀의 첫 지원 대상이 정해지기 전, 이 PC의 Claude Code `2.1.270`에서 Skill 호출 자체를 확인하려고 격리된 임시 프로젝트에 `.claude/skills/agentfit-pilot/SKILL.md`를 만들었다. Skill 본문에만 고유 응답 문자열을 넣고 `claude -p --tools '' --setting-sources project --strict-mcp-config '/agentfit-pilot'`를 실행했다. 약 65초간 표준 출력·오류 출력이 없어 호출을 중단했고, 임시 파일은 제거했다. 별도 `claude auth status --json` 조회에서 `loggedIn: true`가 반환됐지만, API 연결·요청 성공을 뜻하지 않는다. 네트워크·Skill 로딩 중 어느 단계에서 대기했는지는 확인하지 못했다.
+
+따라서 이번 시도는 **Skill 형식 또는 단독 동작의 PASS 근거가 아니다.** Catalog 지원 행·설정 템플릿을 활성화하지 않고, `format`과 `standalone`은 계속 `NOT_RUN`으로 둔다. 다음 재시험은 실행 가능한 Claude Code 연결 환경에서 Skill 호출 결과와 종료 코드, 정확한 Client 버전, OS, 실행 시각을 함께 기록해야 한다. 실제 도구 후보 선정과 조합·권한 검증은 별도다.
