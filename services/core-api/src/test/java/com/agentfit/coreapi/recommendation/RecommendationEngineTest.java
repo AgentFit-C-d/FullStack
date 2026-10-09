@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class RecommendationEngineTest {
@@ -205,5 +206,25 @@ class RecommendationEngineTest {
         assertEquals(RECOMMENDED, engine.decide(input(Set.of(DOC, TEST), Set.of())).status());
         assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(new RecommendationInput(Set.of(DOC, TEST),
             false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of())).status());
+    }
+
+    @Test
+    void findsSingleToolAnswerBeforeRejectingLargeCombinationSearch() {
+        Map<String, CatalogTool> tools = new HashMap<>();
+        IntStream.range(0, 20).forEach(index -> {
+            String key = "unrelated-" + index;
+            tools.put(key, tool(key, Set.of(TEST), Set.of(), Set.of(), Set.of(),
+                ToolSupport.Check.PASS));
+        });
+        tools.put("doc", tool("doc", Set.of(DOC), Set.of(), Set.of(), Set.of(),
+            ToolSupport.Check.PASS));
+        RecommendationDecision result = new RecommendationEngine(
+            new CatalogRelease("r1", tools, Set.of())).decide(input(Set.of(DOC), Set.of()));
+
+        assertEquals(RECOMMENDED, result.status());
+        assertEquals(List.of("doc"), result.toolKeys());
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r1", tools, Set.of()))
+                .decide(input(Set.of(DOC, TEST), Set.of())));
     }
 }

@@ -73,12 +73,18 @@ public final class RecommendationEngine {
         }
 
         List<String> candidates = available.stream().filter(key -> !installed.contains(key)).toList();
-        // MVP catalog target is about 15–20 entries; bound exponential search until a
+        // A single addition is linear even when the Catalog has many unrelated tools.
+        List<String> single = search(candidates, 1, 0, new ArrayList<>(),
+            installed, available, input.requiredCapabilityKeys(), input.environment());
+        if (single != null) {
+            return new RecommendationDecision(RECOMMENDED, single, List.of(), List.of());
+        }
+        // MVP catalog target is about 15–20 entries; bound combinatorial search until a
         // larger catalog has a dedicated solver and performance budget.
         if (candidates.size() > 20) {
             throw new CatalogValidator.InvalidCatalogException("catalog exceeds planner limit");
         }
-        for (int size = 1; size <= candidates.size(); size++) {
+        for (int size = 2; size <= candidates.size(); size++) {
             List<String> chosen = search(candidates, size, 0, new ArrayList<>(),
                 installed, available, input.requiredCapabilityKeys(), input.environment());
             if (chosen != null) {
