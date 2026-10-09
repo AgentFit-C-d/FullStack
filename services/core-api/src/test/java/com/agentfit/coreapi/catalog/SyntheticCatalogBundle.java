@@ -14,10 +14,14 @@ final class SyntheticCatalogBundle {
     private SyntheticCatalogBundle() {}
 
     static String write(Path directory) throws Exception {
-        return write(directory, true);
+        return write(directory, true, "literal config\n");
     }
 
     static String write(Path directory, boolean includeTemplate) throws Exception {
+        return write(directory, includeTemplate, "literal config\n");
+    }
+
+    static String write(Path directory, boolean includeTemplate, String templateContent) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -42,7 +46,7 @@ final class SyntheticCatalogBundle {
             files.put("templates/index.json", "{\"schemaVersion\":1,\"items\":[{"
                 + "\"toolKey\":\"example-tool\",\"targetKey\":\"main\","
                 + "\"relativePath\":\"config/main.txt\",\"sourcePath\":\"templates/main.txt\"}]}");
-            files.put("templates/main.txt", "literal config\n");
+            files.put("templates/main.txt", templateContent);
         }
         StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
         StringBuilder entries = new StringBuilder();

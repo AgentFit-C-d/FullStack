@@ -101,6 +101,13 @@ class CatalogRecommendationWorkflowTest {
             () -> CatalogRecommendationWorkflow.evaluate(directory, approvedHash, request()));
     }
 
+    @Test
+    void rejectsRecommendedToolWhoseConfigurationExceedsPreviewBudget() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory, true, "x".repeat(100_001));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> CatalogRecommendationWorkflow.evaluate(directory, approvedHash, request()));
+    }
+
     private CatalogRecommendationWorkflow.Request request() {
         var claims = CapabilityKey.keys().stream().sorted().map(key ->
             new AiCapabilityIntake.Claim(key,

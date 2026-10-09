@@ -65,8 +65,13 @@ public final class CatalogRecommendationWorkflow {
             request.hasRelevantPendingConflict(), request.environment(), request.installedToolVersions());
         RecommendationDecision decision = new RecommendationEngine(catalog.release()).decide(input);
         if (decision.status() == RecommendationDecision.Status.RECOMMENDED) {
-            CatalogStaticTemplateRenderer.render(bundle, approvedCatalogHash,
-                Set.copyOf(decision.toolKeys()));
+            try {
+                PreviewAssemblyLimits.validateGenerated(CatalogStaticTemplateRenderer.render(
+                    bundle, approvedCatalogHash, Set.copyOf(decision.toolKeys())));
+            } catch (PreviewAssemblyLimits.LimitExceededException exception) {
+                throw new CatalogBundleLoader.CatalogUnavailableException(
+                    "recommended configuration exceeds Preview budget", exception);
+            }
         }
         return new Result(catalog.release().releaseId(), catalog.catalogHash(),
             decision, assessment.claims(), assessment.questions(),
