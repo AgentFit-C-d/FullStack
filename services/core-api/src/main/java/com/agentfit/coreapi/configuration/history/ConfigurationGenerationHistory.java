@@ -46,7 +46,7 @@ public final class ConfigurationGenerationHistory {
     static ConfigurationGenerationHistory capture(String generationId, String previewId,
                                                   String approvalId, String expectedFingerprint,
                                                   PreviewFingerprintInput input, Clock serverClock) {
-        if (blank(generationId) || blank(previewId) || blank(approvalId)
+        if (!validId(generationId) || !validId(previewId) || !validId(approvalId)
             || expectedFingerprint == null || !expectedFingerprint.matches("[0-9a-f]{64}")
             || input == null || serverClock == null) {
             throw invalid();
@@ -85,6 +85,10 @@ public final class ConfigurationGenerationHistory {
 
     private static boolean blank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static boolean validId(String value) {
+        return !blank(value) && value.codePointCount(0, value.length()) <= 128;
     }
 
     private static IllegalArgumentException invalid() {

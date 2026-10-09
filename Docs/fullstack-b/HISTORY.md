@@ -66,6 +66,8 @@ Latest recommendation read boundary (2026-10-09): the internal CURRENT/STALE pro
 
 Generation-history validity boundary (2026-10-10): the generation history's direct `validity()` method now rejects a current basis belonging to another project. The history read model already enforced that boundary; callers of the lower-level method no longer receive a misleading STALE result. A's owner-checked lookup is still required.
 
+Generation-history ID budget (2026-10-10): content-free history capture now rejects generation, Preview, or approval IDs above 128 Unicode code points. A direct boundary test first reproduced acceptance of a 129-character ID, then verified rejection while a 128-character ID remains valid. A's DB column lengths and public request validation still need agreement.
+
 Generation-history read projection (2026-10-09): a pure B12 view now combines a generated history record with an optional latest USER report after checking generation association, report time, and project identity. APPLIED remains separate from NOT_RUN/NONE verification; changed basis is STALE. A's DB query, ownership, pagination, deletion, and HTTP response remain open, so B12 and the B01–B12 count remain unchanged.
 
 Synthetic B journey coverage (2026-10-09): one test now links validated nine-key AI Capability input, approved Catalog recommendation, selected permission, Preview, final approval, exact ZIP bytes, and a USER APPLIED report. It also verifies that an Environment version change blocks both approval and later ZIP generation while the old history reads STALE and unverified. This is an in-memory integration test with synthetic support data; it does not establish A/AI contracts, real Client compatibility, persistence, or end-to-end HTTP behavior.

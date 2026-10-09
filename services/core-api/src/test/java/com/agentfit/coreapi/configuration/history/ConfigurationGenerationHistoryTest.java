@@ -86,4 +86,19 @@ class ConfigurationGenerationHistoryTest {
         assertThrows(IllegalArgumentException.class, () -> ConfigurationGenerationHistory.capture(
             "generation-1", "preview-1", "approval-1", expected, original, null));
     }
+
+    @Test
+    void boundsStoredGenerationPreviewAndApprovalIds() {
+        PreviewFingerprintInput input = input("config/main.txt", "new config\n");
+        String fingerprint = PreviewFingerprint.compute(input).fingerprint();
+        String maximumId = "g".repeat(128);
+        assertEquals(maximumId, ConfigurationGenerationHistory.capture(maximumId,
+            "preview-1", "approval-1", fingerprint, input, CLOCK).id());
+        assertThrows(IllegalArgumentException.class, () -> ConfigurationGenerationHistory.capture(
+            "g".repeat(129), "preview-1", "approval-1", fingerprint, input, CLOCK));
+        assertThrows(IllegalArgumentException.class, () -> ConfigurationGenerationHistory.capture(
+            "generation-1", "p".repeat(129), "approval-1", fingerprint, input, CLOCK));
+        assertThrows(IllegalArgumentException.class, () -> ConfigurationGenerationHistory.capture(
+            "generation-1", "preview-1", "a".repeat(129), fingerprint, input, CLOCK));
+    }
 }
