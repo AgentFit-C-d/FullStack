@@ -82,6 +82,21 @@ class SkillsShCandidateCollectorTest {
     }
 
     @Test
+    void rejectsInconsistentSourceBetweenSearchIdAndDetail() {
+        searchBody = "{\"data\":[{\"id\":\"owner/repo/example\",\"name\":\"Example\","
+            + "\"source\":\"owner\",\"url\":\"https://skills.sh/owner/repo/example\"}]}";
+        detailBody = "{\"id\":\"owner/repo/example\",\"source\":\"owner/repo\","
+            + "\"hash\":\"" + HASH + "\"}";
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").search("test", 5));
+
+        searchBody = searchBody.replace("\"source\":\"owner\"", "\"source\":\"owner/repo\"");
+        detailBody = detailBody.replace("\"source\":\"owner/repo\"", "\"source\":\"owner\"");
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").search("test", 5));
+    }
+
+    @Test
     void rejectsNonBooleanDuplicateFlagInsteadOfReportingEmptyDiscovery() {
         searchBody = "{\"data\":[{\"id\":\"owner/repo/example\",\"name\":\"Example\","
             + "\"source\":\"owner/repo\",\"url\":\"https://skills.sh/owner/repo/example\","

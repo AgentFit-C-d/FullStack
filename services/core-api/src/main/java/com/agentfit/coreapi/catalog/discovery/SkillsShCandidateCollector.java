@@ -94,11 +94,13 @@ public final class SkillsShCandidateCollector {
             String name = required(item, "name");
             String source = required(item, "source");
             String url = required(item, "url");
-            if (!id.startsWith(source + "/") || !url.equals("https://skills.sh/" + id)) {
+            if (!source.equals(id.substring(0, id.lastIndexOf('/')))
+                || !url.equals("https://skills.sh/" + id)) {
                 throw new DiscoveryException("inconsistent skills.sh item");
             }
             JsonNode detail = get("/api/v1/skills/" + id, token);
-            if (!id.equals(required(detail, "id"))) {
+            if (!id.equals(required(detail, "id"))
+                || !source.equals(required(detail, "source"))) {
                 throw new DiscoveryException("skills.sh detail identity mismatch");
             }
             String hash = required(detail, "hash");

@@ -22,7 +22,7 @@ class SkillsShCandidateRefreshTest {
             String body = uri.getPath().endsWith("/search")
                 ? "{\"data\":[{\"id\":\"owner/repo/example\",\"name\":\"Example\","
                     + "\"source\":\"owner/repo\",\"url\":\"https://skills.sh/owner/repo/example\"}]}"
-                : "{\"id\":\"owner/repo/example\",\"hash\":\"" + hash + "\"}";
+                : "{\"id\":\"owner/repo/example\",\"source\":\"owner/repo\",\"hash\":\"" + hash + "\"}";
             return new SkillsShCandidateCollector.Response(200, body.getBytes(StandardCharsets.UTF_8));
         };
         Clock clock = Clock.fixed(Instant.parse("2026-10-09T00:00:00Z"), ZoneOffset.UTC);

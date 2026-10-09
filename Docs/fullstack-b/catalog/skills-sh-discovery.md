@@ -6,7 +6,7 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api)에서 Skill을 검색�
 
 ## 처리 흐름
 
-1. `SkillsShCandidateCollector.production(tokenSupplier)`가 토큰을 사용해 검색 API와 각 Skill 상세 API를 호출한다. 쿼리 길이, 결과 수(최대 20), 응답 크기(2 MiB), 연결·요청 시간을 제한한다. 중복 표시 항목을 건너뛰고 ID·URL·SHA-256 해시를 확인한다.
+1. `SkillsShCandidateCollector.production(tokenSupplier)`가 토큰을 사용해 검색 API와 각 Skill 상세 API를 호출한다. 쿼리 길이, 결과 수(최대 20), 응답 크기(2 MiB), 연결·요청 시간을 제한한다. 중복 표시 항목을 건너뛰고 검색 ID·source·URL과 상세 ID·source가 일치하는지 확인한 뒤 SHA-256 해시를 받는다.
 2. `SkillsShCandidateRefresh.refresh(query, limit, snapshotPath)`가 수집 성공 후에만 별도의 JSON 스냅샷을 갱신한다. 새 후보 또는 이름·URL·해시가 바뀐 후보를 반환한다. 검색 결과에 다시 나타나지 않은 후보는 삭제하지 않는다.
 3. API의 인증·제한·장애 응답 또는 잘못된 JSON은 오류로 처리한다. 기존 스냅샷을 빈 목록으로 덮어쓰지 않는다. 스냅샷도 엄격하게 검증하고 임시 파일에서 원자적으로 교체한다.
 4. 담당자가 후보의 출처, 실제 파일, Claude Code 버전/OS 지원, 의존성·충돌, 권한, 조합과 설정 방법을 따로 검증한다. 검증 후 별도 Catalog 릴리스를 작성·승인해야 추천에 들어간다. 외부 API 데이터만으로 자동 설치하거나 추천하지 않는다.
