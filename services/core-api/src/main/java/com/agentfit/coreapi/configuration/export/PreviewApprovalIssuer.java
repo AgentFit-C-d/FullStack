@@ -11,6 +11,7 @@ public final class PreviewApprovalIssuer {
     /** For the draft approval API: A must supply an owner-checked, persisted READY Preview. */
     public static StoredApprovalState issueStoredReady(StoredPreviewState readyPreview,
                                                        PreviewBasis currentBasis,
+                                                       String requestedPreviewId,
                                                        String submittedFingerprint,
                                                        boolean confirmation,
                                                        String serverApprovalId,
@@ -22,6 +23,9 @@ public final class PreviewApprovalIssuer {
         Instant now = Instant.now(serverClock);
         PreviewFreshnessGate.requireStoredCurrent(readyPreview, currentBasis,
             submittedFingerprint, now);
+        if (!readyPreview.previewId().equals(requestedPreviewId)) {
+            throw new PreviewFreshnessGate.InvalidPreviewStateException("Preview ID differs");
+        }
         if (!confirmation) {
             throw new PreviewFreshnessGate.InvalidPreviewStateException("explicit confirmation required");
         }

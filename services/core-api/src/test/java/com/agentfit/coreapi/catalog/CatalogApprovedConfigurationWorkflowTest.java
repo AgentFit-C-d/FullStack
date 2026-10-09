@@ -44,7 +44,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
             previewResult.fingerprint(), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-            preview, request.basis(), previewResult.fingerprint(), true, "approval-1", CLOCK);
+            preview, request.basis(), "preview-1", previewResult.fingerprint(), true, "approval-1", CLOCK);
 
         var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
             request.basis(), TARGET, request, preview, approval, "approval-1",
@@ -70,7 +70,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
             result.fingerprint(), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-            preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
+            preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
         assertThrows(IllegalStateException.class, () -> CatalogApprovedConfigurationWorkflow.generate(
             directory, hash, recommendation, request.basis(), TARGET,
@@ -97,7 +97,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
             result.fingerprint(), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-            preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
+            preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
         var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
             request.basis(), TARGET, request, preview, approval, "approval-1",
@@ -123,7 +123,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
             result.fingerprint(), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-            preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
+            preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
         assertThrows(ApprovedPreviewZipExporter.InvalidApprovalException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,

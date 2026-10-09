@@ -15,7 +15,8 @@ public final class CatalogReadyPreviewApprovalWorkflow {
 
     public static StoredApprovalState issue(Path releaseDirectory, String approvedCatalogHash,
                                             StoredPreviewState readyPreview, PreviewBasis currentBasis,
-                                            String submittedFingerprint, boolean confirmation,
+                                            String requestedPreviewId, String submittedFingerprint,
+                                            boolean confirmation,
                                             String serverApprovalId, Clock serverClock) {
         VerifiedCatalogBundle bundle = CatalogBundleLoader.load(releaseDirectory);
         if (approvedCatalogHash == null || !approvedCatalogHash.matches("[0-9a-f]{64}")
@@ -28,6 +29,6 @@ public final class CatalogReadyPreviewApprovalWorkflow {
             throw new CatalogBundleLoader.CatalogUnavailableException("current Catalog basis differs");
         }
         return PreviewApprovalIssuer.issueStoredReady(readyPreview, currentBasis,
-            submittedFingerprint, confirmation, serverApprovalId, serverClock);
+            requestedPreviewId, submittedFingerprint, confirmation, serverApprovalId, serverClock);
     }
 }

@@ -32,7 +32,8 @@ class PreviewApprovalIssuerTest {
         var result = PreviewFingerprint.compute(input);
         var preview = new StoredPreviewState("preview-1", BASIS, result.fingerprint(),
             NOW.plusSeconds(600));
-        var approval = PreviewApprovalIssuer.issueStoredReady(preview, BASIS, result.fingerprint(),
+        var approval = PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
+            "preview-1", result.fingerprint(),
             true, "approval-1", CLOCK);
         assertEquals("preview-1", approval.previewId());
         assertEquals(result.fingerprint(), approval.fingerprint());
@@ -53,16 +54,18 @@ class PreviewApprovalIssuerTest {
         var preview = new StoredPreviewState("preview-1", BASIS, result.fingerprint(),
             NOW.plusSeconds(600));
         assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
-            () -> PreviewApprovalIssuer.issueStoredReady(preview, BASIS, result.fingerprint(),
+            () -> PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
+                "preview-1", result.fingerprint(),
                 false, "approval-1", CLOCK));
         assertThrows(PreviewFreshnessGate.ExpiredPreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(new StoredPreviewState("preview-1", BASIS,
-                result.fingerprint(), NOW), BASIS, result.fingerprint(),
+                result.fingerprint(), NOW), BASIS, "preview-1", result.fingerprint(),
                 true, "approval-1", CLOCK));
         var changed = new PreviewBasis("project-1", 2, "profile-1", 3,
             "event-1", 4, 5, 7, "catalog-1", "a".repeat(64));
         assertThrows(PreviewFreshnessGate.StalePreviewException.class,
-            () -> PreviewApprovalIssuer.issueStoredReady(preview, changed, result.fingerprint(),
+            () -> PreviewApprovalIssuer.issueStoredReady(preview, changed,
+                "preview-1", result.fingerprint(),
                 true, "approval-1", CLOCK));
     }
 
@@ -73,24 +76,24 @@ class PreviewApprovalIssuerTest {
             NOW.plusSeconds(600));
 
         var approval = PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
-            result.fingerprint(), true, "approval-1", CLOCK);
+            "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
         assertEquals(preview.previewId(), approval.previewId());
         assertEquals(preview.fingerprint(), approval.fingerprint());
         assertThrows(PreviewFreshnessGate.StalePreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
-                "f".repeat(64), true, "approval-2", CLOCK));
+                "preview-1", "f".repeat(64), true, "approval-2", CLOCK));
         assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
-                result.fingerprint(), false, "approval-2", CLOCK));
+                "preview-1", result.fingerprint(), false, "approval-2", CLOCK));
         var changed = new PreviewBasis("project-1", 2, "profile-1", 3,
             "event-1", 4, 5, 7, "catalog-1", "a".repeat(64));
         assertThrows(PreviewFreshnessGate.StalePreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(preview, changed,
-                result.fingerprint(), true, "approval-2", CLOCK));
+                "preview-1", result.fingerprint(), true, "approval-2", CLOCK));
         assertThrows(PreviewFreshnessGate.ExpiredPreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(new StoredPreviewState("preview-1",
-                BASIS, result.fingerprint(), NOW), BASIS, result.fingerprint(),
+                BASIS, result.fingerprint(), NOW), BASIS, "preview-1", result.fingerprint(),
                 true, "approval-2", CLOCK));
     }
 }

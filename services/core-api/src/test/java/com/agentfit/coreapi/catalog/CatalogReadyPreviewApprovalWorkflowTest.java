@@ -25,7 +25,7 @@ class CatalogReadyPreviewApprovalWorkflowTest {
         StoredPreviewState preview = preview(basis);
 
         var approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-            preview, basis, FINGERPRINT, true, "approval-1", CLOCK);
+            preview, basis, "preview-1", FINGERPRINT, true, "approval-1", CLOCK);
 
         assertEquals("approval-1", approval.approvalId());
         assertEquals(FINGERPRINT, approval.fingerprint());
@@ -39,16 +39,27 @@ class CatalogReadyPreviewApprovalWorkflowTest {
 
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadyPreviewApprovalWorkflow.issue(directory, "f".repeat(64),
-                preview, basis, FINGERPRINT, true, "approval-1", CLOCK));
+                preview, basis, "preview-1", FINGERPRINT, true, "approval-1", CLOCK));
         PreviewBasis wrongRelease = new PreviewBasis("project-1", 1, "profile-1", 1,
             "event-1", 0, 0, 1, "other-release", hash);
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-                preview(wrongRelease), wrongRelease, FINGERPRINT, true, "approval-1", CLOCK));
+                preview(wrongRelease), wrongRelease, "preview-1", FINGERPRINT,
+                true, "approval-1", CLOCK));
         Files.writeString(directory.resolve("templates/main.txt"), "changed\n");
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
-                preview, basis, FINGERPRINT, true, "approval-1", CLOCK));
+                preview, basis, "preview-1", FINGERPRINT, true, "approval-1", CLOCK));
+    }
+
+    @Test
+    void rejectsSubmittedPreviewIdThatDiffersFromStoredReadyPreview() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        PreviewBasis basis = basis(hash);
+        assertThrows(com.agentfit.coreapi.configuration.export.PreviewFreshnessGate.InvalidPreviewStateException.class,
+            () -> CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
+                preview(basis), basis, "other-preview", FINGERPRINT,
+                true, "approval-1", CLOCK));
     }
 
     private static PreviewBasis basis(String hash) {
