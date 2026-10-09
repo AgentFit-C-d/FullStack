@@ -29,6 +29,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08e Reject trailing JSON tokens after the manifest, semantic file roots, and template index; a hashed file must parse as one complete document. Real Catalog review remains open.
 - [x] B08f Reject ambiguous verification evidence keys so distinct support, permission, or combination records cannot silently overwrite one another. Real Client evidence is still pending.
 - [x] B08g Reject embedded ISO control characters in Catalog scalar/array metadata and static template index fields before identifiers reach recommendation or Preview. Real Client evidence is still pending.
+- [x] B08h Add skills.sh API candidate collection, hash-based change detection, and isolated review staging. External candidates cannot enter the approved Catalog or recommendations. Production OIDC credentials, protected invocation, human review, and real Claude Code verification remain open (see [discovery boundary](catalog/skills-sh-discovery.md)). MCP directory integration remains deferred.
 
 ## Phase 3 — permission and configuration
 
