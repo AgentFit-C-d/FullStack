@@ -4,6 +4,7 @@ import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
+import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,6 +28,16 @@ class CatalogRecommendationWorkflowTest {
         assertEquals("synthetic-recommendation", outcome.catalogReleaseId());
         assertEquals(approvedHash, outcome.catalogHash());
         assertEquals(List.of(), outcome.clarificationQuestions());
+        assertEquals(9, outcome.capabilities().size());
+        assertEquals(1, outcome.items().size());
+        var item = outcome.items().getFirst();
+        assertEquals("example-tool", item.toolKey());
+        assertEquals("1.0", item.catalogVersion());
+        assertEquals("support-1", item.supportKey());
+        assertEquals(Set.of("cap_document_reference"), item.coveredRequiredCapabilities());
+        assertEquals("https://example.org/review", item.supportEvidence().sourceUrl());
+        assertEquals(PermissionPolicy.ASK_EACH_TIME,
+            item.permissionOptions().getFirst().defaultPolicy());
     }
 
     @Test
@@ -55,6 +66,7 @@ class CatalogRecommendationWorkflowTest {
         var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input);
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, outcome.decision().status());
         assertEquals(List.of(question), outcome.clarificationQuestions());
+        assertEquals(List.of(), outcome.items());
     }
 
     @Test

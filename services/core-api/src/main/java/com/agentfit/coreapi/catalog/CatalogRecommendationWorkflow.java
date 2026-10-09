@@ -40,9 +40,13 @@ public final class CatalogRecommendationWorkflow {
 
     public record Result(String catalogReleaseId, String catalogHash,
                          RecommendationDecision decision,
-                         List<AiCapabilityIntake.Question> clarificationQuestions) {
+                         List<AiCapabilityIntake.Claim> capabilities,
+                         List<AiCapabilityIntake.Question> clarificationQuestions,
+                         List<CatalogRecommendationDetails.Item> items) {
         public Result {
+            capabilities = List.copyOf(capabilities);
             clarificationQuestions = List.copyOf(clarificationQuestions);
+            items = List.copyOf(items);
         }
     }
 
@@ -60,6 +64,8 @@ public final class CatalogRecommendationWorkflow {
             request.hasRelevantPendingConflict(), request.environment(), request.installedToolVersions());
         RecommendationDecision decision = new RecommendationEngine(catalog.release()).decide(input);
         return new Result(catalog.release().releaseId(), catalog.catalogHash(),
-            decision, assessment.questions());
+            decision, assessment.claims(), assessment.questions(),
+            CatalogRecommendationDetails.project(catalog, decision,
+                assessment.requiredCapabilityKeys(), request.environment()));
     }
 }

@@ -31,7 +31,7 @@
 
 | 범위 | 현재 코드 | 완료에 필요한 B 결과 |
 | --- | --- | --- |
-| 추천 응답 | `RecommendationDecision`은 상태·기본 도구 키·질문 코드와 판정 가능한 내부 이유 코드만 반환 | 필수/선택 도구 분리, Capability 근거, 도구별 선택 이유·미지원 이유, 지원 행·권한·인증 요건을 검증된 Catalog에 묶은 응답 |
+| 추천 응답 | 내부 워크플로가 전체 Capability 평가와 선택 도구의 고정 버전·정확한 지원 행/근거·기본 권한 선택지를 반환. 아직 공개 DTO나 DB 저장은 없음 | 선택 도구의 서술형 이유·미지원 이유, 도구 이름/종류·인증 요건, 필수/선택 후보 분리, 확정 A·AI·Frontend 응답 계약 |
 | Catalog | `CatalogTool`은 키·버전·Capability·관계·간단한 지원 행을 보유; `client-capabilities.json`은 비어 있어야 파싱됨 | 이름·종류·컴포넌트 상세·런타임/인증 요건·검증 범위와 실제 Claude Code 릴리스 데이터. 내장 Capability 의미는 팀 합의 필요 |
 | 권한 | `PermissionMapping`은 도구·매핑 키와 지원 정책만 보유 | 작업·resource scope·실제 Claude Code 규칙·외부 인증·상위 정책 한계의 검증된 대응표와 변환 결과 |
 | 설정·안내 | `CatalogStaticTemplateRenderer`는 승인된 정적 텍스트를 복사하고 ZIP으로 재생성 가능 | 선정한 도구의 실제 설정 템플릿, 적용 위치·사전 준비·인증·무해한 확인·복구 안내. 검토되지 않은 명령/Hook은 생성하지 않음 |

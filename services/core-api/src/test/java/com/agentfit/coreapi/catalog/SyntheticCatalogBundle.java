@@ -29,7 +29,10 @@ final class SyntheticCatalogBundle {
             + "\"checkedAt\":\"2026-10-09\"}]}");
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
             + "\"verifiedCombinations\":[]}");
-        files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[]}");
+        files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[{\"toolKey\":\"example-tool\","
+            + "\"mappingKey\":\"read\",\"required\":false,"
+            + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
+            + "\"evidenceUrl\":\"https://example.org/permission\",\"checkedAt\":\"2026-10-09\"}]}");
         files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
         StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
         StringBuilder entries = new StringBuilder();
