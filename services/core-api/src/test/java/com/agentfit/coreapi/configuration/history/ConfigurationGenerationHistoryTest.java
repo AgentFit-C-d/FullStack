@@ -61,6 +61,17 @@ class ConfigurationGenerationHistoryTest {
     }
 
     @Test
+    void rejectsCurrentBasisFromAnotherProjectInsteadOfCallingItStale() {
+        PreviewFingerprintInput input = input("config/main.txt", "new config\n");
+        var history = ConfigurationGenerationHistory.capture("generation-1", "preview-1",
+            "approval-1", PreviewFingerprint.compute(input).fingerprint(), input, CLOCK);
+        PreviewBasis otherProject = new PreviewBasis("project-2", 2, "profile-1", 3,
+            "event-1", 4, 5, 6, "catalog-1", "a".repeat(64));
+
+        assertThrows(IllegalArgumentException.class, () -> history.validity(otherProject));
+    }
+
+    @Test
     void rejectsChangedOrInvalidPreviewBeforeCapturingHistory() {
         PreviewFingerprintInput original = input("config/main.txt", "new config\n");
         String expected = PreviewFingerprint.compute(original).fingerprint();

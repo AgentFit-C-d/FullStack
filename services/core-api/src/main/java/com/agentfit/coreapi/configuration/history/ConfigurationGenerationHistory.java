@@ -77,7 +77,9 @@ public final class ConfigurationGenerationHistory {
     public VerificationSource verificationSource() { return VerificationSource.NONE; }
 
     public Validity validity(PreviewBasis currentBasis) {
-        if (currentBasis == null) throw invalid();
+        if (currentBasis == null || !basis.projectId().equals(currentBasis.projectId())) {
+            throw invalid();
+        }
         return basis.equals(currentBasis) ? Validity.CURRENT : Validity.STALE;
     }
 
