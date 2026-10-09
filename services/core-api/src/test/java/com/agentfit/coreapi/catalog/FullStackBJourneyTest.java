@@ -60,13 +60,11 @@ class FullStackBJourneyTest {
 
         PreviewBasis changedEnvironment = basis(hash, 2);
         assertThrows(IllegalStateException.class,
-            () -> CatalogPreviewApprovalWorkflow.issue(directory, hash, storedRecommendation,
-                changedEnvironment, target, request, preview, result.fingerprint(), true,
-                "approval-1", clock));
+            () -> CatalogReadyPreviewApprovalWorkflow.issue(directory, hash, preview,
+                changedEnvironment, result.fingerprint(), true, "approval-1", clock));
 
-        StoredApprovalState approval = CatalogPreviewApprovalWorkflow.issue(directory, hash,
-            storedRecommendation, basis, target, request, preview, result.fingerprint(),
-            true, "approval-1", clock);
+        StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
+            preview, basis, result.fingerprint(), true, "approval-1", clock);
         assertThrows(IllegalStateException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash,
                 storedRecommendation, changedEnvironment, target, request, preview, approval,

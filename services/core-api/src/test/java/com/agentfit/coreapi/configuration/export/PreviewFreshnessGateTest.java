@@ -30,8 +30,8 @@ class PreviewFreshnessGateTest {
     void acceptsMatchingPreviewImmediatelyBeforeExpiry() {
         assertDoesNotThrow(() -> PreviewFreshnessGate.requireCurrent(stored(), basis(), HASH,
             regenerated(), EXPIRY.minusNanos(1)));
-        assertDoesNotThrow(() -> PreviewFreshnessGate.requireApprovalEligible(stored(), basis(), HASH,
-            regenerated(), EXPIRY.minusNanos(1), true));
+        assertDoesNotThrow(() -> PreviewFreshnessGate.requireStoredCurrent(stored(), basis(), HASH,
+            EXPIRY.minusNanos(1)));
     }
 
     @Test
@@ -79,10 +79,7 @@ class PreviewFreshnessGateTest {
     }
 
     @Test
-    void requiresExplicitConfirmationAndCompleteMetadata() {
-        assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
-            () -> PreviewFreshnessGate.requireApprovalEligible(stored(), basis(), HASH,
-                regenerated(), EXPIRY.minusSeconds(1), false));
+    void requiresCompleteMetadata() {
         assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
             () -> PreviewFreshnessGate.requireCurrent(stored(), null, HASH,
                 regenerated(), EXPIRY.minusSeconds(1)));

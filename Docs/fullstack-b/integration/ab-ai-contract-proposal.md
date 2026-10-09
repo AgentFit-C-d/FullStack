@@ -42,6 +42,7 @@
 - 추천 상태는 `RECOMMENDED`, `NO_ADDITIONS_NEEDED`, `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS` 중 하나다. 결과마다 근거 basis와 Catalog release/hash를 함께 묶는다. AI의 설명은 B의 지원·권한 판정을 대체하지 않는다.
 - 추천·선택·Preview·승인은 각각 별도 상태다. `RECOMMENDED`인 **현재** 저장 추천의 도구만 Preview 후보가 된다. 정책 선택은 ZIP 다운로드 승인이나 실제 Client 적용을 뜻하지 않는다.
 - Preview에는 현재 basis, 선택·정책, 파일 경로·내용 해시·fingerprint·만료와 필요한 안내를 포함한다. 기존 파일 내용·Diff는 비교 중에만 사용하고 DB·로그·캐시에 남기지 않는다.
+- 승인 요청에는 PreviewInput이 없으므로 A가 저장된 READY Preview의 소유권·현재 basis·지문·만료를 검사해 승인한다. 기존 파일 원문이나 최종 content는 승인 시 재요청하거나 저장하지 않는다. 브라우저는 현재 화면 메모리의 입력을 export 때 다시 제출하고, B는 승인 Catalog에서 파일을 재생성해 저장 지문과 비교한다. 새로고침 후 원문이 없다면 새 Preview부터 시작한다.
 - 승인된 ZIP은 같은 입력으로 재생성해 fingerprint 및 압축 해제 후 파일 bytes를 확인한다. 성공 시 생성 이력에는 ID, basis, fingerprint, 경로·동작·해시만 남긴다. 서버의 `GENERATED`는 브라우저 수신·PC 설치·인증·동작 검증을 의미하지 않는다. 사용자 `APPLIED`/`FAILED` 진술도 검증 결과로 승격하지 않는다.
 - 공개 경로·오류 코드·요청 한도는 [추천 API 초안](../../../../Docs/api/02-recommendations.draft.md)과 [설정 API 초안](../../../../Docs/api/03-configuration.draft.md)에 제안돼 있으나, 두 문서 모두 미확정이다. A의 공통 인증·오류 규칙과 맞춘 뒤 OpenAPI/계약 테스트로 고정한다.
 
@@ -55,5 +56,6 @@
 | 환경 대상 | Claude Code의 정확한 ID·버전·OS 범위, 사용자 선언 설치 버전 미확인 시 처리와 검증 주체는? Codex는 후속 릴리스에서 별도 검증 |
 | Catalog 승인 | 실제 지원·템플릿·권한 매핑·조합 근거를 누가 검사하고 release/hash를 어떻게 별도 승인하는가? |
 | 저장·동시성 | 추천/Preview/승인/생성 ID와 저장 위치, Project 삭제 cascade, 재요청·경쟁 변경의 트랜잭션/오류 처리는? |
+| 승인 입력 수명 | A가 저장 Preview의 READY·선택/정책 메타데이터를 어떻게 조회하고, Frontend가 보관하지 않는 기존 파일 원문을 export 시 어떻게 다시 제출하거나 새 Preview로 돌아가는가? |
 
 최소 계약 테스트에는 타인 프로젝트 ID, 확정 뒤 버전 변경, AI 미지/중복 키·허용 밖 근거, AI 실패와 빈 성공의 구분, 미지원 Client/버전, 오래된 추천, 추천 밖 도구, 승인 뒤 내용 변경, ZIP 생성 성공 뒤 DB 저장 실패, 프로젝트 삭제를 포함한다. 각 사례의 최종 HTTP 코드와 저장 효과는 계약 확정 시 함께 기록한다.

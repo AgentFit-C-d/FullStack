@@ -13,7 +13,7 @@
 | `RecommendationInputAssembler` → `RecommendationEngine` | 검증된 AI 평가, A의 미해결 충돌·현재 Environment·설치 버전 선언, 승인 Catalog | 누락된 Capability를 불필요로 간주하지 않도록 현재는 9개 전량 요구; 최소 검증 조합 판정 | AI 생략 규칙, 설치 버전 미확인 표현, 선택 도구·설명 응답 형식 |
 | `CatalogRecommendationWorkflow.evaluate` | 위 AI 후보·A 현재값 및 서버가 독립 승인한 Catalog 해시 | Catalog 파일/승인 해시·AI 9개 평가·조합 판정을 한 번에 실행해 결과와 Catalog ID/해시·AI 질문 반환 | A 인증 조회·현재 basis·저장 트랜잭션·AI wire 계약은 여전히 미합의 |
 | `RecommendationPreviewGate` → `CatalogPreviewAssembler` | A가 소유권 확인 후 조회한 현재 추천 ID/status/tool keys/basis와 별도 현재 Environment target; 요청의 선택·정책·기존 파일 | 추천 밖 도구·stale basis·대상 불일치·미검증 Catalog/권한/템플릿 차단 | 추천·Preview 저장 ID, 요청 전체 JSON 한도, 인증/오류 규칙 |
-| `PreviewFreshnessGate` → `ApprovedPreviewZipExporter` | A가 조회한 저장 Preview·승인 ID/fingerprint/만료와 현재 basis; 재생성 입력 | 승인/Preview ID·지문·만료, 현재 basis, 재생성 ZIP bytes 확인 | 승인 저장 트랜잭션·만료 정책, 중복 요청, Catalog 승인 철회 처리 |
+| `CatalogReadyPreviewApprovalWorkflow` → `CatalogApprovedConfigurationWorkflow` | 승인 시 A가 조회한 READY Preview·활성 승인 Catalog·현재 basis·제출 지문·확인값; export 시 저장 승인과 재제출한 PreviewInput | 승인에서는 Catalog 파일·저장 지문·만료·현재 basis, export에서는 승인 Catalog 기반 재생성 지문과 ZIP bytes 확인 | READY/소유권 조회, 승인 저장 트랜잭션, 입력 원문 비보관, 중복 요청, Catalog 승인 철회 처리 |
 | `ApprovedConfigurationGenerator` | A가 부여한 generation ID와 서버 시계, 조회된 승인 상태 | ZIP 성공 후 경로·동작·해시만 포함한 이력 반환 | ZIP 생성 후 DB 저장 실패 시 응답/재시도, 이력·감사 저장과 삭제 cascade |
 | `ConfigurationUserReport.accept` | 소유권을 확인한 generation ID, 사용자 APPLIED/FAILED 보고 | 사용자 진술로 표시하고 서버 시각 부여 | 보고 저장·조회 주체와 실패 코드 공개 계약 |
 
