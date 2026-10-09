@@ -30,6 +30,11 @@ public final class CatalogValidator {
                 || !release.tools().keySet().containsAll(tool.conflictKeys())) {
                 throw new InvalidCatalogException("missing relation target: " + tool.key());
             }
+            if (!java.util.Collections.disjoint(tool.dependencyKeys(), tool.conflictKeys())
+                || tool.dependencyKeys().stream().anyMatch(dependency ->
+                    release.tools().get(dependency).conflictKeys().contains(tool.key()))) {
+                throw new InvalidCatalogException("contradictory dependency/conflict: " + tool.key());
+            }
             Set<EnvironmentTarget> supportTargets = new HashSet<>();
             for (ToolSupport support : tool.support()) {
                 if (blank(support.key()) || blank(support.osFamily()) || blank(support.clientId())

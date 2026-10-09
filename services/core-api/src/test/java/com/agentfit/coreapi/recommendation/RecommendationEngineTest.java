@@ -143,6 +143,26 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void rejectsToolThatBothRequiresAndConflictsWithTheSameDependency() {
+        CatalogTool doc = tool("doc", Set.of(DOC), Set.of("runtime"), Set.of("runtime"),
+            Set.of(), ToolSupport.Check.PASS);
+        CatalogTool runtime = tool("runtime", Set.of(), Set.of(), Set.of(), Set.of(),
+            ToolSupport.Check.PASS);
+
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r1",
+                Map.of("doc", doc, "runtime", runtime), Set.of())));
+
+        CatalogTool reverseConflict = tool("runtime", Set.of(), Set.of(), Set.of("doc"),
+            Set.of(), ToolSupport.Check.PASS);
+        CatalogTool dependent = tool("doc", Set.of(DOC), Set.of("runtime"), Set.of(),
+            Set.of(), ToolSupport.Check.PASS);
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r2",
+                Map.of("doc", dependent, "runtime", reverseConflict), Set.of())));
+    }
+
+    @Test
     void selectsFewestToolsThenStableKeyOrderAndDoesNotGuessOtherVersions() {
         CatalogTool alpha = tool("alpha", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         CatalogTool beta = tool("beta", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
