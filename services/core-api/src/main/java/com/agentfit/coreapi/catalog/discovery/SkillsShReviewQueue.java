@@ -39,11 +39,14 @@ public final class SkillsShReviewQueue {
         }
         List<Item> result = new ArrayList<>();
         for (SkillCandidate candidate : SkillsShCandidateSnapshot.load(snapshot)) {
-            Decision decision = byId.get(candidate.externalId());
+            Decision decision = byId.remove(candidate.externalId());
             Status status = decision == null ? Status.PENDING
                 : !decision.reviewedHash().equals(candidate.contentHash()) ? Status.CHANGED
                 : decision.disposition() == Disposition.SHORTLISTED ? Status.SHORTLISTED : Status.REJECTED;
             result.add(new Item(candidate, status));
+        }
+        if (!byId.isEmpty()) {
+            throw new IllegalArgumentException("review decision has no candidate");
         }
         return List.copyOf(result);
     }

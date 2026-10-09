@@ -50,6 +50,10 @@ class SkillsShReviewQueueTest {
                 SkillsShReviewQueue.classify(snapshot, List.of(decision)).getFirst().status());
             assertThrows(IllegalArgumentException.class,
                 () -> SkillsShReviewQueue.classify(snapshot, List.of(decision, decision)));
+            var orphan = new SkillsShReviewQueue.Decision("owner/repo/missing", candidate.contentHash(),
+                SkillsShReviewQueue.Disposition.SHORTLISTED, "reviewer-1", now);
+            assertThrows(IllegalArgumentException.class,
+                () -> SkillsShReviewQueue.classify(snapshot, List.of(orphan)));
         } finally {
             Files.deleteIfExists(snapshot);
             Files.deleteIfExists(directory);
