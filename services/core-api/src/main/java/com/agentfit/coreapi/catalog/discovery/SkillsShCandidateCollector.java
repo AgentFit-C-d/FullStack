@@ -83,7 +83,11 @@ public final class SkillsShCandidateCollector {
         Set<String> ids = new HashSet<>();
         for (JsonNode item : data) {
             if (!item.isObject()) throw new DiscoveryException("invalid skills.sh item");
-            if (item.path("isDuplicate").asBoolean(false)) continue;
+            JsonNode duplicate = item.get("isDuplicate");
+            if (duplicate != null && !duplicate.isBoolean()) {
+                throw new DiscoveryException("invalid skills.sh duplicate flag");
+            }
+            if (duplicate != null && duplicate.booleanValue()) continue;
             String id = required(item, "id");
             if (!id.matches("[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)?")
                 || !ids.add(id)) throw new DiscoveryException("invalid skills.sh ID");

@@ -41,6 +41,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08g Reject embedded ISO control characters in Catalog scalar/array metadata and static template index fields before identifiers reach recommendation or Preview. Real Client evidence is still pending.
 - [x] B08h Add skills.sh API candidate collection, hash-based change detection, and isolated review staging. External candidates cannot enter the approved Catalog or recommendations. Production OIDC credentials, protected invocation, human review, and real Claude Code verification remain open (see [discovery boundary](catalog/skills-sh-discovery.md)). MCP directory integration remains deferred.
 - [x] B08i Project candidate review status from a separate decision list and the current content hash. A changed Skill reopens review; SHORTLISTED remains a research choice and never activates Catalog support. Decision persistence/admin UI remain open (see [discovery boundary](catalog/skills-sh-discovery.md)).
+- [x] B08j Strictly validate skills.sh's optional boolean `isDuplicate` flag; a malformed flag fails collection instead of becoming an empty candidate success. Live OIDC access and human Catalog approval remain open.
 
 ## Phase 3 — permission and configuration
 

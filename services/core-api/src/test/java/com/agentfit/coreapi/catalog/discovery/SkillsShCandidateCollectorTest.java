@@ -82,6 +82,19 @@ class SkillsShCandidateCollectorTest {
     }
 
     @Test
+    void rejectsNonBooleanDuplicateFlagInsteadOfReportingEmptyDiscovery() {
+        searchBody = "{\"data\":[{\"id\":\"owner/repo/example\",\"name\":\"Example\","
+            + "\"source\":\"owner/repo\",\"url\":\"https://skills.sh/owner/repo/example\","
+            + "\"isDuplicate\":\"true\"}]}";
+
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").search("test", 5));
+
+        searchBody = searchBody.replace("\"true\"", "true");
+        assertEquals(List.of(), collector("token").search("test", 5));
+    }
+
+    @Test
     void changedHashBecomesReviewCandidateWithoutTreatingMissingSearchHitAsRemoval() {
         SkillCandidate previous = new SkillCandidate("owner/repo/example", "Old name",
             "owner/repo", "https://skills.sh/owner/repo/example", "b".repeat(64),
