@@ -128,6 +128,20 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void rejectsSupportEvidenceKeyReusedByDifferentTools() {
+        ToolSupport shared = new ToolSupport("shared-support", "WINDOWS", "example-client", "1.0",
+            ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS);
+        CatalogTool doc = new CatalogTool("doc", "1", Set.of(DOC), Set.of(), Set.of(), Set.of(),
+            List.of(shared));
+        CatalogTool test = new CatalogTool("test", "1", Set.of(TEST), Set.of(), Set.of(), Set.of(),
+            List.of(shared));
+
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> new RecommendationEngine(new CatalogRelease("r1",
+                Map.of("doc", doc, "test", test), Set.of())));
+    }
+
+    @Test
     void selectsFewestToolsThenStableKeyOrderAndDoesNotGuessOtherVersions() {
         CatalogTool alpha = tool("alpha", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         CatalogTool beta = tool("beta", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);

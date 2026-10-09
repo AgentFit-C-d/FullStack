@@ -14,6 +14,7 @@ public final class CatalogValidator {
         if (release.releaseId() == null || release.releaseId().isBlank()) {
             throw new InvalidCatalogException("missing release ID");
         }
+        Set<String> supportKeys = new HashSet<>();
         for (Map.Entry<String, CatalogTool> entry : release.tools().entrySet()) {
             CatalogTool tool = entry.getValue();
             if (!entry.getKey().equals(tool.key()) || blank(tool.version())) {
@@ -29,7 +30,6 @@ public final class CatalogValidator {
                 || !release.tools().keySet().containsAll(tool.conflictKeys())) {
                 throw new InvalidCatalogException("missing relation target: " + tool.key());
             }
-            Set<String> supportKeys = new HashSet<>();
             Set<EnvironmentTarget> supportTargets = new HashSet<>();
             for (ToolSupport support : tool.support()) {
                 if (blank(support.key()) || blank(support.osFamily()) || blank(support.clientId())
