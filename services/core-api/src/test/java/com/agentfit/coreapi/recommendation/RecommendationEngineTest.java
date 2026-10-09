@@ -220,6 +220,24 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void unknownInstalledDependencyVersionAsksBeforeSuggestingDuplicateRuntime() {
+        CatalogTool doc = tool("doc", Set.of(DOC), Set.of("runtime"), Set.of(),
+            Set.of(), ToolSupport.Check.PASS);
+        CatalogTool runtime = tool("runtime", Set.of(), Set.of(), Set.of(),
+            Set.of(), ToolSupport.Check.PASS);
+        RecommendationEngine engine = new RecommendationEngine(new CatalogRelease("r1",
+            Map.of("doc", doc, "runtime", runtime),
+            Set.of(new VerifiedCombination(Set.of("doc", "runtime"), TARGET))));
+        Map<String, String> installed = new HashMap<>();
+        installed.put("runtime", null);
+
+        RecommendationDecision decision = engine.decide(new RecommendationInput(Set.of(DOC),
+            false, false, TARGET, installed));
+        assertEquals(NEEDS_INFORMATION, decision.status());
+        assertEquals(List.of("installed_component_version"), decision.questionCodes());
+    }
+
+    @Test
     void rejectsMalformedInstalledComponentEntriesInsteadOfTreatingThemAsAbsent() {
         Map<String, String> nullKey = new HashMap<>();
         nullKey.put(null, "1");

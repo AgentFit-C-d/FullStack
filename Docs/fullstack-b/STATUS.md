@@ -18,6 +18,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B03d Reject null/blank declared installed component IDs and blank non-null versions before recommendation; null versions remain the explicit unknown-version signal. A's installation-profile wire semantics remain to be agreed.
 - [x] B03e Check one-tool solutions before multi-tool planning, so a larger Catalog with many unrelated entries can still return a verified single recommendation.
 - [x] B03f Evaluate only exact-target, reviewed Catalog combinations for multi-tool recommendations. Choose the fewest additions and stable key order without enumerating arbitrary subsets or rejecting a Catalog just because it has more than 20 tools. Real Claude Code combinations and A/AI integration remain open.
+- [x] B03g Ask for the installed version when a declared unknown-version tool is part of a reviewed combination that covers a required Capability, including dependency-only tools. Do not suggest reinstalling a known Catalog dependency while its declared version remains unresolved.
 - [x] B04 Cover the four outcomes and fail-closed edge cases with unit tests.
 - [x] B04a Validate reviewed permission mappings separately from the AI decision: ASK_EACH_TIME defaults, unsupported Ask, required DENY, missing/duplicate mappings.
 

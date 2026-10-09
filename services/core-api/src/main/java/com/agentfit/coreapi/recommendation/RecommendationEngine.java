@@ -37,9 +37,8 @@ public final class RecommendationEngine {
             if (input.installedToolVersions() == null) {
                 questions.add("installed_components");
             } else if (input.installedToolVersions().entrySet().stream().anyMatch(entry ->
-                entry.getValue() == null && release.tools().containsKey(entry.getKey())
-                    && !java.util.Collections.disjoint(
-                        release.tools().get(entry.getKey()).capabilityKeys(), input.requiredCapabilityKeys()))) {
+                entry.getValue() == null && relevantUnknownInstalledVersion(entry.getKey(),
+                    input.requiredCapabilityKeys(), input.environment()))) {
                 questions.add("installed_component_version");
             }
         }
@@ -113,6 +112,16 @@ public final class RecommendationEngine {
 
     private boolean supports(String key, EnvironmentTarget target) {
         return release.tools().get(key).support().stream().anyMatch(support -> support.verifiedFor(target));
+    }
+
+    private boolean relevantUnknownInstalledVersion(String key, Set<String> required,
+                                                     EnvironmentTarget target) {
+        CatalogTool tool = release.tools().get(key);
+        if (tool == null) return false;
+        if (!java.util.Collections.disjoint(tool.capabilityKeys(), required)) return true;
+        return release.verifiedCombinations().stream().anyMatch(combination ->
+            combination.target().equals(target) && combination.toolKeys().contains(key)
+                && !java.util.Collections.disjoint(capabilities(combination.toolKeys()), required));
     }
 
     private Set<String> capabilities(Set<String> keys) {
