@@ -4,6 +4,8 @@ Source: `Docs/AgentFit_AB_1차통합_개발기준.pdf` (sections 7–12) and the
 
 The repository has no `.specify/` prerequisite script or feature `tasks.md` yet, so the Spec Kit implement command cannot consume an approved task plan. This tracker records the B work without claiming those missing artifacts exist. It does not change A or AI ownership.
 
+**Numbering note:** `B01–B12` below are this repository's implementation milestones, not the PRD's `FSB-01–FSB-12` requirement IDs. In particular, checked `B04` means the four internal verdicts and fail-closed cases are covered by unit tests. PRD `FSB-04` also requires separate optional tool choices; that behavior is not complete because AI's `OPTIONAL` versus not-needed semantics and the public item contract are not agreed ([contract proposal](recommendation/optional-candidates-contract-proposal.md)). The 4/12 milestone count is not a claim that four PRD requirements are fully delivered.
+
 ## Phase 1 — B domain foundation
 
 - [x] B01 Define the fixed nine Capability IDs and four recommendation outcomes in `services/core-api`.
