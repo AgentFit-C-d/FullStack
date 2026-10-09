@@ -34,10 +34,16 @@ final class SyntheticCatalogBundle {
             + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
             + "\"evidenceUrl\":\"https://example.org/permission\",\"checkedAt\":\"2026-10-09\"}]}");
         files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
+        files.put("templates/index.json", "{\"schemaVersion\":1,\"items\":[{"
+            + "\"toolKey\":\"example-tool\",\"targetKey\":\"main\","
+            + "\"relativePath\":\"config/main.txt\",\"sourcePath\":\"templates/main.txt\"}]}");
+        files.put("templates/main.txt", "literal config\n");
         StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
         StringBuilder entries = new StringBuilder();
         for (String name : files.keySet().stream().sorted().toList()) {
-            Files.writeString(directory.resolve(name), files.get(name));
+            Path file = directory.resolve(name);
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, files.get(name));
             String fileHash = sha256(files.get(name));
             preimage.append(name).append('\t').append(fileHash).append('\n');
             if (!entries.isEmpty()) entries.append(',');

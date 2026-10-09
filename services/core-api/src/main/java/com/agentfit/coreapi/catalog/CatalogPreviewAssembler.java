@@ -27,6 +27,15 @@ public final class CatalogPreviewAssembler {
                                                      PreviewBasis currentBasis,
                                                      EnvironmentTarget currentTarget,
                                                      CatalogPreviewRequest request) {
+        return PreviewFingerprint.compute(prepare(releaseDirectory, approvedCatalogHash,
+            storedRecommendation, currentBasis, currentTarget, request));
+    }
+
+    static PreviewFingerprintInput prepare(Path releaseDirectory, String approvedCatalogHash,
+                                           StoredRecommendationState storedRecommendation,
+                                           PreviewBasis currentBasis,
+                                           EnvironmentTarget currentTarget,
+                                           CatalogPreviewRequest request) {
         if (request == null || request.basis() == null || request.selectedToolKeys() == null
             || request.selectedToolKeys().isEmpty()
             || request.selectedToolKeys().stream().anyMatch(key -> key == null || key.isBlank())
@@ -62,9 +71,9 @@ public final class CatalogPreviewAssembler {
         List<PreviewInputFile> generated = CatalogStaticTemplateRenderer.render(bundle,
             approvedCatalogHash, selected);
         PreviewAssemblyLimits.validateGenerated(generated);
-        return PreviewFingerprint.compute(new PreviewFingerprintInput(request.basis(),
+        return new PreviewFingerprintInput(request.basis(),
             request.recommendationId(), request.selectedToolKeys(), validatedPolicies,
-            request.generatorVersion(), generated, request.existingState(), request.providedFiles()));
+            request.generatorVersion(), generated, request.existingState(), request.providedFiles());
     }
 
     public static final class InvalidAssemblyException extends IllegalArgumentException {
