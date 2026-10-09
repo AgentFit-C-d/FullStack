@@ -8,6 +8,7 @@ import com.agentfit.coreapi.configuration.history.ConfigurationGenerationHistory
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
+import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision.Status;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
@@ -75,6 +76,35 @@ class CatalogApprovedConfigurationWorkflowTest {
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
                 request.basis(), TARGET, request, preview, approval, "approval-1", "generation-1", CLOCK));
+    }
+
+    @Test
+    void requiresSameTransientOriginalFileAtExportWithoutStoringItInApproval() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        CatalogPreviewRequest base = request(hash, PermissionPolicy.ASK_EACH_TIME);
+        PreviewInputFile original = new PreviewInputFile("main", "config/main.txt", "previous config\n");
+        CatalogPreviewRequest request = new CatalogPreviewRequest(base.basis(), base.recommendationId(),
+            base.target(), base.selectedToolKeys(), base.permissionSelections(),
+            ExistingState.PROVIDED, List.of(original), base.generatorVersion());
+        StoredRecommendationState recommendation = recommendation(request);
+        PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
+            recommendation, request.basis(), TARGET, request);
+        StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
+            result.fingerprint(), NOW.plusSeconds(600));
+        StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
+            preview, request.basis(), result.fingerprint(), true, "approval-1", CLOCK);
+
+        var generated = CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
+            request.basis(), TARGET, request, preview, approval, "approval-1", "generation-1", CLOCK);
+        assertEquals("generation-1", generated.history().id());
+        CatalogPreviewRequest changedOriginal = new CatalogPreviewRequest(base.basis(), base.recommendationId(),
+            base.target(), base.selectedToolKeys(), base.permissionSelections(), ExistingState.PROVIDED,
+            List.of(new PreviewInputFile("main", "config/main.txt", "altered original\n")),
+            base.generatorVersion());
+        assertThrows(IllegalStateException.class,
+            () -> CatalogApprovedConfigurationWorkflow.generate(directory, hash, recommendation,
+                request.basis(), TARGET, changedOriginal, preview, approval,
+                "approval-1", "generation-2", CLOCK));
     }
 
     private static CatalogPreviewRequest request(String hash, PermissionPolicy policy) {
