@@ -1,8 +1,10 @@
 # 풀스택 B 1차 완료 게이트
 
-> 2026-10-07 점검. 기준은 [B 현재 상태](STATUS.md), [A·AI 계약 제안](integration/ab-ai-contract-proposal.md), `D:/capstone/Docs/api/02-recommendations.draft.md`, `D:/capstone/Docs/api/03-configuration.draft.md`다. API 초안과 제안은 확정 계약이 아니다. 완료 표시에는 실제 구현과 검증 결과가 필요하다.
+> 2026-10-09 점검. 기준은 [B 현재 상태](STATUS.md), [A·AI 계약 제안](integration/ab-ai-contract-proposal.md), `D:/capstone/Docs/api/02-recommendations.draft.md`, `D:/capstone/Docs/api/03-configuration.draft.md`다. API 초안과 제안은 확정 계약이 아니다. 완료 표시에는 실제 구현과 검증 결과가 필요하다.
 
 **완료 범위:** B01–B12 상위 목표 중 현재 B01–B04가 완료됐고 B05–B12는 열려 있다. B08–B11의 순수 Java 검증·생성 코드는 상당 부분 준비됐지만, 인증된 요청부터 DB 저장·다운로드까지 작동하는 경로는 없다. 2026-10-07에 확인한 원격 `develop`에는 백엔드 기본 구조와 CI만 있으며 A의 인증·스냅샷·영속화 코드와 AI 연동 계약은 아직 없다. 이를 임시 요청 값이나 합성 Catalog로 대체해 완료 처리하지 않는다.
+
+상위 목표 기준 진행도는 **4/12 완료(33%)**, 8개가 미완료다. 2026-10-09에는 B 내부 추천 평가와 승인 Catalog 읽기 모델까지 추가했으나, A·AI 계약/실데이터/공개 API/저장 검증이 없어 B05–B12를 완료로 올리지 않았다. 이 수치는 코드 줄 수나 전체 개발 시간의 비율이 아니다.
 
 | 목표 | 완료하려면 필요한 입력·결정 | B가 연결할 구현 | 완료를 입증할 검증 |
 | --- | --- | --- | --- |

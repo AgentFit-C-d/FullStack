@@ -1,0 +1,55 @@
+package com.agentfit.coreapi.catalog;
+
+import com.agentfit.coreapi.recommendation.CapabilityKey;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.Map;
+
+/** Shared test-only release with one exactly supported tool. Never a product Catalog. */
+final class SyntheticCatalogBundle {
+    private SyntheticCatalogBundle() {}
+
+    static String write(Path directory) throws Exception {
+        String capabilities = CapabilityKey.keys().stream().sorted()
+            .map(key -> "{\"key\":\"" + key + "\"}")
+            .reduce((a, b) -> a + "," + b).orElseThrow();
+        Map<String, String> files = new HashMap<>();
+        files.put("capabilities.json", "{\"schemaVersion\":1,\"items\":[" + capabilities + "]}");
+        files.put("tools.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"example-tool\","
+            + "\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],"
+            + "\"includedComponentKeys\":[\"example-component\"]}]}");
+        files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","
+            + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
+            + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\",\"format\":\"PASS\","
+            + "\"standalone\":\"PASS\",\"evidenceUrl\":\"https://example.org/review\","
+            + "\"checkedAt\":\"2026-10-09\"}]}");
+        files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
+            + "\"verifiedCombinations\":[]}");
+        files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[]}");
+        files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
+        StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
+        StringBuilder entries = new StringBuilder();
+        for (String name : files.keySet().stream().sorted().toList()) {
+            Files.writeString(directory.resolve(name), files.get(name));
+            String fileHash = sha256(files.get(name));
+            preimage.append(name).append('\t').append(fileHash).append('\n');
+            if (!entries.isEmpty()) entries.append(',');
+            entries.append("{\"path\":\"").append(name).append("\",\"sha256\":\"")
+                .append(fileHash).append("\"}");
+        }
+        String hash = sha256(preimage.toString());
+        Files.writeString(directory.resolve("manifest.json"), "{\"schemaVersion\":1,"
+            + "\"releaseId\":\"synthetic-recommendation\",\"catalogHash\":\"" + hash
+            + "\",\"files\":[" + entries + "]}");
+        return hash;
+    }
+
+    private static String sha256(String value) throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+            .digest(value.getBytes(StandardCharsets.UTF_8)));
+    }
+}
