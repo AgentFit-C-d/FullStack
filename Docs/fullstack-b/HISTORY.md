@@ -62,6 +62,8 @@ Export request identity check (2026-10-09): the high-level Catalog ZIP workflow 
 
 Approval request identity check (2026-10-09): final confirmation now accepts the submitted Preview ID and compares it with A's stored READY Preview before issuing approval metadata. The previous internal path received only the stored record and could not independently reject a mismatched request ID. A's authenticated lookup and atomic approval/Audit save remain pending.
 
+Latest recommendation read boundary (2026-10-09): the internal CURRENT/STALE projection now rejects a current basis from another project instead of exposing an unrelated stored recommendation as STALE. A's owner-checked query is still required before calling it.
+
 Generation-history read projection (2026-10-09): a pure B12 view now combines a generated history record with an optional latest USER report after checking generation association, report time, and project identity. APPLIED remains separate from NOT_RUN/NONE verification; changed basis is STALE. A's DB query, ownership, pagination, deletion, and HTTP response remain open, so B12 and the B01–B12 count remain unchanged.
 
 Synthetic B journey coverage (2026-10-09): one test now links validated nine-key AI Capability input, approved Catalog recommendation, selected permission, Preview, final approval, exact ZIP bytes, and a USER APPLIED report. It also verifies that an Environment version change blocks both approval and later ZIP generation while the old history reads STALE and unverified. This is an in-memory integration test with synthetic support data; it does not establish A/AI contracts, real Client compatibility, persistence, or end-to-end HTTP behavior.

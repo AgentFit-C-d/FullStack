@@ -20,6 +20,7 @@ public record RecommendationReadModel(String recommendationId,
         if (stored == null) return null;
         if (blank(stored.recommendationId()) || stored.status() == null
             || !validBasis(stored.basis()) || !validBasis(currentBasis)
+            || !stored.basis().projectId().equals(currentBasis.projectId())
             || stored.toolKeys() == null) {
             throw new IllegalArgumentException("invalid stored recommendation state");
         }

@@ -66,4 +66,14 @@ class RecommendationReadModelTest {
             () -> RecommendationReadModel.latest(new StoredRecommendationState("rec-1", BASIS,
                 RecommendationDecision.Status.RECOMMENDED, List.of("tool-a")), null));
     }
+
+    @Test
+    void refusesToProjectRecommendationAgainstAnotherProjectBasis() {
+        var stored = new StoredRecommendationState("rec-1", BASIS,
+            RecommendationDecision.Status.RECOMMENDED, List.of("tool-a"));
+        var otherProject = new PreviewBasis("other-project", 2,
+            "profile-1", 3, "event-1", 4, 5, 6, "catalog-1", "a".repeat(64));
+        assertThrows(IllegalArgumentException.class,
+            () -> RecommendationReadModel.latest(stored, otherProject));
+    }
 }
