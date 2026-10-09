@@ -52,7 +52,8 @@ public final class CatalogRecommendationWorkflow {
 
     public static Result evaluate(Path releaseDirectory, String approvedCatalogHash, Request request) {
         if (request == null) throw new IllegalArgumentException("recommendation request required");
-        ParsedCatalog catalog = CatalogSemanticParser.load(releaseDirectory);
+        VerifiedCatalogBundle bundle = CatalogBundleLoader.load(releaseDirectory);
+        ParsedCatalog catalog = CatalogSemanticParser.parse(bundle);
         if (approvedCatalogHash == null || !approvedCatalogHash.matches("[0-9a-f]{64}")
             || !MessageDigest.isEqual(catalog.catalogHash().getBytes(StandardCharsets.US_ASCII),
                 approvedCatalogHash.getBytes(StandardCharsets.US_ASCII))) {
@@ -63,6 +64,10 @@ public final class CatalogRecommendationWorkflow {
         var input = RecommendationInputAssembler.assemble(assessment,
             request.hasRelevantPendingConflict(), request.environment(), request.installedToolVersions());
         RecommendationDecision decision = new RecommendationEngine(catalog.release()).decide(input);
+        if (decision.status() == RecommendationDecision.Status.RECOMMENDED) {
+            CatalogStaticTemplateRenderer.render(bundle, approvedCatalogHash,
+                Set.copyOf(decision.toolKeys()));
+        }
         return new Result(catalog.release().releaseId(), catalog.catalogHash(),
             decision, assessment.claims(), assessment.questions(),
             CatalogRecommendationDetails.project(catalog, decision,
