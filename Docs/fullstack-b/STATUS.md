@@ -10,6 +10,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B02 Reject malformed Catalog references, unsupported Capability IDs, dependency cycles, and unverified support in a pure domain validator.
 - [x] B03 Implement deterministic recommendation planning for required capabilities, declared installed tool versions, environment matching, dependencies, conflicts, component overlap, and combination verification. A catalog ID alone never proves an existing usable capability.
 - [x] B03a Return deterministic reason codes for both `NO_ADDITIONS_NEEDED` paths, absent verified Capability support, and exhausted compatible-combination search. These are internal B verdicts; user-facing explanations and response DTO remain subject to A·AI·Frontend contract.
+- [x] B03b Compose verified Catalog loading, independently approved hash, complete AI Capability intake, and combination planning through one internal B workflow. It returns the decision with Catalog identity and AI clarification questions; A authentication, consistent basis, persistence, and actual Client verification remain open (see [workflow](recommendation/catalog-recommendation-workflow.md)).
 - [x] B04 Cover the four outcomes and fail-closed edge cases with unit tests.
 - [x] B04a Validate reviewed permission mappings separately from the AI decision: ASK_EACH_TIME defaults, unsupported Ask, required DENY, missing/duplicate mappings.
 
@@ -30,6 +31,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08f Reject ambiguous verification evidence keys so distinct support, permission, or combination records cannot silently overwrite one another. Real Client evidence is still pending.
 - [x] B08g Reject embedded ISO control characters in Catalog scalar/array metadata and static template index fields before identifiers reach recommendation or Preview. Real Client evidence is still pending.
 - [x] B08h Add skills.sh API candidate collection, hash-based change detection, and isolated review staging. External candidates cannot enter the approved Catalog or recommendations. Production OIDC credentials, protected invocation, human review, and real Claude Code verification remain open (see [discovery boundary](catalog/skills-sh-discovery.md)). MCP directory integration remains deferred.
+- [x] B08i Project candidate review status from a separate decision list and the current content hash. A changed Skill reopens review; SHORTLISTED remains a research choice and never activates Catalog support. Decision persistence/admin UI remain open (see [discovery boundary](catalog/skills-sh-discovery.md)).
 
 ## Phase 3 — permission and configuration
 
