@@ -95,5 +95,6 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B12d Reject a current basis from another project in both the history read model and the generation history's direct validity check; cross-project data is not a normal STALE result. A's owner-checked lookup remains required.
 - [x] B12e Bound generation, Preview, and approval IDs in content-free generation history to 128 Unicode code points, matching the draft Preview ID budget. A's persistence constraints and HTTP validation remain open.
 - [x] B12f Add a user application-report service: require A's owner-checked persisted generation, accept only APPLIED/FAILED with valid reason, timestamp and label it USER on the server, then return only after A stores matching report metadata. It never upgrades the report to verified installation; actual A storage, public API, and deletion remain B12 work.
+- [x] B12g Add a generation-history query service: require A's owner-checked current basis before reading an A-owned generation and its latest USER report, return CURRENT/STALE without reading file content, and distinguish no generation from a foreign/mismatched record. A's real readers, pagination, public API, and deletion remain B12 work.
 
 Detailed milestone results and test counts: [HISTORY.md](HISTORY.md).

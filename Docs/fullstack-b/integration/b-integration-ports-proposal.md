@@ -21,6 +21,7 @@
 | `ConfigurationDownloadService.download` | A의 소유권 확인된 현재 추천/Preview/승인/환경과 승인 Catalog, 서버 generation ID·시계, A의 원자적 이력 저장 | 승인된 ZIP 재생성 뒤 내용 없는 이력 저장 ID가 일치해야 ZIP bytes 반환 | 실제 A 저장·중복 다운로드 처리·HTTP 전송/연결 종료/재시도 규칙 |
 | `ConfigurationUserReport.accept` | 소유권을 확인한 generation ID, 사용자 APPLIED/FAILED 보고 | 사용자 진술로 표시하고 서버 시각 부여 | 보고 저장·조회 주체와 실패 코드 공개 계약 |
 | `ConfigurationUserReportService.report` | A가 소유권 확인한 생성 이력 ID·생성 시각, A의 보고 저장 포트 | APPLIED/FAILED만 검증하고 서버 시각·USER 출처를 부여한 뒤 저장 성공을 확인; 검증 완료로 승격하지 않음 | 실제 A 저장·중복 보고/최신 보고 조회·삭제·HTTP 오류 계약 |
+| `ConfigurationHistoryQueryService.find` | A의 소유권 확인된 현재 basis·프로젝트 내 생성 이력·최신 USER 보고 | 내용 없는 생성 이력을 CURRENT/STALE로 표시하고 보고를 설치 검증과 분리; 미존재와 다른 프로젝트 레코드 구분 | 실제 A 조회·페이지네이션·프로젝트 삭제·공개 GET 계약 |
 
 ## 연결 순서와 저장 효과
 
