@@ -17,9 +17,12 @@ public record RecommendationReadModel(String recommendationId,
 
     public static RecommendationReadModel latest(StoredRecommendationState stored,
                                                  PreviewBasis currentBasis) {
+        if (!validBasis(currentBasis)) {
+            throw new IllegalArgumentException("invalid current recommendation basis");
+        }
         if (stored == null) return null;
         if (blank(stored.recommendationId()) || stored.status() == null
-            || !validBasis(stored.basis()) || !validBasis(currentBasis)
+            || !validBasis(stored.basis())
             || !stored.basis().projectId().equals(currentBasis.projectId())
             || stored.toolKeys() == null) {
             throw new IllegalArgumentException("invalid stored recommendation state");

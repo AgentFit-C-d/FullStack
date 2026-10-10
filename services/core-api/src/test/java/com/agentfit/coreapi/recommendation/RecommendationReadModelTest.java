@@ -14,6 +14,8 @@ class RecommendationReadModelTest {
     @Test
     void latestReadReturnsNullOnlyWhenNoStoredRecommendationExists() {
         assertNull(RecommendationReadModel.latest(null, BASIS));
+        assertThrows(IllegalArgumentException.class,
+            () -> RecommendationReadModel.latest(null, null));
         var stored = new StoredRecommendationState("rec-1", BASIS,
             RecommendationDecision.Status.RECOMMENDED, List.of("tool-a"));
         var result = RecommendationReadModel.latest(stored, BASIS);
