@@ -19,3 +19,9 @@
 팀의 첫 지원 대상이 정해지기 전, 이 PC의 Claude Code `2.1.270`에서 Skill 호출 자체를 확인하려고 격리된 임시 프로젝트에 `.claude/skills/agentfit-pilot/SKILL.md`를 만들었다. Skill 본문에만 고유 응답 문자열을 넣고 `claude -p --tools '' --setting-sources project --strict-mcp-config '/agentfit-pilot'`를 실행했다. 약 65초간 표준 출력·오류 출력이 없어 호출을 중단했고, 임시 파일은 제거했다. 별도 `claude auth status --json` 조회에서 `loggedIn: true`가 반환됐지만, API 연결·요청 성공을 뜻하지 않는다. 네트워크·Skill 로딩 중 어느 단계에서 대기했는지는 확인하지 못했다.
 
 따라서 이번 시도는 **Skill 형식 또는 단독 동작의 PASS 근거가 아니다.** Catalog 지원 행·설정 템플릿을 활성화하지 않고, `format`과 `standalone`은 계속 `NOT_RUN`으로 둔다. 다음 재시험은 실행 가능한 Claude Code 연결 환경에서 Skill 호출 결과와 종료 코드, 정확한 Client 버전, OS, 실행 시각을 함께 기록해야 한다. 실제 도구 후보 선정과 조합·권한 검증은 별도다.
+
+## 2026-10-10 격리된 로컬 Skill 호출 재시험
+
+같은 PC의 Claude Code `2.1.270`에서 임시 디렉터리의 `.claude/skills/agentfit-pilot/SKILL.md`에 무해한 고유 응답 문자열을 넣고, 프로젝트 설정만 읽도록 제한한 `claude -p '/agentfit-pilot' --model haiku --setting-sources project --strict-mcp-config --tools Skill --no-session-persistence`를 실행했다. 응답 JSON은 `is_error: false`, `terminal_reason: completed`, `result: AGENTFIT_PILOT_OK_20261010`을 반환했다. 별도 일반 텍스트 호출도 `PONG`으로 완료됐다. 이 환경에서는 Claude Code의 로컬 Skill 발견과 직접 호출이 가능하다는 **파일럿 결과**다. 이전의 무응답 시도와 달리 실행 제한이 없는 네트워크 환경에서 성공했으며, 그 시도의 정확한 대기 원인은 확정하지 않았다.
+
+이 임시 Skill은 실제 Catalog 후보가 아니고 업무 Capability를 검증하지 않았다. 외부 Skill의 고정 버전·공식 출처·설정 산출물·권한·단독 업무 수행·다중 도구 조합 시험은 여전히 필요하다. 따라서 실제 도구의 `documentation`, `format`, `standalone` 및 조합 결과는 `PASS`로 바꾸지 않고, 릴리스도 활성화하지 않는다.
