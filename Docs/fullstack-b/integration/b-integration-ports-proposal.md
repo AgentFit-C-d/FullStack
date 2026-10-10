@@ -1,6 +1,6 @@
 # 풀스택 B 연동 포트 인계안
 
-> 2026-10-07 기준 **제안 / 미합의**. 이 문서는 현재 B Java 모델에 맞춰 A·AI가 결정해야 할 입력과 저장 경계를 구체화한다. 인터페이스 이름은 설명용이며 구현된 API·DB 계약이 아니다. [전체 연동 계약 제안](ab-ai-contract-proposal.md)과 [1차 완료 게이트](../PHASE1-CLOSEOUT.md)를 함께 본다.
+> **제안 / 미합의**. 이 문서는 현재 B Java 모델에 맞춰 A·AI가 결정해야 할 입력과 저장 경계를 구체화한다. 일부 B 내부 인터페이스는 구현되었지만, A·AI 어댑터와 공개 API·DB 계약은 아직 없다. [전체 연동 계약 제안](ab-ai-contract-proposal.md)과 [1차 완료 게이트](../PHASE1-CLOSEOUT.md)를 함께 본다.
 
 ## 신뢰 경계
 
@@ -12,6 +12,7 @@
 | `AiCapabilityIntake.validate` | AI claim·질문, A가 허용한 근거 필드 경로 집합 | 고정 9개 ID, 중복·근거·허용 필드 검사 | 실제 wire DTO/버전, 9개 전량 여부, 미정·질문 의미, 실패 envelope |
 | `RecommendationInputAssembler` → `RecommendationEngine` | 검증된 AI 평가, A의 미해결 충돌·현재 Environment·설치 버전 선언, 승인 Catalog | 누락된 Capability를 불필요로 간주하지 않도록 현재는 9개 전량 요구; 최소 검증 조합 판정 | AI 생략 규칙, 설치 버전 미확인 표현, 선택 도구·설명 응답 형식 |
 | `CatalogRecommendationWorkflow.evaluate` | 위 AI 후보·A 현재값 및 서버가 독립 승인한 Catalog 해시 | Catalog 파일/승인 해시·AI 9개 평가·조합 판정을 한 번에 실행해 결과와 Catalog ID/해시·AI 질문 반환 | A 인증 조회·현재 basis·저장 트랜잭션·AI wire 계약은 여전히 미합의 |
+| `RecommendationCreationService.create` | A의 소유권 확인·일관된 현재 스냅샷, AI 분석 어댑터, 독립 승인 Catalog, A의 원자적 `saveIfUnchanged` | 프로젝트 ID 불일치와 AI/Catalog 실패 시 저장을 호출하지 않고, 변경 충돌 시 성공 응답을 내지 않음; 저장 ID를 받은 뒤에만 결과 반환 | 포트의 실제 A·AI 구현, 버전 비교 트랜잭션, 중복 요청·오류 매핑, 공개 POST 계약은 미합의 |
 | `RecommendationPreviewGate` → `CatalogPreviewAssembler` | A가 소유권 확인 후 조회한 현재 추천 ID/status/tool keys/basis와 별도 현재 Environment target; 요청의 선택·정책·기존 파일 | 추천 밖 도구·stale basis·대상 불일치·미검증 Catalog/권한/템플릿 차단 | 추천·Preview 저장 ID, 요청 전체 JSON 한도, 인증/오류 규칙 |
 | `CatalogReadyPreviewApprovalWorkflow` → `CatalogApprovedConfigurationWorkflow` | 승인 시 A가 조회한 READY Preview·활성 승인 Catalog·현재 basis·제출 지문·확인값; export 시 저장 승인과 재제출한 PreviewInput | 승인에서는 Catalog 파일·저장 지문·만료·현재 basis, export에서는 승인 Catalog 기반 재생성 지문과 ZIP bytes 확인 | READY/소유권 조회, 승인 저장 트랜잭션, 입력 원문 비보관, 중복 요청, Catalog 승인 철회 처리 |
 | `ApprovedConfigurationGenerator` | A가 부여한 generation ID와 서버 시계, 조회된 승인 상태 | ZIP 성공 후 경로·동작·해시만 포함한 이력 반환 | ZIP 생성 후 DB 저장 실패 시 응답/재시도, 이력·감사 저장과 삭제 cascade |
