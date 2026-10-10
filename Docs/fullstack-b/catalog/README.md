@@ -20,5 +20,6 @@
 - `services/core-api/src/main/java/com/agentfit/coreapi/catalog/discovery/`: skills.sh 후보 검색 및 별도 JSON 스냅샷 갱신. 추천 엔진이 읽는 검증된 Catalog 릴리스와 연결하지 않았다.
 - `services/core-api/src/main/java/com/agentfit/coreapi/catalog/CatalogRecommendationWorkflow.java`: 승인 Catalog, AI Capability 검증, 추천 판정을 묶는 B 내부 진입점. [연결 경계](../recommendation/catalog-recommendation-workflow.md)를 따른다.
 - `services/core-api/src/main/java/com/agentfit/coreapi/catalog/CatalogReadService.java`: 승인 Catalog만 대상으로 한 읽기 필터와 검증 근거 투영. 공개 API는 아직 없다.
+- `ServerConfiguredCatalogReader`와 `CatalogSourceConfiguration`: 서버 설정 `agentfit.catalog.directory`와 `agentfit.catalog.approved-hash`가 둘 다 있을 때만 승인 Catalog 포트를 만든다. 호출마다 파일·의미·해시를 다시 검증하며 불일치 시 제공하지 않는다. 환경 변수로 설정한다면 `AGENTFIT_CATALOG_DIRECTORY`와 `AGENTFIT_CATALOG_APPROVED_HASH`를 사용한다. 후보의 manifest hash를 이 승인 값으로 자동 복사하지 않는다.
 
 현재 테스트 데이터는 합성 예시다. 1차 실제 Catalog는 Claude Code부터 검증하고 Codex는 후속이다. 실제 지원 버전, 템플릿, 권한 매핑, 조합을 검증한 릴리스가 없으므로 제품에서 지원으로 표시하면 안 된다. 다음 작업은 [실제 릴리스 검증](../NEXT-STEPS.md)의 3번이다.
