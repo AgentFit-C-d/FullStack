@@ -58,6 +58,20 @@ class ConfigurationUserReportServiceTest {
             new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null)));
     }
 
+    @Test
+    void invalidServerReportIdCannotReachPersistence() {
+        for (String id : new String[] {null, " ", "x".repeat(129)}) {
+            var service = new ConfigurationUserReportService(
+                ConfigurationUserReportServiceTest::generation,
+                () -> id, CLOCK,
+                (trusted, accepted, reportId) -> fail("invalid ID must not be saved"));
+
+            assertThrows(IllegalArgumentException.class, () -> service.report("project-1",
+                "generation-1", new ConfigurationUserReport.Submission(
+                    ConfigurationUserReport.ReportedState.APPLIED, null)));
+        }
+    }
+
     private static ConfigurationUserReportService.TrustedGeneration generation(String projectId,
                                                                                 String generationId) {
         return new ConfigurationUserReportService.TrustedGeneration(projectId, generationId,

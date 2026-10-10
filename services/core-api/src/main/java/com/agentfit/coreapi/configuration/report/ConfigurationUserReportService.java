@@ -52,6 +52,9 @@ public final class ConfigurationUserReportService {
             throw new IllegalArgumentException("report predates generation");
         }
         String reportId = serverReportIds.get();
+        if (blank(reportId) || reportId.codePointCount(0, reportId.length()) > 128) {
+            throw new IllegalArgumentException("invalid server report ID");
+        }
         ConfigurationHistoryReadModel.UserReport saved = store.saveIfCurrent(generation, accepted, reportId);
         if (saved == null || !Objects.equals(reportId, saved.id())
             || !generationId.equals(saved.configurationId())
