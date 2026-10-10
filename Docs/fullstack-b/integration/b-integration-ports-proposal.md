@@ -14,8 +14,8 @@
 | `CatalogRecommendationWorkflow.evaluate` | 위 AI 후보·A 현재값 및 서버가 독립 승인한 Catalog 해시 | Catalog 파일/승인 해시·AI 9개 평가·조합 판정을 한 번에 실행해 결과와 Catalog ID/해시·AI 질문 반환 | A 인증 조회·현재 basis·저장 트랜잭션·AI wire 계약은 여전히 미합의 |
 | `RecommendationCreationService.create` | A의 소유권 확인·일관된 현재 스냅샷, AI 분석 어댑터, 독립 승인 Catalog, A의 원자적 `saveIfUnchanged` | 프로젝트 ID 불일치와 AI/Catalog 실패 시 저장을 호출하지 않고, 변경 충돌 시 성공 응답을 내지 않음; 저장 ID를 받은 뒤에만 결과 반환 | 포트의 실제 A·AI 구현, 버전 비교 트랜잭션, 중복 요청·오류 매핑, 공개 POST 계약은 미합의 |
 | `RecommendationPreviewGate` → `CatalogPreviewAssembler` | A가 소유권 확인 후 조회한 현재 추천 ID/status/tool keys/basis와 별도 현재 Environment target; 요청의 선택·정책·기존 파일 | 추천 밖 도구·stale basis·대상 불일치·미검증 Catalog/권한/템플릿 차단 | 추천·Preview 저장 ID, 요청 전체 JSON 한도, 인증/오류 규칙 |
-| `PreviewCreationService.create` | A가 인증·소유권 확인한 현재 추천/basis/Environment, 독립 승인 Catalog, 저장 직전 버전 재검사·원자적 저장 포트 | 검증된 Preview가 만들어져도 저장 성공 전에는 결과를 반환하지 않음; 저장 포트에는 선택·정책·지문 등 내용 없는 Draft만 전달 | 실제 A 저장 구현·만료/ID 발급, 공개 POST·오류 매핑, 기존 파일 원문 재제출 UX |
-| `CatalogReadyPreviewApprovalWorkflow` → `CatalogApprovedConfigurationWorkflow` | 승인 시 A가 조회한 READY Preview·활성 승인 Catalog·현재 basis·제출 지문·확인값; export 시 저장 승인과 재제출한 PreviewInput | 승인에서는 Catalog 파일·저장 지문·만료·현재 basis, export에서는 승인 Catalog 기반 재생성 지문과 ZIP bytes 확인 | READY/소유권 조회, 승인 저장 트랜잭션, 입력 원문 비보관, 중복 요청, Catalog 승인 철회 처리 |
+| `PreviewCreationService.create` | A가 인증·소유권 확인한 현재 추천/basis/Environment, 독립 승인 Catalog, 저장 직전 버전 재검사·원자적 저장 포트 | 검증된 Preview가 만들어져도 저장 성공 전에는 결과를 반환하지 않음; 저장 포트에는 선택·정책·지문 등 내용 없는 Draft만 전달. 저장 응답의 `createdAt < expiresAt`를 확인 | 실제 A 저장 구현·서버 시각의 생성/만료/ID 발급, 공개 POST·오류 매핑, 기존 파일 원문 재제출 UX |
+| `CatalogReadyPreviewApprovalWorkflow` → `CatalogApprovedConfigurationWorkflow` | 승인 시 A가 조회한 READY Preview·활성 승인 Catalog·현재 basis·제출 지문·확인값; export 시 저장 승인과 재제출한 PreviewInput | 승인에서는 Catalog 파일·저장 지문·만료·현재 basis, export에서는 승인 Catalog 기반 재생성 지문과 ZIP bytes 및 `Preview.createdAt <= approval.approvedAt` 확인 | READY/소유권 조회, 승인 저장 트랜잭션, 입력 원문 비보관, 중복 요청, Catalog 승인 철회 처리 |
 | `ApprovalCreationService.approve` | A의 소유권 확인된 READY Preview·현재 basis, 서버 승인 ID·시계, A의 원자적 승인/감사 저장 | 명시적 확인·현재성·만료·승인 Catalog 검증 후 발급하고, 저장 포트가 같은 승인 메타데이터를 반환한 뒤에만 성공 처리 | 실제 A 저장/감사·중복 요청·공개 승인 API 연결 |
 | `ApprovedConfigurationGenerator` | A가 부여한 generation ID와 서버 시계, 조회된 승인 상태 | ZIP 성공 후 경로·동작·해시만 포함한 이력 반환 | ZIP 생성 후 DB 저장 실패 시 응답/재시도, 이력·감사 저장과 삭제 cascade |
 | `ConfigurationDownloadService.download` | A의 소유권 확인된 현재 추천/Preview/승인/환경과 승인 Catalog, 서버 generation ID·시계, A의 원자적 이력 저장 | 승인된 ZIP 재생성 뒤 내용 없는 이력 저장 ID가 일치해야 ZIP bytes 반환 | 실제 A 저장·중복 다운로드 처리·HTTP 전송/연결 종료/재시도 규칙 |
@@ -26,7 +26,7 @@
 ## 연결 순서와 저장 효과
 
 1. **추천 생성:** A가 소유권과 확정 상태를 확인해 일관된 현재 스냅샷을 읽는다. AI 호출 성공 응답을 계약 버전·형식부터 검사한 뒤 B의 Capability 검증·추천 판정으로 넘긴다. AI 실패·파싱 실패·누락된 키는 새 성공 추천으로 저장하지 않고 기존 추천을 보존한다. A는 판정·전체 basis·Catalog hash를 하나의 저장 단위로 기록한다.
-2. **Preview:** A가 저장된 추천과 현재 basis/Environment를 다시 읽는다. B는 `RECOMMENDED`의 제공 도구만 허용하고, 승인된 Catalog 파일의 hash·지원 대상·조합·권한·템플릿을 검사한다. 기존 파일 원문과 Diff는 응답 생성 중에만 사용한다. A가 저장할 수 있는 것은 Preview ID·basis·fingerprint·만료와 필요한 선택 메타데이터뿐이다.
+2. **Preview:** A가 저장된 추천과 현재 basis/Environment를 다시 읽는다. B는 `RECOMMENDED`의 제공 도구만 허용하고, 승인된 Catalog 파일의 hash·지원 대상·조합·권한·템플릿을 검사한다. 기존 파일 원문과 Diff는 응답 생성 중에만 사용한다. A가 저장할 수 있는 것은 Preview ID·basis·fingerprint·서버 생성 시각·만료와 필요한 선택 메타데이터뿐이다. 생성 시각은 저장 포트가 서버 시계로 발급하며 브라우저 입력을 사용하지 않는다.
 3. **승인·다운로드:** 최종 확인 요청에서 A는 현재 basis와 Preview 만료를 재조회한다. 승인은 서버 저장 지문에 묶는다. 다운로드 때도 A가 저장 승인·현재 basis를 재조회한 뒤 B가 같은 입력으로 ZIP을 재생성한다. A는 **이력 DB 저장이 성공한 뒤** 생성 완료 응답을 확정해야 한다. ZIP bytes 생성 성공만으로 이력 저장 성공이나 사용자 PC 적용을 주장하지 않는다.
 4. **변경·삭제:** Project/Profile/Review/Developer/Environment/Catalog 또는 선택·권한·템플릿 변경 시 오래된 Preview/승인은 재확인이 필요하다. Project 삭제 시 B 메타데이터·사용자 보고·감사 범위도 A의 삭제 계약에 포함한다.
 

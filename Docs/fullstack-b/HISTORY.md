@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Preview temporal-order boundary (2026-10-10): stored Preview metadata now carries server-issued `createdAt`. The B creation boundary rejects inverted creation/expiry; approval and export reject a future Preview or an approval timestamp before Preview creation. Full `mvn verify` found 213 tests, no failures, one Windows symlink test skipped. A must issue and persist these timestamps from its server-side transaction; the B10/B11 top-level goals remain open.
+
 Catalog 근거 키 충돌 차단 (2026-10-07): 서로 다른 권한 매핑 두 개가 같은 문자열 근거 키가 되어 한 검증 출처가 조용히 덮이는 반례를 재현했다. 지원·권한·조합의 근거 키 충돌을 모두 릴리스 오류로 처리한다. `mvn clean verify`에서 112개 발견, 111개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.
 
 Catalog JSON 후행 데이터 차단 (2026-10-06): 매니페스트·내용 파일·템플릿 인덱스의 유효 JSON 뒤에 두 번째 JSON 객체를 붙여도 읽히는 반례 세 개를 재현했다. 세 파서 모두 후행 토큰을 거부한다. `mvn clean verify`에서 111개 발견, 110개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.
