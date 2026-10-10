@@ -18,9 +18,13 @@
 
 ## 로컬 관찰
 
-`npm install --prefix <격리 폴더> --ignore-scripts --no-audit --no-fund @playwright/mcp@0.0.83`으로 전역 설치·사용자 설정 변경 없이 패키지를 받았다. `node <격리 폴더>/node_modules/@playwright/mcp/cli.js --help`가 완료됐다. 같은 CLI의 stdio에 MCP `initialize` 요청을 보내 `serverInfo.name=Playwright`, `serverInfo.version=1.64.0-alpha-1790635538000` 응답을 받았고, `tools/list`에서 25개 도구를 확인했다. 목록에는 `browser_navigate`, `browser_snapshot`, `browser_click`과 `browser_run_code_unsafe`가 포함됐다. 조사 뒤 격리 폴더를 삭제했다.
+`npm install --prefix <격리 폴더> --ignore-scripts --no-audit --no-fund @playwright/mcp@0.0.83`으로 전역 설치·사용자 설정 변경 없이 패키지를 받았다. `node <격리 폴더>/node_modules/@playwright/mcp/cli.js --help`가 완료됐다. 같은 CLI의 stdio에 MCP `initialize` 요청을 보내 `serverInfo.name=Playwright`, `serverInfo.version=1.64.0-alpha-1790635538000` 응답을 받았고, `tools/list`에서 25개 도구를 확인했다. 목록에는 `browser_navigate`, `browser_snapshot`, `browser_click`과 `browser_run_code_unsafe`가 포함됐다.
 
-이는 **패키지 시작·MCP 핸드셰이크·도구 목록**만 확인한 것이다. 브라우저 실행·페이지 검증, Claude Code를 통한 MCP 연결, 쓰기·외부 연결 권한, 인증/Secret, Windows 적용 파일, 실패 복구, 다른 도구와의 조합은 시험하지 않았다. 특히 `browser_run_code_unsafe`가 포함되므로 사용자에게 제시할 권한 범위와 허용 작업을 정하기 전에는 설정을 생성하거나 추천하지 않는다. 현재 이 후보의 Catalog 검사는 `documentation`·`format`·`standalone` 모두 `NOT_RUN`으로 취급한다.
+이어 설치된 Microsoft Edge를 `--browser msedge --headless --isolated`로 실행했다. 제한된 샌드박스에서는 Edge의 임시 프로필 파일 쓰기가 실패했으나, 일반 실행 환경에서 MCP `browser_navigate`가 `data:text/html,...<h1>AgentFit Pilot</h1>`을 열었고 생성된 접근성 스냅샷에 `heading "AgentFit Pilot"`이 있었다. 외부 사이트나 사용자 파일은 열지 않았다.
+
+Claude Code `2.1.270`에서도 사용자·프로젝트 MCP 설정을 수정하지 않고 임시 `--mcp-config`와 `--strict-mcp-config`로 같은 서버를 연결했다. 첫 호출은 Client의 도구 권한에서 거부됐다. 다음 호출에서 `browser_navigate`만 `--allowedTools`로 허용하자 Client가 페이지 제목을 반환했고, 같은 격리 폴더에 접근성 스냅샷이 생성됐다. 별도 `browser_snapshot` 호출은 허용하지 않아 거부됐다. 이 결과는 **해당 로컬 페이지에 한정된 Claude Code → MCP → Edge 탐색 파일럿 성공**이다. 테스트 파일과 설치 폴더는 조사 후 제거했다.
+
+이 파일럿으로 패키지 시작·MCP 핸드셰이크·로컬 페이지 탐색을 확인했다. 실제 업무 페이지의 검증, 쓰기·외부 연결 권한, 인증/Secret, 제품 설정 템플릿, 실패 복구, 다른 도구와의 조합은 시험하지 않았다. 특히 `browser_run_code_unsafe`가 포함되므로 사용자에게 제시할 권한 범위와 허용 작업을 정하기 전에는 설정을 생성하거나 추천하지 않는다. 현재 이 후보의 **제품 Catalog 지원 행**은 `documentation`·`format`·`standalone` 모두 `NOT_RUN`으로 취급한다. 개별 파일럿 관찰을 제품 지원 범위 전체의 `PASS`로 승격하지 않는다.
 
 ## 실제 릴리스에 앞서 필요한 결정·시험
 
