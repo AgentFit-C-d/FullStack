@@ -1,11 +1,13 @@
-package com.agentfit.coreapi.catalog;
+package com.agentfit.autoconfigure;
 
+import com.agentfit.coreapi.catalog.AuthenticatedCatalogQueryService;
+import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /** Activate Catalog queries only after A supplies authentication and an approved release exists. */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration(after = CatalogSourceConfiguration.class)
 public class AuthenticatedCatalogQueryConfiguration {
     @Bean
     @ConditionalOnBean({AuthenticatedCatalogQueryService.AuthenticatedCaller.class,

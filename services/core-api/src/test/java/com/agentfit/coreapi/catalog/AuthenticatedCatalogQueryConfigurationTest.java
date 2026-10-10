@@ -1,9 +1,12 @@
 package com.agentfit.coreapi.catalog;
 
+import com.agentfit.autoconfigure.AuthenticatedCatalogQueryConfiguration;
+import com.agentfit.autoconfigure.CatalogSourceConfiguration;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,8 +17,8 @@ class AuthenticatedCatalogQueryConfigurationTest {
     void queryIsUnavailableUntilAuthenticationAndApprovedCatalogAreConfigured() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class,
-                AuthenticatedCatalogQueryConfiguration.class);
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                AuthenticatedCatalogQueryConfiguration.class));
 
         runner.run(context -> assertFalse(context.containsBean("authenticatedCatalogQueryService")));
         runner.withBean(AuthenticatedCatalogQueryService.AuthenticatedCaller.class,
@@ -30,8 +33,8 @@ class AuthenticatedCatalogQueryConfigurationTest {
     void authenticatedQueryUsesServerApprovedCatalogWhenBothPortsExist() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class,
-                AuthenticatedCatalogQueryConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                AuthenticatedCatalogQueryConfiguration.class))
             .withPropertyValues("agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash)
             .withBean(AuthenticatedCatalogQueryService.AuthenticatedCaller.class,

@@ -1,11 +1,12 @@
-package com.agentfit.coreapi.recommendation;
+package com.agentfit.autoconfigure;
 
+import com.agentfit.coreapi.recommendation.RecommendationLatestService;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /** Latest reads never activate without A's owner-checked basis and stored recommendation. */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration
 public class RecommendationLatestConfiguration {
     @Bean
     @ConditionalOnBean({RecommendationLatestService.OwnerCheckedBasisReader.class,

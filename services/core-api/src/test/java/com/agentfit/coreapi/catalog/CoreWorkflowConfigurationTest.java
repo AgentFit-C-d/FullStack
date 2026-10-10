@@ -1,5 +1,7 @@
 package com.agentfit.coreapi.catalog;
 
+import com.agentfit.autoconfigure.CatalogSourceConfiguration;
+import com.agentfit.autoconfigure.CoreWorkflowConfiguration;
 import com.agentfit.coreapi.CoreApiApplication;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
@@ -11,6 +13,9 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,7 +26,8 @@ class CoreWorkflowConfigurationTest {
     void neitherWorkflowActivatesWithOnlyTheApprovedCatalog() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class, CoreWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                CoreWorkflowConfiguration.class))
             .withPropertyValues("agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash)
             .run(context -> {
@@ -34,7 +40,8 @@ class CoreWorkflowConfigurationTest {
     void recommendationActivatesOnlyWithOwnerSnapshotAiAndAtomicStore() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class, CoreWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                CoreWorkflowConfiguration.class))
             .withPropertyValues("agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash)
             .withBean(RecommendationCreationService.OwnerCheckedSnapshotReader.class,
@@ -64,7 +71,8 @@ class CoreWorkflowConfigurationTest {
     void previewActivatesOnlyWithTrustedContextAndAtomicStore() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class, CoreWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                CoreWorkflowConfiguration.class))
             .withPropertyValues("agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash)
             .withBean(PreviewCreationService.TrustedContextReader.class,
@@ -90,5 +98,30 @@ class CoreWorkflowConfigurationTest {
             .withBean(RecommendationCreationService.RecommendationStore.class,
                 () -> (snapshot, basis, result) -> null)
             .run(context -> assertNotNull(context.getBean(RecommendationCreationService.class)));
+    }
+
+    @Test
+    void recommendationActivatesWhenAdaptersAreDeclaredInALaterConfiguration() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        new ApplicationContextRunner()
+            .withUserConfiguration(LaterRecommendationPorts.class)
+            .withConfiguration(AutoConfigurations.of(CoreWorkflowConfiguration.class,
+                CatalogSourceConfiguration.class))
+            .withPropertyValues("agentfit.catalog.directory=" + directory,
+                "agentfit.catalog.approved-hash=" + hash)
+            .run(context -> assertNotNull(context.getBean(RecommendationCreationService.class)));
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    static class LaterRecommendationPorts {
+        @Bean RecommendationCreationService.OwnerCheckedSnapshotReader snapshots() {
+            return projectId -> null;
+        }
+        @Bean RecommendationCreationService.CapabilityAnalyzer analyzer() {
+            return snapshot -> null;
+        }
+        @Bean RecommendationCreationService.RecommendationStore store() {
+            return (snapshot, basis, result) -> null;
+        }
     }
 }

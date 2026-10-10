@@ -1,12 +1,15 @@
-package com.agentfit.coreapi.catalog;
+package com.agentfit.autoconfigure;
 
+import com.agentfit.coreapi.catalog.ApprovalCreationService;
+import com.agentfit.coreapi.catalog.ConfigurationDownloadService;
+import com.agentfit.coreapi.catalog.RecommendationCreationService;
 import java.time.Clock;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /** A supplies server-issued IDs, clock, owner-checked readers, and atomic persistence ports. */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration(after = CatalogSourceConfiguration.class)
 public class FinalizationWorkflowConfiguration {
     public interface ServerIssuedIds {
         String approvalId();

@@ -1,10 +1,12 @@
 package com.agentfit.coreapi.catalog;
 
+import com.agentfit.autoconfigure.CatalogSourceConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,7 +37,7 @@ class ServerConfiguredCatalogReaderTest {
     void springExposesNoCatalogWithoutBothServerSettings() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class);
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class));
 
         runner.run(context -> assertFalse(context.containsBean("approvedCatalogReader")));
         runner.withPropertyValues("agentfit.catalog.directory=" + directory)

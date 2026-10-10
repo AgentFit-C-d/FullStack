@@ -1,11 +1,13 @@
-package com.agentfit.coreapi.catalog;
+package com.agentfit.autoconfigure;
 
+import com.agentfit.coreapi.catalog.PreviewCreationService;
+import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /** B workflows activate only after their trusted A/AI ports and approved Catalog exist. */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration(after = CatalogSourceConfiguration.class)
 public class CoreWorkflowConfiguration {
     @Bean
     @ConditionalOnBean({RecommendationCreationService.OwnerCheckedSnapshotReader.class,

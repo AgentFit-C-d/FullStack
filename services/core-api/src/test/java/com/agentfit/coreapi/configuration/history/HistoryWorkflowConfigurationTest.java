@@ -1,11 +1,13 @@
 package com.agentfit.coreapi.configuration.history;
 
+import com.agentfit.autoconfigure.HistoryWorkflowConfiguration;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReportService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,7 +15,7 @@ class HistoryWorkflowConfigurationTest {
     @Test
     void historyQueryNeedsAllThreeOwnerCheckedReaders() {
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(HistoryWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(HistoryWorkflowConfiguration.class))
             .withBean(ConfigurationHistoryQueryService.OwnerCheckedBasisReader.class,
                 () -> projectId -> null)
             .withBean(ConfigurationHistoryQueryService.GenerationReader.class,
@@ -28,7 +30,7 @@ class HistoryWorkflowConfigurationTest {
     @Test
     void userReportNeedsTrustedGenerationStoreServerIdAndClock() {
         var runner = new ApplicationContextRunner()
-            .withUserConfiguration(HistoryWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(HistoryWorkflowConfiguration.class))
             .withBean(ConfigurationUserReportService.TrustedGenerationReader.class,
                 () -> (projectId, generationId) -> null)
             .withBean(ConfigurationUserReportService.ReportStore.class,

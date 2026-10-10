@@ -1,5 +1,7 @@
 package com.agentfit.coreapi.catalog;
 
+import com.agentfit.autoconfigure.CatalogSourceConfiguration;
+import com.agentfit.autoconfigure.FinalizationWorkflowConfiguration;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -7,6 +9,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -69,8 +72,8 @@ class FinalizationWorkflowConfigurationTest {
 
     private ApplicationContextRunner configured(String hash) {
         return new ApplicationContextRunner()
-            .withUserConfiguration(CatalogSourceConfiguration.class,
-                FinalizationWorkflowConfiguration.class)
+            .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,
+                FinalizationWorkflowConfiguration.class))
             .withPropertyValues("agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash);
     }

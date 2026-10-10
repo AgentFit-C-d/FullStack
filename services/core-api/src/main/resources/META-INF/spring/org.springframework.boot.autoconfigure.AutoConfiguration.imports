@@ -1,0 +1,6 @@
+com.agentfit.autoconfigure.CatalogSourceConfiguration
+com.agentfit.autoconfigure.AuthenticatedCatalogQueryConfiguration
+com.agentfit.autoconfigure.CoreWorkflowConfiguration
+com.agentfit.autoconfigure.FinalizationWorkflowConfiguration
+com.agentfit.autoconfigure.HistoryWorkflowConfiguration
+com.agentfit.autoconfigure.RecommendationLatestConfiguration
