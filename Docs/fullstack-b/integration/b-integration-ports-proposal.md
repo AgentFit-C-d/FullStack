@@ -20,6 +20,7 @@
 | `ApprovedConfigurationGenerator` | A가 부여한 generation ID와 서버 시계, 조회된 승인 상태 | ZIP 성공 후 경로·동작·해시만 포함한 이력 반환 | ZIP 생성 후 DB 저장 실패 시 응답/재시도, 이력·감사 저장과 삭제 cascade |
 | `ConfigurationDownloadService.download` | A의 소유권 확인된 현재 추천/Preview/승인/환경과 승인 Catalog, 서버 generation ID·시계, A의 원자적 이력 저장 | 승인된 ZIP 재생성 뒤 내용 없는 이력 저장 ID가 일치해야 ZIP bytes 반환 | 실제 A 저장·중복 다운로드 처리·HTTP 전송/연결 종료/재시도 규칙 |
 | `ConfigurationUserReport.accept` | 소유권을 확인한 generation ID, 사용자 APPLIED/FAILED 보고 | 사용자 진술로 표시하고 서버 시각 부여 | 보고 저장·조회 주체와 실패 코드 공개 계약 |
+| `ConfigurationUserReportService.report` | A가 소유권 확인한 생성 이력 ID·생성 시각, A의 보고 저장 포트 | APPLIED/FAILED만 검증하고 서버 시각·USER 출처를 부여한 뒤 저장 성공을 확인; 검증 완료로 승격하지 않음 | 실제 A 저장·중복 보고/최신 보고 조회·삭제·HTTP 오류 계약 |
 
 ## 연결 순서와 저장 효과
 
