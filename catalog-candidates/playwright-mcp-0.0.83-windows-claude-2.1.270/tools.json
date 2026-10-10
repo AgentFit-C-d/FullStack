@@ -1,0 +1,1 @@
+{"schemaVersion":1,"items":[{"key":"playwright-mcp","name":"Playwright MCP","kind":"MCP","sourceUrl":"https://github.com/microsoft/playwright-mcp","version":"0.0.83","capabilityKeys":["cap_browser_verification"],"includedComponentKeys":["playwright-mcp"]}]}
