@@ -17,10 +17,16 @@ import java.util.Set;
 public final class CatalogReadService {
     private CatalogReadService() {}
 
-    public record Filter(String osFamily, String clientId, String capabilityKey) {
+    public record Filter(String osFamily, String clientId, String clientVersion,
+                         String capabilityKey) {
+        public Filter(String osFamily, String clientId, String capabilityKey) {
+            this(osFamily, clientId, null, capabilityKey);
+        }
+
         public Filter {
             if (osFamily != null && osFamily.isBlank()
                 || clientId != null && clientId.isBlank()
+                || clientVersion != null && clientVersion.isBlank()
                 || capabilityKey != null && capabilityKey.isBlank()
                 || capabilityKey != null && !CapabilityKey.keys().contains(capabilityKey)) {
                 throw new IllegalArgumentException("invalid Catalog filter");
@@ -75,7 +81,9 @@ public final class CatalogReadService {
                     .thenComparing(ToolSupport::clientId)
                     .thenComparing(ToolSupport::clientVersion)).toList()) {
                 if (filter.osFamily() != null && !filter.osFamily().equals(row.osFamily())
-                    || filter.clientId() != null && !filter.clientId().equals(row.clientId())) continue;
+                    || filter.clientId() != null && !filter.clientId().equals(row.clientId())
+                    || filter.clientVersion() != null
+                        && !filter.clientVersion().equals(row.clientVersion())) continue;
                 var evidence = parsed.evidence().get("support:" + row.key());
                 if (evidence == null) throw unavailable("support evidence missing");
                 boolean verified = row.documentation() == ToolSupport.Check.PASS
@@ -85,7 +93,8 @@ public final class CatalogReadService {
                     row.clientVersion(), row.documentation(), row.format(), row.standalone(),
                     verified, evidence));
             }
-            if ((filter.osFamily() != null || filter.clientId() != null) && support.isEmpty()) continue;
+            if ((filter.osFamily() != null || filter.clientId() != null
+                || filter.clientVersion() != null) && support.isEmpty()) continue;
             List<Permission> permissions = new ArrayList<>();
             for (PermissionMapping mapping : parsed.permissionMappings().stream()
                 .filter(row -> row.toolKey().equals(tool.key()))

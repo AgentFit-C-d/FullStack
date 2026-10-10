@@ -52,6 +52,19 @@ class CatalogReadServiceTest {
     }
 
     @Test
+    void filtersSupportByExactClientVersionAndOmitsToolsWithoutMatchingRow() {
+        var first = CatalogReadService.list(parsed(), HASH,
+            new CatalogReadService.Filter("WINDOWS", "claude-code", "1.0", "cap_document_reference"));
+        assertEquals(1, first.items().size());
+        assertEquals(List.of("1.0"), first.items().getFirst().support().stream()
+            .map(CatalogReadService.Support::clientVersion).toList());
+
+        var unsupported = CatalogReadService.list(parsed(), HASH,
+            new CatalogReadService.Filter("WINDOWS", "claude-code", "3.0", "cap_document_reference"));
+        assertTrue(unsupported.items().isEmpty());
+    }
+
+    @Test
     void refusesUnapprovedHashAndUnknownCapabilityFilter() {
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadService.list(parsed(), "b".repeat(64),
