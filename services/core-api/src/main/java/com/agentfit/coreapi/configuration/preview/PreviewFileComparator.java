@@ -91,7 +91,9 @@ public final class PreviewFileComparator {
 
     private static void validatePath(String path) {
         if (path == null || path.isBlank() || path.startsWith("/") || path.contains("\\")
-            || path.contains(":") || path.length() > 200) throw invalid("unsafe relative path");
+            || path.contains(":") || path.codePointCount(0, path.length()) > 200) {
+            throw invalid("unsafe relative path");
+        }
         for (String part : path.split("/", -1)) {
             if (part.isEmpty() || part.equals(".") || part.equals("..")
                 || part.endsWith(".") || part.endsWith(" ")

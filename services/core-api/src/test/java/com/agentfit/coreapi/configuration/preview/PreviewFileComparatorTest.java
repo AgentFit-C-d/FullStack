@@ -93,6 +93,20 @@ class PreviewFileComparatorTest {
     }
 
     @Test
+    void pathLimitCountsUnicodeCodePointsRatherThanUtf16Units() {
+        String accepted = "😀".repeat(99) + ".txt";
+        String rejected = "😀".repeat(197) + ".txt";
+
+        assertEquals(103, accepted.codePointCount(0, accepted.length()));
+        assertEquals(201, rejected.codePointCount(0, rejected.length()));
+        assertEquals(1, PreviewFileComparator.compare(
+            List.of(file("client", accepted, "hello")), ExistingState.UNKNOWN, List.of()).size());
+        assertThrows(PreviewFileComparator.InvalidPreviewInputException.class,
+            () -> PreviewFileComparator.compare(
+                List.of(file("client", rejected, "hello")), ExistingState.UNKNOWN, List.of()));
+    }
+
+    @Test
     void preservesBomAndLineEndingsInHashesAndDiff() {
         PreviewFile result = PreviewFileComparator.compare(
             List.of(file("client", "config.txt", "\uFEFFhello\r\n")), ExistingState.PROVIDED,
