@@ -16,6 +16,7 @@
 | `RecommendationPreviewGate` → `CatalogPreviewAssembler` | A가 소유권 확인 후 조회한 현재 추천 ID/status/tool keys/basis와 별도 현재 Environment target; 요청의 선택·정책·기존 파일 | 추천 밖 도구·stale basis·대상 불일치·미검증 Catalog/권한/템플릿 차단 | 추천·Preview 저장 ID, 요청 전체 JSON 한도, 인증/오류 규칙 |
 | `PreviewCreationService.create` | A가 인증·소유권 확인한 현재 추천/basis/Environment, 독립 승인 Catalog, 저장 직전 버전 재검사·원자적 저장 포트 | 검증된 Preview가 만들어져도 저장 성공 전에는 결과를 반환하지 않음; 저장 포트에는 선택·정책·지문 등 내용 없는 Draft만 전달 | 실제 A 저장 구현·만료/ID 발급, 공개 POST·오류 매핑, 기존 파일 원문 재제출 UX |
 | `CatalogReadyPreviewApprovalWorkflow` → `CatalogApprovedConfigurationWorkflow` | 승인 시 A가 조회한 READY Preview·활성 승인 Catalog·현재 basis·제출 지문·확인값; export 시 저장 승인과 재제출한 PreviewInput | 승인에서는 Catalog 파일·저장 지문·만료·현재 basis, export에서는 승인 Catalog 기반 재생성 지문과 ZIP bytes 확인 | READY/소유권 조회, 승인 저장 트랜잭션, 입력 원문 비보관, 중복 요청, Catalog 승인 철회 처리 |
+| `ApprovalCreationService.approve` | A의 소유권 확인된 READY Preview·현재 basis, 서버 승인 ID·시계, A의 원자적 승인/감사 저장 | 명시적 확인·현재성·만료·승인 Catalog 검증 후 발급하고, 저장 포트가 같은 승인 메타데이터를 반환한 뒤에만 성공 처리 | 실제 A 저장/감사·중복 요청·공개 승인 API 연결 |
 | `ApprovedConfigurationGenerator` | A가 부여한 generation ID와 서버 시계, 조회된 승인 상태 | ZIP 성공 후 경로·동작·해시만 포함한 이력 반환 | ZIP 생성 후 DB 저장 실패 시 응답/재시도, 이력·감사 저장과 삭제 cascade |
 | `ConfigurationUserReport.accept` | 소유권을 확인한 generation ID, 사용자 APPLIED/FAILED 보고 | 사용자 진술로 표시하고 서버 시각 부여 | 보고 저장·조회 주체와 실패 코드 공개 계약 |
 
