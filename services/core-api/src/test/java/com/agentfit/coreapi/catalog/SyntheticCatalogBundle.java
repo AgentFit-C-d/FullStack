@@ -22,15 +22,19 @@ final class SyntheticCatalogBundle {
     }
 
     static String write(Path directory, boolean includeTemplate, String templateContent) throws Exception {
-        return write(directory, includeTemplate, templateContent, false);
+        return write(directory, includeTemplate, templateContent, false, false);
     }
 
     static String writeWithFallback(Path directory, String firstTemplateContent) throws Exception {
-        return write(directory, true, firstTemplateContent, true);
+        return write(directory, true, firstTemplateContent, true, false);
+    }
+
+    static String writeWithOversizedCombination(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", true, true);
     }
 
     private static String write(Path directory, boolean includeTemplate, String templateContent,
-                                boolean includeFallback) throws Exception {
+                                boolean includeFallback, boolean oversizedCombination) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -54,7 +58,11 @@ final class SyntheticCatalogBundle {
                 + "\"evidenceUrl\":\"https://example.org/review-fallback\","
                 + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
-            + "\"verifiedCombinations\":[]}");
+            + "\"verifiedCombinations\":["
+            + (oversizedCombination ? "{\"toolKeys\":[\"example-tool\",\"fallback-tool\"],"
+                + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
+                + "\"clientVersion\":\"1.0\",\"evidenceUrl\":\"https://example.org/combination\","
+                + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
         files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[{\"toolKey\":\"example-tool\","
             + "\"mappingKey\":\"read\",\"required\":false,"
             + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
@@ -66,14 +74,27 @@ final class SyntheticCatalogBundle {
                 + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
         files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
         if (includeTemplate) {
-            files.put("templates/index.json", "{\"schemaVersion\":1,\"items\":[{"
+            StringBuilder index = new StringBuilder("{\"schemaVersion\":1,\"items\":[{"
                 + "\"toolKey\":\"example-tool\",\"targetKey\":\"main\","
                 + "\"relativePath\":\"config/main.txt\",\"sourcePath\":\"templates/main.txt\"}"
                 + (includeFallback ? ", {\"toolKey\":\"fallback-tool\","
                     + "\"targetKey\":\"fallback\",\"relativePath\":\"config/fallback.txt\","
-                    + "\"sourcePath\":\"templates/fallback.txt\"}" : "") + "]}");
+                    + "\"sourcePath\":\"templates/fallback.txt\"}" : ""));
             files.put("templates/main.txt", templateContent);
             if (includeFallback) files.put("templates/fallback.txt", "fallback config\n");
+            if (oversizedCombination) {
+                for (int number = 0; number < 10; number++) {
+                    for (String tool : new String[] {"example-tool", "fallback-tool"}) {
+                        String path = "guides/" + tool + "-" + number + ".txt";
+                        index.append(",{\"toolKey\":\"").append(tool)
+                            .append("\",\"targetKey\":\"").append(tool).append("-").append(number)
+                            .append("\",\"relativePath\":\"guide/").append(tool).append("-")
+                            .append(number).append(".txt\",\"sourcePath\":\"").append(path).append("\"}");
+                        files.put(path, "reviewed guide\n");
+                    }
+                }
+            }
+            files.put("templates/index.json", index.append("]}").toString());
         }
         StringBuilder preimage = new StringBuilder("agentfit-catalog-v1\nsynthetic-recommendation\n");
         StringBuilder entries = new StringBuilder();

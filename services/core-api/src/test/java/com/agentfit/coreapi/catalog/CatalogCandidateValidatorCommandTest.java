@@ -50,6 +50,33 @@ class CatalogCandidateValidatorCommandTest {
         assertTrue(invalidSchema.stdout().isEmpty());
     }
 
+    @Test
+    void rejectsVerifiedToolWithoutRenderableOutput() throws Exception {
+        SyntheticCatalogBundle.write(directory, false);
+        var result = run(directory);
+        assertEquals(1, result.exitCode());
+        assertTrue(result.stderr().contains("CANDIDATE_INVALID"));
+        assertTrue(result.stdout().isEmpty());
+    }
+
+    @Test
+    void rejectsVerifiedToolWhoseOutputExceedsPreviewBudget() throws Exception {
+        SyntheticCatalogBundle.write(directory, true, "x".repeat(100_001));
+        var result = run(directory);
+        assertEquals(1, result.exitCode());
+        assertTrue(result.stderr().contains("CANDIDATE_INVALID"));
+        assertTrue(result.stdout().isEmpty());
+    }
+
+    @Test
+    void rejectsReviewedCombinationWhoseCombinedOutputExceedsPreviewBudget() throws Exception {
+        SyntheticCatalogBundle.writeWithOversizedCombination(directory);
+        var result = run(directory);
+        assertEquals(1, result.exitCode());
+        assertTrue(result.stderr().contains("CANDIDATE_INVALID"));
+        assertTrue(result.stdout().isEmpty());
+    }
+
     private Result run(Path release) {
         var stdout = new ByteArrayOutputStream();
         var stderr = new ByteArrayOutputStream();
