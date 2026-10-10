@@ -16,6 +16,10 @@
 
 [공식 README](https://github.com/microsoft/playwright-mcp#readme)는 Claude Code에 MCP 서버를 추가하는 방법과 Node.js 요구사항을 제시한다. 다만 README의 `@latest` 예시는 제품 Catalog에 그대로 쓰지 않고 고정 버전의 파일·명령·의존성을 검토해야 한다.
 
+## 고정 배포물 무결성
+
+2026-10-10 npm 레지스트리의 `@playwright/mcp@0.0.83` 메타데이터에서 tarball URL `https://registry.npmjs.org/@playwright/mcp/-/mcp-0.0.83.tgz`와 `dist.integrity=sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==`를 확인했다. `npm pack`으로 격리 폴더에 받은 24,095-byte archive의 SHA-512를 별도로 계산해 같은 SRI 값임을 확인했다. 레지스트리의 `repository.url`은 Microsoft 저장소를 가리키고, 패키지의 Node 요구사항은 `>=18`이며 Playwright 종속성은 `1.64.0-alpha-1790635538000`이다. 이 검사는 내려받은 bytes와 레지스트리 메타데이터의 일치만 확인한다. 게시자 신원·코드 안전성·알파 종속성의 운영 적합성이나 AgentFit의 독립 릴리스 승인을 대신하지 않는다. 받은 archive는 검사 후 삭제했다.
+
 ## 로컬 관찰
 
 `npm install --prefix <격리 폴더> --ignore-scripts --no-audit --no-fund @playwright/mcp@0.0.83`으로 전역 설치·사용자 설정 변경 없이 패키지를 받았다. `node <격리 폴더>/node_modules/@playwright/mcp/cli.js --help`가 완료됐다. 같은 CLI의 stdio에 MCP `initialize` 요청을 보내 `serverInfo.name=Playwright`, `serverInfo.version=1.64.0-alpha-1790635538000` 응답을 받았고, `tools/list`에서 25개 도구를 확인했다. 목록에는 `browser_navigate`, `browser_snapshot`, `browser_click`과 `browser_run_code_unsafe`가 포함됐다.
