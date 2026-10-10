@@ -32,7 +32,8 @@ class ApprovedPreviewZipExporterTest {
     }
 
     private StoredPreviewState preview(String fingerprint) {
-        return new StoredPreviewState("preview-1", basis(), fingerprint, PREVIEW_EXPIRY);
+        return new StoredPreviewState("preview-1", basis(), fingerprint,
+            NOW.minusSeconds(120), PREVIEW_EXPIRY);
     }
 
     private StoredApprovalState approval(String fingerprint) {
@@ -96,6 +97,19 @@ class ApprovedPreviewZipExporterTest {
             fingerprint, NOW.minusSeconds(60), PREVIEW_EXPIRY.plusSeconds(1));
         assertThrows(ApprovedPreviewZipExporter.InvalidApprovalException.class,
             () -> ApprovedPreviewZipExporter.export(preview(fingerprint), tooLong, basis(),
+                "approval-1", "preview-1", fingerprint, input, NOW));
+    }
+
+    @Test
+    void rejectsApprovalRecordedBeforePreviewCreation() {
+        PreviewFingerprintInput input = input("safe config\n");
+        String fingerprint = PreviewFingerprint.compute(input).fingerprint();
+        StoredPreviewState preview = new StoredPreviewState("preview-1", basis(), fingerprint,
+            NOW.minusSeconds(30), PREVIEW_EXPIRY);
+        StoredApprovalState earlierApproval = new StoredApprovalState("approval-1", "preview-1",
+            fingerprint, NOW.minusSeconds(60), PREVIEW_EXPIRY);
+        assertThrows(ApprovedPreviewZipExporter.InvalidApprovalException.class,
+            () -> ApprovedPreviewZipExporter.export(preview, earlierApproval, basis(),
                 "approval-1", "preview-1", fingerprint, input, NOW));
     }
 }

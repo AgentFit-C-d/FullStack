@@ -21,7 +21,8 @@ public final class ApprovedPreviewZipExporter {
             || blank(preview.previewId()) || blank(approval.approvalId())
             || blank(approval.previewId()) || blank(requestedApprovalId)
             || blank(requestedPreviewId) || approval.approvedAt() == null
-            || approval.expiresAt() == null || preview.expiresAt() == null
+            || approval.expiresAt() == null || preview.createdAt() == null
+            || preview.expiresAt() == null
             || !hash(approval.fingerprint()) || !hash(preview.fingerprint())) {
             throw invalid("incomplete approval state");
         }
@@ -31,7 +32,8 @@ public final class ApprovedPreviewZipExporter {
             || !same(approval.fingerprint(), preview.fingerprint())) {
             throw invalid("approval does not match Preview");
         }
-        if (!approval.approvedAt().isBefore(approval.expiresAt())
+        if (approval.approvedAt().isBefore(preview.createdAt())
+            || !approval.approvedAt().isBefore(approval.expiresAt())
             || approval.approvedAt().isAfter(now)
             || approval.expiresAt().isAfter(preview.expiresAt())) {
             throw invalid("invalid approval lifetime");

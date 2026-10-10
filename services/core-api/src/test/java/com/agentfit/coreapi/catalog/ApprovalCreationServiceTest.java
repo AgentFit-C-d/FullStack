@@ -75,6 +75,7 @@ class ApprovalCreationServiceTest {
         var basis = new PreviewBasis("project-1", 1, "profile-1", 1, "event-1",
             0, 0, 1, "synthetic-recommendation", hash);
         return new ApprovalCreationService.TrustedContext(basis,
-            new StoredPreviewState("preview-1", basis, "b".repeat(64), NOW.plusSeconds(600)));
+            new StoredPreviewState("preview-1", basis, "b".repeat(64),
+                NOW.minusSeconds(60), NOW.plusSeconds(600)));
     }
 }

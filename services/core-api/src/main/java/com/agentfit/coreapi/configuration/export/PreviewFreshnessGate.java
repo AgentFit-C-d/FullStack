@@ -27,9 +27,14 @@ public final class PreviewFreshnessGate {
     public static void requireStoredCurrent(StoredPreviewState stored, PreviewBasis currentBasis,
                                             String submittedFingerprint, Instant now) {
         if (stored == null || blank(stored.previewId()) || stored.basis() == null
-            || currentBasis == null || stored.expiresAt() == null || now == null
+            || currentBasis == null || stored.createdAt() == null
+            || stored.expiresAt() == null || now == null
             || !hash(stored.fingerprint()) || !hash(submittedFingerprint)) {
             throw new InvalidPreviewStateException("incomplete Preview state");
+        }
+        if (!stored.createdAt().isBefore(stored.expiresAt())
+            || now.isBefore(stored.createdAt())) {
+            throw new InvalidPreviewStateException("invalid Preview lifetime");
         }
         if (!stored.basis().equals(currentBasis)) {
             throw new StalePreviewException("Preview basis changed");

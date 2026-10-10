@@ -36,7 +36,8 @@ class ApprovedConfigurationGeneratorTest {
     private ApprovedConfigurationGenerator.Generated generate(PreviewFingerprintInput input,
                                                                String fingerprint, Instant expiry) {
         return ApprovedConfigurationGenerator.generate(
-            new StoredPreviewState("preview-1", BASIS, fingerprint, expiry),
+            new StoredPreviewState("preview-1", BASIS, fingerprint,
+                NOW.minusSeconds(120), expiry),
             new StoredApprovalState("approval-1", "preview-1", fingerprint,
                 NOW.minusSeconds(60), expiry), BASIS,
             "approval-1", "preview-1", fingerprint, input, "generation-1", CLOCK);

@@ -35,6 +35,7 @@ class PreviewCreationServiceTest {
                 assertEquals(64, draft.fingerprint().length());
                 saves.incrementAndGet();
                 return new StoredPreviewState("preview-1", draft.basis(), draft.fingerprint(),
+                    Instant.parse("2026-10-10T11:50:00Z"),
                     Instant.parse("2026-10-10T12:00:00Z"));
             });
 
@@ -74,6 +75,20 @@ class PreviewCreationServiceTest {
 
         assertThrows(RecommendationCreationService.SnapshotChangedException.class,
             () -> service.create("project-1", request));
+    }
+
+    @Test
+    void refusesStoredPreviewWithInvalidServerTimestamps() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        var service = new PreviewCreationService(
+            (projectId, recommendationId) -> context(request),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            (trusted, draft) -> new StoredPreviewState("preview-1", draft.basis(),
+                draft.fingerprint(), Instant.parse("2026-10-10T12:00:00Z"),
+                Instant.parse("2026-10-10T11:50:00Z")));
+
+        assertThrows(IllegalStateException.class, () -> service.create("project-1", request));
     }
 
     private static PreviewCreationService.TrustedContext context(CatalogPreviewRequest request) {

@@ -74,7 +74,8 @@ public final class PreviewCreationService {
         if (saved == null || saved.previewId() == null || saved.previewId().isBlank()
             || !context.currentBasis().equals(saved.basis())
             || !preview.fingerprint().equals(saved.fingerprint())
-            || saved.expiresAt() == null) {
+            || saved.createdAt() == null || saved.expiresAt() == null
+            || !saved.createdAt().isBefore(saved.expiresAt())) {
             throw new IllegalStateException("Preview metadata was not saved correctly");
         }
         return new Created(saved, preview);

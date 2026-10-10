@@ -42,7 +42,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         PreviewFingerprintResult previewResult = CatalogPreviewAssembler.assemble(directory, hash,
             recommendation, request.basis(), TARGET, request);
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
-            previewResult.fingerprint(), NOW.plusSeconds(600));
+            previewResult.fingerprint(), NOW.minusSeconds(60), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
             preview, request.basis(), "preview-1", previewResult.fingerprint(), true, "approval-1", CLOCK);
 
@@ -68,7 +68,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
             recommendation, request.basis(), TARGET, request);
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
-            result.fingerprint(), NOW.plusSeconds(600));
+            result.fingerprint(), NOW.minusSeconds(60), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
             preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
@@ -96,7 +96,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
             recommendation, request.basis(), TARGET, request);
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
-            result.fingerprint(), NOW.plusSeconds(600));
+            result.fingerprint(), NOW.minusSeconds(60), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
             preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
@@ -122,7 +122,7 @@ class CatalogApprovedConfigurationWorkflowTest {
         PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
             recommendation, request.basis(), TARGET, request);
         StoredPreviewState preview = new StoredPreviewState("preview-1", request.basis(),
-            result.fingerprint(), NOW.plusSeconds(600));
+            result.fingerprint(), NOW.minusSeconds(60), NOW.plusSeconds(600));
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
             preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 

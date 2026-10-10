@@ -19,7 +19,8 @@ class PreviewFreshnessGateTest {
     }
 
     private StoredPreviewState stored() {
-        return new StoredPreviewState("preview-1", basis(), HASH, EXPIRY);
+        return new StoredPreviewState("preview-1", basis(), HASH,
+            EXPIRY.minusSeconds(600), EXPIRY);
     }
 
     private PreviewFingerprintResult regenerated() {
@@ -86,5 +87,14 @@ class PreviewFreshnessGateTest {
         assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
             () -> PreviewFreshnessGate.requireCurrent(stored(), basis(), "not-a-hash",
                 regenerated(), EXPIRY.minusSeconds(1)));
+    }
+
+    @Test
+    void rejectsPreviewThatHasNotBeenCreatedYet() {
+        StoredPreviewState future = new StoredPreviewState("preview-1", basis(), HASH,
+            EXPIRY.minusSeconds(30), EXPIRY);
+        assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
+            () -> PreviewFreshnessGate.requireStoredCurrent(future, basis(), HASH,
+                EXPIRY.minusSeconds(60)));
     }
 }

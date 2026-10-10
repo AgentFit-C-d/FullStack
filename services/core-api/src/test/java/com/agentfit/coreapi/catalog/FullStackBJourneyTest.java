@@ -56,7 +56,8 @@ class FullStackBJourneyTest {
         PreviewFingerprintResult result = CatalogPreviewAssembler.assemble(directory, hash,
             storedRecommendation, basis, target, request);
         StoredPreviewState preview = new StoredPreviewState("preview-1", basis,
-            result.fingerprint(), Instant.now(clock).plusSeconds(600));
+            result.fingerprint(), Instant.now(clock).minusSeconds(60),
+            Instant.now(clock).plusSeconds(600));
 
         PreviewBasis changedEnvironment = basis(hash, 2);
         assertThrows(IllegalStateException.class,

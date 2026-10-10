@@ -68,6 +68,7 @@ class CatalogReadyPreviewApprovalWorkflowTest {
     }
 
     private static StoredPreviewState preview(PreviewBasis basis) {
-        return new StoredPreviewState("preview-1", basis, FINGERPRINT, NOW.plusSeconds(600));
+        return new StoredPreviewState("preview-1", basis, FINGERPRINT,
+            NOW.minusSeconds(60), NOW.plusSeconds(600));
     }
 }

@@ -102,7 +102,7 @@ class ConfigurationDownloadServiceTest {
         var fingerprint = CatalogPreviewAssembler.assemble(directory, hash, rec, request.basis(),
             request.target(), request).fingerprint();
         var preview = new StoredPreviewState("preview-1", request.basis(), fingerprint,
-            NOW.plusSeconds(600));
+            NOW.minusSeconds(120), NOW.plusSeconds(600));
         var approval = new StoredApprovalState("approval-1", "preview-1", fingerprint,
             NOW.minusSeconds(60), NOW.plusSeconds(600));
         return new ConfigurationDownloadService.TrustedContext(request.basis(), request.target(),

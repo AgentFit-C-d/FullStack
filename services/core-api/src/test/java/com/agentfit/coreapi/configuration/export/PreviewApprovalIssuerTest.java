@@ -31,7 +31,7 @@ class PreviewApprovalIssuerTest {
         var input = input("safe config\n");
         var result = PreviewFingerprint.compute(input);
         var preview = new StoredPreviewState("preview-1", BASIS, result.fingerprint(),
-            NOW.plusSeconds(600));
+            NOW.minusSeconds(60), NOW.plusSeconds(600));
         var approval = PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
             "preview-1", result.fingerprint(),
             true, "approval-1", CLOCK);
@@ -52,14 +52,15 @@ class PreviewApprovalIssuerTest {
     void deniesMissingConfirmationExpiredPreviewAndChangedBasis() {
         var result = PreviewFingerprint.compute(input("safe config\n"));
         var preview = new StoredPreviewState("preview-1", BASIS, result.fingerprint(),
-            NOW.plusSeconds(600));
+            NOW.minusSeconds(60), NOW.plusSeconds(600));
         assertThrows(PreviewFreshnessGate.InvalidPreviewStateException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
                 "preview-1", result.fingerprint(),
                 false, "approval-1", CLOCK));
         assertThrows(PreviewFreshnessGate.ExpiredPreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(new StoredPreviewState("preview-1", BASIS,
-                result.fingerprint(), NOW), BASIS, "preview-1", result.fingerprint(),
+                result.fingerprint(), NOW.minusSeconds(60), NOW), BASIS,
+                "preview-1", result.fingerprint(),
                 true, "approval-1", CLOCK));
         var changed = new PreviewBasis("project-1", 2, "profile-1", 3,
             "event-1", 4, 5, 7, "catalog-1", "a".repeat(64));
@@ -73,7 +74,7 @@ class PreviewApprovalIssuerTest {
     void approvesStoredReadyPreviewWithoutUnavailableOriginalFileContent() {
         var result = PreviewFingerprint.compute(input("safe config\n"));
         var preview = new StoredPreviewState("preview-1", BASIS, result.fingerprint(),
-            NOW.plusSeconds(600));
+            NOW.minusSeconds(60), NOW.plusSeconds(600));
 
         var approval = PreviewApprovalIssuer.issueStoredReady(preview, BASIS,
             "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
@@ -93,7 +94,8 @@ class PreviewApprovalIssuerTest {
                 "preview-1", result.fingerprint(), true, "approval-2", CLOCK));
         assertThrows(PreviewFreshnessGate.ExpiredPreviewException.class,
             () -> PreviewApprovalIssuer.issueStoredReady(new StoredPreviewState("preview-1",
-                BASIS, result.fingerprint(), NOW), BASIS, "preview-1", result.fingerprint(),
+                BASIS, result.fingerprint(), NOW.minusSeconds(60), NOW), BASIS,
+                "preview-1", result.fingerprint(),
                 true, "approval-2", CLOCK));
     }
 }
