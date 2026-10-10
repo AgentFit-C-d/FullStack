@@ -72,7 +72,8 @@ class CatalogApprovedConfigurationWorkflowTest {
         StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(directory, hash,
             preview, request.basis(), "preview-1", result.fingerprint(), true, "approval-1", CLOCK);
 
-        assertThrows(IllegalStateException.class, () -> CatalogApprovedConfigurationWorkflow.generate(
+        assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
+            () -> CatalogApprovedConfigurationWorkflow.generate(
             directory, hash, recommendation, request.basis(), TARGET,
             request(hash, PermissionPolicy.DENY), preview, approval, "approval-1",
             "preview-1", result.fingerprint(), "generation-1", CLOCK));

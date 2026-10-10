@@ -8,6 +8,7 @@ import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.selection.ConfigurationSelectionValidator;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
+import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import com.agentfit.coreapi.recommendation.selection.RecommendationPreviewGate;
 import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.nio.charset.StandardCharsets;
@@ -68,6 +69,11 @@ public final class CatalogPreviewAssembler {
         ParsedCatalog parsed = CatalogSemanticParser.parse(bundle);
         List<PermissionSelection> validatedPolicies = new ConfigurationSelectionValidator(parsed.release())
             .validate(selected, request.target(), parsed.permissionMappings(), request.permissionSelections());
+        // v1 static output is scoped to a tool, not an individual permission mapping.
+        // A denied optional mapping cannot safely be omitted from those bytes yet.
+        if (validatedPolicies.stream().anyMatch(policy -> policy.policy() == PermissionPolicy.DENY)) {
+            throw new InvalidAssemblyException("denied permission cannot be represented by static output");
+        }
         List<PreviewInputFile> generated = CatalogStaticTemplateRenderer.render(bundle,
             approvedCatalogHash, selected);
         PreviewAssemblyLimits.validateGenerated(generated);

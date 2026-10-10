@@ -73,6 +73,17 @@ class CatalogPreviewAssemblerTest {
     }
 
     @Test
+    void refusesPreviewWhenOptionalDeniedPolicyCannotBeRemovedFromStaticOutput() throws IOException {
+        String hash = writeBundle("literal config\n", false);
+        CatalogPreviewRequest denied = request(hash,
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
+            List.of("example-tool"), PermissionPolicy.DENY);
+
+        assertThrows(CatalogPreviewAssembler.InvalidAssemblyException.class,
+            () -> assemble(hash, denied));
+    }
+
+    @Test
     void screensProvidedOriginalBeforeReturningPreview() throws IOException {
         String hash = writeBundle();
         CatalogPreviewRequest base = request(hash, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
@@ -145,6 +156,10 @@ class CatalogPreviewAssemblerTest {
     }
 
     private String writeBundle(String templateContent) throws IOException {
+        return writeBundle(templateContent, true);
+    }
+
+    private String writeBundle(String templateContent, boolean requiredPermission) throws IOException {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -161,7 +176,7 @@ class CatalogPreviewAssemblerTest {
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
             + "\"verifiedCombinations\":[]}");
         files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[{\"toolKey\":\"example-tool\","
-            + "\"mappingKey\":\"network\",\"required\":true,"
+            + "\"mappingKey\":\"network\",\"required\":" + requiredPermission + ","
             + "\"supportedPolicies\":[\"ASK_EACH_TIME\",\"DENY\"],"
             + "\"evidenceUrl\":\"https://example.org/permission\",\"checkedAt\":\"2026-10-06\"}]}");
         files.put("client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}");
