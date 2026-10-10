@@ -20,7 +20,32 @@ class CatalogCandidateValidatorCommandTest {
         assertEquals(0, result.exitCode());
         assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
         assertTrue(result.stdout().contains(hash));
+        assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
+        assertTrue(result.stdout().contains("INDEPENDENT_APPROVAL_REQUIRED"));
         assertFalse(result.stdout().contains("APPROVED"));
+    }
+
+    @Test
+    void reportsUnreviewedRealCandidateWithoutImplyingReleaseApproval() {
+        Path candidate = Path.of("..", "..", "catalog-candidates",
+            "playwright-mcp-0.0.83-windows-claude-2.1.270");
+        var result = run(candidate);
+        assertEquals(0, result.exitCode());
+        assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
+        assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
+        assertTrue(result.stdout().contains("SUPPORT_NOT_RUN"));
+        assertTrue(result.stdout().contains("PERMISSION_REVIEW_REQUIRED"));
+        assertTrue(result.stdout().contains("OUTPUT_REVIEW_REQUIRED"));
+        assertTrue(result.stdout().contains("INDEPENDENT_APPROVAL_REQUIRED"));
+        assertFalse(result.stdout().contains("RELEASE_READY"));
+    }
+
+    @Test
+    void flagsAbsentCombinationReviewWhenCandidateContainsMultipleTools() throws Exception {
+        SyntheticCatalogBundle.writeWithFallback(directory, "literal config\n");
+        var result = run(directory);
+        assertEquals(0, result.exitCode());
+        assertTrue(result.stdout().contains("COMBINATION_REVIEW_REQUIRED"));
     }
 
     @Test

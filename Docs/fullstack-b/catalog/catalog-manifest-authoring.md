@@ -21,4 +21,6 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.CatalogCandidateV
 
 이어 실제 Claude Code의 정확한 OS·버전에서 문서·파일 형식·단독 동작·조합·권한 결과를 기록하고, 별도 검토자가 **독립 승인 해시**를 서버 설정 또는 신뢰된 저장소에 제공해야 한다. 어느 도구가 출력한 해시도 자동 승인 값으로 사용하지 않는다. 현재 실제 릴리스와 독립 승인 값은 없다.
 
+후보 검증 명령은 `CANDIDATE_SCHEMA_VALID` 뒤에 `RELEASE_NOT_READY reasons=...`도 출력한다. `SUPPORT_NOT_RUN`은 지원 행의 검사가 남았다는 뜻이고, `PERMISSION_REVIEW_REQUIRED`는 매핑이 없는 도구에 대해 실제로 설정할 권한이 없는지 검토해야 한다는 뜻이다. `OUTPUT_REVIEW_REQUIRED`는 정적 출력 인덱스가 없음을, `COMBINATION_REVIEW_REQUIRED`는 여러 도구가 있으나 검증된 조합이 전혀 없음을 알린다. 이는 검토 항목을 찾기 위한 보수적인 신호이며, 모든 도구에 권한 매핑이나 모든 도구 쌍의 조합이 필요하다는 판정은 아니다. 독립 승인 여부는 명령이 확인할 수 없으므로 항상 `INDEPENDENT_APPROVAL_REQUIRED`가 표시된다. 따라서 이 명령은 `RELEASE_READY`를 출력하지 않는다.
+
 테스트: `python -m unittest discover -s tools/tests -p 'test_*.py' -v`. 알려진 해시 벡터는 Java `CatalogBundleLoaderTest`의 값과 교차 확인한다. Java 후보 명령은 `CatalogCandidateValidatorCommandTest`에서 정상·무결성 실패·해시는 유효하지만 의미 스키마가 잘못된 입력·누락/과대 출력·조합 출력 초과를 확인한다.
