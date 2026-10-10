@@ -19,7 +19,8 @@ class ConfigurationSelectionValidatorTest {
 
     private CatalogTool tool(String key, Set<String> dependencies, Set<String> conflicts,
                              Set<String> components, ToolSupport.Check check) {
-        return new CatalogTool(key, "1", Set.of("cap_document_reference"), dependencies,
+        return new CatalogTool(key, key, CatalogTool.Kind.SKILL, "https://example.org/" + key,
+            "1", Set.of("cap_document_reference"), dependencies,
             conflicts, components, List.of(new ToolSupport(key + "-support", "WINDOWS", "example-client", "1.0",
                 check, check, check)));
     }
@@ -95,7 +96,8 @@ class ConfigurationSelectionValidatorTest {
     }
 
     private CatalogTool dualVersionTool(String key) {
-        return new CatalogTool(key, "1", Set.of("cap_document_reference"), Set.of(), Set.of(), Set.of(),
+        return new CatalogTool(key, key, CatalogTool.Kind.SKILL, "https://example.org/" + key,
+            "1", Set.of("cap_document_reference"), Set.of(), Set.of(), Set.of(),
             List.of(new ToolSupport(key + "-v1", "WINDOWS", "example-client", "1.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS),
                 new ToolSupport(key + "-v2", "WINDOWS", "example-client", "2.0",

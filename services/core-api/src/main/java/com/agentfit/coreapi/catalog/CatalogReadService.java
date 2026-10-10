@@ -40,7 +40,8 @@ public final class CatalogReadService {
 
     public record Permission(PermissionMapping mapping, VerificationEvidence evidence) {}
 
-    public record Item(String key, String version, Set<String> capabilityKeys,
+    public record Item(String key, String name, CatalogTool.Kind kind, String sourceUrl,
+                       String version, Set<String> capabilityKeys,
                        Set<String> dependencyKeys, Set<String> conflictKeys,
                        Set<String> includedComponentKeys, List<Support> support,
                        List<Permission> permissions) {
@@ -103,7 +104,8 @@ public final class CatalogReadService {
                 if (evidence == null) throw unavailable("permission evidence missing");
                 permissions.add(new Permission(mapping, evidence));
             }
-            items.add(new Item(tool.key(), tool.version(), tool.capabilityKeys(),
+            items.add(new Item(tool.key(), tool.name(), tool.kind(), tool.sourceUrl(),
+                tool.version(), tool.capabilityKeys(),
                 tool.dependencyKeys(), tool.conflictKeys(), tool.includedComponentKeys(),
                 support, permissions));
         }

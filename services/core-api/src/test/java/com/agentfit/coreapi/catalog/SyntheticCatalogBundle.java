@@ -41,9 +41,11 @@ final class SyntheticCatalogBundle {
         Map<String, String> files = new HashMap<>();
         files.put("capabilities.json", "{\"schemaVersion\":1,\"items\":[" + capabilities + "]}");
         files.put("tools.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"example-tool\","
+            + "\"name\":\"Example Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/example-tool\","
             + "\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],"
             + "\"includedComponentKeys\":[\"example-component\"]}"
             + (includeFallback ? ", {\"key\":\"fallback-tool\",\"version\":\"1.0\","
+                + "\"name\":\"Fallback Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/fallback-tool\","
                 + "\"capabilityKeys\":[\"cap_document_reference\"],"
                 + "\"includedComponentKeys\":[\"fallback-component\"]}" : "") + "]}");
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","

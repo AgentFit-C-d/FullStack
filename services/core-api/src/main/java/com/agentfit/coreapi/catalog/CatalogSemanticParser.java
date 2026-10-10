@@ -57,14 +57,20 @@ public final class CatalogSemanticParser {
 
             Map<String, DraftTool> drafts = new HashMap<>();
             for (JsonNode item : items(bundle, "tools.json")) {
-                exact(item, Set.of("key", "version", "capabilityKeys", "includedComponentKeys"));
+                exact(item, Set.of("key", "name", "kind", "sourceUrl", "version",
+                    "capabilityKeys", "includedComponentKeys"));
                 String key = value(item, "key");
+                String name = value(item, "name");
+                CatalogTool.Kind kind;
+                try { kind = CatalogTool.Kind.valueOf(value(item, "kind")); }
+                catch (IllegalArgumentException exception) { throw unavailable("invalid tool kind"); }
+                String sourceUrl = httpsUrl(item, "sourceUrl");
                 Set<String> toolCapabilities = uniqueStrings(item, "capabilityKeys");
                 if (!capabilities.containsAll(toolCapabilities)) {
                     throw unavailable("invalid tool capabilities");
                 }
-                DraftTool draft = new DraftTool(value(item, "version"), toolCapabilities,
-                    uniqueStrings(item, "includedComponentKeys"));
+                DraftTool draft = new DraftTool(name, kind, sourceUrl, value(item, "version"),
+                    toolCapabilities, uniqueStrings(item, "includedComponentKeys"));
                 if (drafts.putIfAbsent(key, draft) != null) throw unavailable("duplicate tool");
             }
 
@@ -142,7 +148,8 @@ public final class CatalogSemanticParser {
             for (Map.Entry<String, DraftTool> entry : drafts.entrySet()) {
                 String key = entry.getKey();
                 DraftTool draft = entry.getValue();
-                tools.put(key, new CatalogTool(key, draft.version(), draft.capabilities(),
+                tools.put(key, new CatalogTool(key, draft.name(), draft.kind(), draft.sourceUrl(),
+                    draft.version(), draft.capabilities(),
                     dependencies.getOrDefault(key, Set.of()), conflicts.getOrDefault(key, Set.of()),
                     draft.components(), support.getOrDefault(key, List.of())));
             }
@@ -229,12 +236,17 @@ public final class CatalogSemanticParser {
     }
 
     private static VerificationEvidence evidence(JsonNode item) {
-        String url = value(item, "evidenceUrl");
-        URI uri = URI.create(url);
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
-            || uri.getUserInfo() != null || uri.getFragment() != null) throw unavailable("invalid evidence URL");
+        String url = httpsUrl(item, "evidenceUrl");
         try { return new VerificationEvidence(url, LocalDate.parse(value(item, "checkedAt"))); }
         catch (DateTimeParseException exception) { throw unavailable("invalid verification date"); }
+    }
+
+    private static String httpsUrl(JsonNode item, String field) {
+        String url = value(item, field);
+        URI uri = URI.create(url);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+            || uri.getUserInfo() != null || uri.getFragment() != null) throw unavailable("invalid URL: " + field);
+        return url;
     }
 
     private static void putEvidence(Map<String, VerificationEvidence> evidence, String key,
@@ -248,5 +260,6 @@ public final class CatalogSemanticParser {
         return new CatalogBundleLoader.CatalogUnavailableException(reason);
     }
 
-    private record DraftTool(String version, Set<String> capabilities, Set<String> components) {}
+    private record DraftTool(String name, CatalogTool.Kind kind, String sourceUrl,
+                             String version, Set<String> capabilities, Set<String> components) {}
 }

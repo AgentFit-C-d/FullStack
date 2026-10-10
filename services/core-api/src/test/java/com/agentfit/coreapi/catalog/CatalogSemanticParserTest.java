@@ -29,7 +29,8 @@ class CatalogSemanticParserTest {
           {"key":"cap_ai_evaluation"}]}
         """;
     private static final String TOOLS = """
-        {"schemaVersion":1,"items":[{"key":"example-tool","version":"1.0",
+        {"schemaVersion":1,"items":[{"key":"example-tool","name":"Example Tool",
+        "kind":"SKILL","sourceUrl":"https://example.org/example-tool","version":"1.0",
         "capabilityKeys":["cap_document_reference"],"includedComponentKeys":["example-component"]}]}
         """;
     private static final String SUPPORT = """
@@ -57,13 +58,45 @@ class CatalogSemanticParserTest {
             "client-capabilities.json", "{\"schemaVersion\":1,\"items\":[]}"));
     }
 
+    @Test
+    void rejectsToolWithoutDisplayIdentityAndSource() {
+        Map<String, String> files = files();
+        files.put("tools.json", TOOLS.replace("\"name\":\"Example Tool\",", ""));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
+            () -> parse(files));
+    }
+
+    @Test
+    void retainsToolDisplayIdentityAndRejectsUnsafeSource() {
+        var tool = parse(files()).release().tools().get("example-tool");
+        assertEquals("Example Tool", tool.name());
+        assertEquals(com.agentfit.coreapi.catalog.model.CatalogTool.Kind.SKILL, tool.kind());
+        assertEquals("https://example.org/example-tool", tool.sourceUrl());
+
+        Map<String, String> unsafe = files();
+        unsafe.put("tools.json", TOOLS.replace("https://example.org/example-tool", "http://example.org/example-tool"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(unsafe));
+    }
+
+    @Test
+    void rejectsInvalidToolKindAndBlankName() {
+        Map<String, String> unknownKind = files();
+        unknownKind.put("tools.json", TOOLS.replace("\"kind\":\"SKILL\"", "\"kind\":\"OTHER\""));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(unknownKind));
+
+        Map<String, String> blankName = files();
+        blankName.put("tools.json", TOOLS.replace("\"name\":\"Example Tool\"", "\"name\":\" \""));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(blankName));
+    }
+
     private ParsedCatalog parse(Map<String, String> files) {
         return CatalogSemanticParser.parse(new VerifiedCatalogBundle("synthetic-1", "test-hash", files));
     }
 
     private Map<String, String> twoToolFiles() {
         Map<String, String> files = files();
-        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"second-tool\",\"version\":\"1.0\","
+        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"second-tool\",\"name\":\"Second Tool\","
+            + "\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/second-tool\",\"version\":\"1.0\","
             + "\"capabilityKeys\":[\"cap_test_execution\"],\"includedComponentKeys\":[\"second-component\"]}]}"));
         files.put("support-matrix.json", SUPPORT.replace("}]}",
             "},{\"key\":\"support-2\",\"toolKey\":\"second-tool\",\"osFamily\":\"WINDOWS\","
@@ -180,7 +213,8 @@ class CatalogSemanticParserTest {
     void rejectsDistinctPermissionMappingsWithCollidingEvidenceKeys() {
         Map<String, String> files = files();
         files.put("tools.json", TOOLS.replace("}]}",
-            "},{\"key\":\"example-tool:part\",\"version\":\"1.0\","
+            "},{\"key\":\"example-tool:part\",\"name\":\"Example Part\","
+                + "\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/example-part\",\"version\":\"1.0\","
                 + "\"capabilityKeys\":[],\"includedComponentKeys\":[\"second-component\"]}]}"));
         files.put("permissions.json", PERMISSIONS
             .replace("\"mappingKey\":\"network\"", "\"mappingKey\":\"part:tail\"")
@@ -195,7 +229,8 @@ class CatalogSemanticParserTest {
     @Test
     void allowsDependencyOnlyToolWithNoDirectCapability() {
         Map<String, String> files = files();
-        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"runtime\",\"version\":\"1.0\","
+        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"runtime\",\"name\":\"Runtime\","
+            + "\"kind\":\"MCP\",\"sourceUrl\":\"https://example.org/runtime\",\"version\":\"1.0\","
             + "\"capabilityKeys\":[],\"includedComponentKeys\":[\"runtime-component\"]}]}"));
         files.put("relations.json", RELATIONS.replace("\"dependencies\":[]",
             "\"dependencies\":[{\"toolKey\":\"example-tool\",\"targetKey\":\"runtime\"}]"));
@@ -205,7 +240,8 @@ class CatalogSemanticParserTest {
     @Test
     void doesNotActivateEnvironmentAgnosticCombinations() {
         Map<String, String> files = files();
-        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"second-tool\",\"version\":\"1.0\","
+        files.put("tools.json", TOOLS.replace("}]}", "},{\"key\":\"second-tool\",\"name\":\"Second Tool\","
+            + "\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/second-tool\",\"version\":\"1.0\","
             + "\"capabilityKeys\":[\"cap_test_execution\"],\"includedComponentKeys\":[\"second-component\"]}]}"));
         files.put("relations.json", RELATIONS.replace("\"verifiedCombinations\":[]",
             "\"verifiedCombinations\":[{\"toolKeys\":[\"example-tool\",\"second-tool\"],"

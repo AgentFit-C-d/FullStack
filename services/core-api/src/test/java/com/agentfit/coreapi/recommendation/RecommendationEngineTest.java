@@ -23,7 +23,8 @@ class RecommendationEngineTest {
 
     private CatalogTool tool(String key, Set<String> capabilities, Set<String> dependencies,
                              Set<String> conflicts, Set<String> components, ToolSupport.Check check) {
-        return new CatalogTool(key, "1", capabilities, dependencies, conflicts, components,
+        return new CatalogTool(key, key, CatalogTool.Kind.SKILL, "https://example.org/" + key,
+            "1", capabilities, dependencies, conflicts, components,
             List.of(new ToolSupport(key + "-win", "WINDOWS", "example-client", "1.0",
                 check, check, check)));
     }
@@ -132,9 +133,11 @@ class RecommendationEngineTest {
     void rejectsSupportEvidenceKeyReusedByDifferentTools() {
         ToolSupport shared = new ToolSupport("shared-support", "WINDOWS", "example-client", "1.0",
             ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS);
-        CatalogTool doc = new CatalogTool("doc", "1", Set.of(DOC), Set.of(), Set.of(), Set.of(),
+        CatalogTool doc = new CatalogTool("doc", "Doc", CatalogTool.Kind.SKILL,
+            "https://example.org/doc", "1", Set.of(DOC), Set.of(), Set.of(), Set.of(),
             List.of(shared));
-        CatalogTool test = new CatalogTool("test", "1", Set.of(TEST), Set.of(), Set.of(), Set.of(),
+        CatalogTool test = new CatalogTool("test", "Test", CatalogTool.Kind.SKILL,
+            "https://example.org/test", "1", Set.of(TEST), Set.of(), Set.of(), Set.of(),
             List.of(shared));
 
         assertThrows(CatalogValidator.InvalidCatalogException.class,
@@ -253,11 +256,13 @@ class RecommendationEngineTest {
     void combinationIsNotSharedAcrossOtherwiseSupportedClientVersions() {
         CatalogTool doc = tool("doc", Set.of(DOC), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
         CatalogTool test = tool("test", Set.of(TEST), Set.of(), Set.of(), Set.of(), ToolSupport.Check.PASS);
-        doc = new CatalogTool(doc.key(), doc.version(), doc.capabilityKeys(), doc.dependencyKeys(),
+        doc = new CatalogTool(doc.key(), doc.name(), doc.kind(), doc.sourceUrl(),
+            doc.version(), doc.capabilityKeys(), doc.dependencyKeys(),
             doc.conflictKeys(), doc.includedComponentKeys(), List.of(doc.support().getFirst(),
                 new ToolSupport("doc-win-v2", "WINDOWS", "example-client", "2.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS)));
-        test = new CatalogTool(test.key(), test.version(), test.capabilityKeys(), test.dependencyKeys(),
+        test = new CatalogTool(test.key(), test.name(), test.kind(), test.sourceUrl(),
+            test.version(), test.capabilityKeys(), test.dependencyKeys(),
             test.conflictKeys(), test.includedComponentKeys(), List.of(test.support().getFirst(),
                 new ToolSupport("test-win-v2", "WINDOWS", "example-client", "2.0",
                     ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS)));

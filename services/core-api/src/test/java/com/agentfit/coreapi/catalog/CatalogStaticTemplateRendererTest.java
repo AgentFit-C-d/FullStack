@@ -171,8 +171,8 @@ class CatalogStaticTemplateRendererTest {
             + "{\"key\":\"cap_api_verification\"},{\"key\":\"cap_database_schema_inspection\"},"
             + "{\"key\":\"cap_ai_evaluation\"}]}");
         files.put("tools.json", "{\"schemaVersion\":1,\"items\":["
-            + "{\"key\":\"example-tool\",\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],\"includedComponentKeys\":[\"example\"]},"
-            + "{\"key\":\"second-tool\",\"version\":\"1.0\",\"capabilityKeys\":[\"cap_test_execution\"],\"includedComponentKeys\":[\"second\"]}]}");
+            + "{\"key\":\"example-tool\",\"name\":\"Example Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/example-tool\",\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],\"includedComponentKeys\":[\"example\"]},"
+            + "{\"key\":\"second-tool\",\"name\":\"Second Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/second-tool\",\"version\":\"1.0\",\"capabilityKeys\":[\"cap_test_execution\"],\"includedComponentKeys\":[\"second\"]}]}");
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[]}");
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],\"verifiedCombinations\":[]}");
         files.put("permissions.json", "{\"schemaVersion\":1,\"items\":[]}");

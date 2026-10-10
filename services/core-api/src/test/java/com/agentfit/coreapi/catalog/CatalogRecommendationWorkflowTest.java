@@ -33,6 +33,9 @@ class CatalogRecommendationWorkflowTest {
         var item = outcome.items().getFirst();
         assertEquals("example-tool", item.toolKey());
         assertEquals("1.0", item.catalogVersion());
+        assertEquals("Example Tool", item.name());
+        assertEquals(com.agentfit.coreapi.catalog.model.CatalogTool.Kind.SKILL, item.kind());
+        assertEquals("https://example.org/example-tool", item.sourceUrl());
         assertEquals("support-1", item.supportKey());
         assertEquals(Set.of("cap_document_reference"), item.coveredRequiredCapabilities());
         assertEquals("https://example.org/review", item.supportEvidence().sourceUrl());

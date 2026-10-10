@@ -2,6 +2,7 @@ package com.agentfit.coreapi.catalog;
 
 import com.agentfit.coreapi.catalog.model.CatalogRelease;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
+import com.agentfit.coreapi.catalog.model.CatalogValidator;
 import com.agentfit.coreapi.catalog.model.ToolSupport;
 import com.agentfit.coreapi.recommendation.selection.PermissionMapping;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
@@ -41,6 +42,9 @@ class CatalogReadServiceTest {
         assertEquals(1, snapshot.items().size());
         var item = snapshot.items().getFirst();
         assertEquals("doc-skill", item.key());
+        assertEquals("Document Skill", item.name());
+        assertEquals(CatalogTool.Kind.SKILL, item.kind());
+        assertEquals("https://example.org/doc-skill", item.sourceUrl());
         assertEquals(2, item.support().size());
         assertTrue(item.support().getFirst().verified());
         assertFalse(item.support().get(1).verified());
@@ -74,14 +78,25 @@ class CatalogReadServiceTest {
                 new CatalogReadService.Filter(null, null, "invented")));
     }
 
+    @Test
+    void refusesInMemoryReleaseWithoutToolIdentity() {
+        var invalid = new CatalogTool("doc-skill", " ", CatalogTool.Kind.SKILL,
+            "https://example.org/doc-skill", "1.0", Set.of("cap_document_reference"),
+            Set.of(), Set.of(), Set.of(), List.of());
+        assertThrows(CatalogValidator.InvalidCatalogException.class,
+            () -> CatalogValidator.validate(new CatalogRelease("invalid", Map.of(invalid.key(), invalid), Set.of())));
+    }
+
     private ParsedCatalog parsed() {
         var first = new ToolSupport("support-1", "WINDOWS", "claude-code", "1.0",
             ToolSupport.Check.PASS, ToolSupport.Check.PASS, ToolSupport.Check.PASS);
         var second = new ToolSupport("support-2", "WINDOWS", "claude-code", "2.0",
             ToolSupport.Check.PASS, ToolSupport.Check.NOT_RUN, ToolSupport.Check.NOT_RUN);
-        var tool = new CatalogTool("doc-skill", "1.0", Set.of("cap_document_reference"),
+        var tool = new CatalogTool("doc-skill", "Document Skill", CatalogTool.Kind.SKILL,
+            "https://example.org/doc-skill", "1.0", Set.of("cap_document_reference"),
             Set.of(), Set.of(), Set.of("doc-component"), List.of(first, second));
-        var other = new CatalogTool("test-skill", "1.0", Set.of("cap_test_execution"),
+        var other = new CatalogTool("test-skill", "Test Skill", CatalogTool.Kind.SKILL,
+            "https://example.org/test-skill", "1.0", Set.of("cap_test_execution"),
             Set.of(), Set.of(), Set.of("test-component"), List.of());
         var release = new CatalogRelease("reviewed-1", Map.of(tool.key(), tool, other.key(), other), Set.of());
         var permission = new PermissionMapping("doc-skill", "read", false,

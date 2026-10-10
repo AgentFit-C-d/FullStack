@@ -22,7 +22,8 @@ public final class CatalogRecommendationDetails {
         public PermissionOption { supportedPolicies = Set.copyOf(supportedPolicies); }
     }
 
-    public record Item(String toolKey, String catalogVersion, String supportKey,
+    public record Item(String toolKey, String name, CatalogTool.Kind kind, String sourceUrl,
+                       String catalogVersion, String supportKey,
                        Set<String> coveredRequiredCapabilities,
                        VerificationEvidence supportEvidence,
                        List<PermissionOption> permissionOptions) {
@@ -57,7 +58,8 @@ public final class CatalogRecommendationDetails {
             }
             Set<String> covered = tool.capabilityKeys().stream()
                 .filter(requiredCapabilities::contains).collect(java.util.stream.Collectors.toUnmodifiableSet());
-            items.add(new Item(key, tool.version(), support.key(), covered,
+            items.add(new Item(key, tool.name(), tool.kind(), tool.sourceUrl(),
+                tool.version(), support.key(), covered,
                 supportEvidence, permissions));
         }
         return List.copyOf(items);

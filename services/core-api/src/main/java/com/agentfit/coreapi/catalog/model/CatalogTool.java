@@ -6,6 +6,9 @@ import java.util.Set;
 /** One deployable unit. Included component keys are not independently counted as tools. */
 public record CatalogTool(
     String key,
+    String name,
+    Kind kind,
+    String sourceUrl,
     String version,
     Set<String> capabilityKeys,
     Set<String> dependencyKeys,
@@ -13,6 +16,8 @@ public record CatalogTool(
     Set<String> includedComponentKeys,
     List<ToolSupport> support
 ) {
+    public enum Kind { PLUGIN, MCP, SKILL, HOOK }
+
     public CatalogTool {
         capabilityKeys = Set.copyOf(capabilityKeys);
         dependencyKeys = Set.copyOf(dependencyKeys);

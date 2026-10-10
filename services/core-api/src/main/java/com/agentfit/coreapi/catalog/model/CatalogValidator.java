@@ -2,6 +2,7 @@ package com.agentfit.coreapi.catalog.model;
 
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -19,6 +20,11 @@ public final class CatalogValidator {
             CatalogTool tool = entry.getValue();
             if (!entry.getKey().equals(tool.key()) || blank(tool.version())) {
                 throw new InvalidCatalogException("tool ID/version mismatch: " + entry.getKey());
+            }
+            if (blank(tool.name()) || !tool.name().equals(tool.name().trim())
+                || tool.name().codePoints().anyMatch(Character::isISOControl)
+                || tool.kind() == null || !validSource(tool.sourceUrl())) {
+                throw new InvalidCatalogException("tool identity/source missing: " + tool.key());
             }
             if (!CapabilityKey.keys().containsAll(tool.capabilityKeys())) {
                 throw new InvalidCatalogException("unknown capability: " + tool.key());
@@ -104,6 +110,17 @@ public final class CatalogValidator {
 
     private static boolean blank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static boolean validSource(String value) {
+        if (blank(value)) return false;
+        try {
+            URI uri = URI.create(value);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null
+                && uri.getUserInfo() == null && uri.getFragment() == null;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     public static final class InvalidCatalogException extends IllegalArgumentException {
