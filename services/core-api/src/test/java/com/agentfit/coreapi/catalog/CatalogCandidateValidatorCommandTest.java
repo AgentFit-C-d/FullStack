@@ -49,6 +49,16 @@ class CatalogCandidateValidatorCommandTest {
     }
 
     @Test
+    void reportsFailedSupportCheckAsReleaseBlocker() throws Exception {
+        SyntheticCatalogBundle.writeWithFailedSupport(directory);
+        var result = run(directory);
+        assertEquals(0, result.exitCode());
+        assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
+        assertTrue(result.stdout().contains("SUPPORT_FAILED"));
+        assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
+    }
+
+    @Test
     void rejectsChangedBytesAndAHashValidButSemanticallyEmptyRelease() throws Exception {
         SyntheticCatalogBundle.write(directory);
         Files.writeString(directory.resolve("tools.json"), "{}", StandardCharsets.UTF_8);

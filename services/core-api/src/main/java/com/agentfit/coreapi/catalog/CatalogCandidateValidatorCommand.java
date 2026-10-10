@@ -54,6 +54,11 @@ public final class CatalogCandidateValidatorCommand {
                 || row.standalone() == Check.NOT_RUN)) {
             reasons.add("SUPPORT_NOT_RUN");
         }
+        if (candidate.release().tools().values().stream().flatMap(tool -> tool.support().stream())
+            .anyMatch(row -> row.documentation() == Check.FAIL || row.format() == Check.FAIL
+                || row.standalone() == Check.FAIL)) {
+            reasons.add("SUPPORT_FAILED");
+        }
         if (candidate.release().tools().keySet().stream().anyMatch(toolKey ->
             candidate.permissionMappings().stream().noneMatch(mapping -> mapping.toolKey().equals(toolKey)))) {
             reasons.add("PERMISSION_REVIEW_REQUIRED");

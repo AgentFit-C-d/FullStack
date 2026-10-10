@@ -33,8 +33,19 @@ final class SyntheticCatalogBundle {
         return write(directory, true, "literal config\n", true, true);
     }
 
+    static String writeWithFailedSupport(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", false, false, "FAIL");
+    }
+
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination) throws Exception {
+        return write(directory, includeTemplate, templateContent, includeFallback,
+            oversizedCombination, "PASS");
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback, boolean oversizedCombination,
+                                String standaloneCheck) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -51,7 +62,7 @@ final class SyntheticCatalogBundle {
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","
             + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
             + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\",\"format\":\"PASS\","
-            + "\"standalone\":\"PASS\",\"evidenceUrl\":\"https://example.org/review\","
+            + "\"standalone\":\"" + standaloneCheck + "\",\"evidenceUrl\":\"https://example.org/review\","
             + "\"checkedAt\":\"2026-10-09\"}"
             + (includeFallback ? ", {\"key\":\"support-2\",\"toolKey\":\"fallback-tool\","
                 + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
