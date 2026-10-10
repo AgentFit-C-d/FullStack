@@ -94,6 +94,7 @@ public final class PreviewFileComparator {
             || path.contains(":") || path.codePointCount(0, path.length()) > 200) {
             throw invalid("unsafe relative path");
         }
+        utf8(path);
         for (String part : path.split("/", -1)) {
             if (part.isEmpty() || part.equals(".") || part.equals("..")
                 || part.endsWith(".") || part.endsWith(" ")

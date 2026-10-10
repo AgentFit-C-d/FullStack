@@ -107,6 +107,14 @@ class PreviewFileComparatorTest {
     }
 
     @Test
+    void rejectsMalformedUnicodeInZipEntryPath() {
+        assertThrows(PreviewFileComparator.InvalidPreviewInputException.class,
+            () -> PreviewFileComparator.compare(
+                List.of(file("client", "config/\uD800.txt", "hello")),
+                ExistingState.UNKNOWN, List.of()));
+    }
+
+    @Test
     void preservesBomAndLineEndingsInHashesAndDiff() {
         PreviewFile result = PreviewFileComparator.compare(
             List.of(file("client", "config.txt", "\uFEFFhello\r\n")), ExistingState.PROVIDED,
