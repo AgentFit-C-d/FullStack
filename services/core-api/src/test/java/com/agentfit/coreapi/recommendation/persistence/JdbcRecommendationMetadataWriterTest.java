@@ -3,6 +3,7 @@ package com.agentfit.coreapi.recommendation.persistence;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
+import com.agentfit.coreapi.recommendation.RecommendationReadModel;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -151,6 +152,44 @@ class JdbcRecommendationMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             assertEquals(0, count(statement, "recommendation"));
         }
+    }
+
+    @Test
+    void readsLatestStoredRecommendationWithItsBasisAndTools() throws Exception {
+        var writer = new JdbcRecommendationMetadataWriter();
+        var earlier = recommended(UUID.randomUUID());
+        writer.write(connection, earlier);
+        var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
+            earlier.basis(), RecommendationDecision.Status.NO_ADDITIONS_NEEDED,
+            earlier.evidenceLevel(), earlier.createdAt().plusSeconds(1),
+            earlier.capabilities(), List.of(), List.of());
+        writer.write(connection, later);
+
+        var stored = new JdbcLatestRecommendationReader().latest(connection, PROJECT.toString());
+
+        assertNotNull(stored);
+        assertEquals(later.id(), stored.recommendationId());
+        assertEquals(RecommendationDecision.Status.NO_ADDITIONS_NEEDED, stored.status());
+        assertEquals(later.basis(), stored.basis());
+        assertEquals(List.of(), stored.toolKeys());
+        assertEquals(RecommendationReadModel.Validity.CURRENT,
+            RecommendationReadModel.latest(stored, later.basis()).validity());
+    }
+
+    @Test
+    void returnsNoLatestRecommendationForProjectWithoutRows() throws Exception {
+        assertNull(new JdbcLatestRecommendationReader().latest(connection, PROJECT.toString()));
+    }
+
+    @Test
+    void readsRecommendedToolKeysForPreviewMembershipCheck() throws Exception {
+        var draft = recommended(UUID.randomUUID());
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+
+        var stored = new JdbcLatestRecommendationReader().latest(connection, PROJECT.toString());
+
+        assertEquals(List.of("tool-a"), stored.toolKeys());
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, stored.status());
     }
 
     private static JdbcRecommendationMetadataWriter.Draft recommended(UUID id) {

@@ -45,7 +45,7 @@ FullStack/Docs/
 | 릴리스 파일·스키마·템플릿 검증과 Preview 조립 | `catalog/` | [Catalog](catalog/README.md) · [설정 조립](configuration/README.md) |
 | Catalog의 도구·지원·조합 모델 | `catalog/model/` | [Catalog](catalog/README.md) |
 | Capability 및 결정적 추천 | `recommendation/` | [추천](recommendation/README.md) |
-| B1–B4 추천 메타데이터 JDBC 기록 | `recommendation/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
+| B1–B4 추천 메타데이터 JDBC 기록·최신 추천 조회 | `recommendation/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 | AI Capability 후보의 내부 검증 | `recommendation/ai/` | [AI 후보 검증](recommendation/ai-capability-intake-plan.md) |
 | 도구 선택·권한 정책 검증 | `recommendation/selection/` | [선택·권한](recommendation/README.md) |
 | 파일 비교·민감정보·지문 | `configuration/preview/` | [Preview](configuration/README.md) |
@@ -64,7 +64,7 @@ B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관
 | Catalog | 매니페스트 SHA-256 검증, 엄격한 합성 v1 스키마, 템플릿 출처·승인 해시 확인 | 실제 Client 지원·템플릿 검증과 승인된 릴리스 |
 | Preview·설정 | 임시 비교·Diff, 식별 가능한 Secret 검사, 지문 계산, 저장된 승인 메타데이터를 검사하는 동일 바이트 ZIP 재생성, Catalog 기반 임시 Preview 연결, 사용자 적용 보고 값 검증, 최소 생성 이력 메타데이터, B5–B9 JDBC 저장 경계 | 인증/소유권, 현재 A 버전 확인, Audit·원자적 커밋, 공개 API·화면 연동 |
 
-최근 B1–B9 JDBC 기록 경계까지의 전체 `mvn verify`에서는 **255개 테스트 발견, 실패·오류 0개, 1개 건너뜀**이었다. 로컬 Docker PostgreSQL 연결을 포함한 결과이며, 건너뛴 항목은 Windows 심볼릭 링크 생성 권한이 필요한 파일시스템 테스트다.
+최근 B1–B9 JDBC 기록·최신 추천 조회 경계까지의 전체 `mvn verify`에서는 **258개 테스트 발견, 실패·오류 0개, 1개 건너뜀**이었다. 로컬 Docker PostgreSQL 연결을 포함한 결과이며, 건너뛴 항목은 Windows 심볼릭 링크 생성 권한이 필요한 파일시스템 테스트다.
 
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 

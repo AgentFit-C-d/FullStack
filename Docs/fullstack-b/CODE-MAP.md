@@ -10,7 +10,7 @@
 | `recommendation/` | Capability와 설치 환경을 바탕으로 결정적 추천 결과 계산 | `RecommendationInputAssembler`, `RecommendationEngine`, `RecommendationDecision` |
 | `recommendation/ai/` | AI 후보의 내부 9개 Capability 검증 | `AiCapabilityIntake` |
 | `recommendation/selection/` | 추천 도구 선택, 의존성·충돌·권한 검증 | `ConfigurationSelectionValidator`, `PermissionPolicyGate` |
-| `recommendation/persistence/` | B1–B4 추천 메타데이터 PostgreSQL 쓰기. A가 소유권·현재 버전·Audit·커밋 담당 | `JdbcRecommendationMetadataWriter` |
+| `recommendation/persistence/` | B1–B4 추천 메타데이터 PostgreSQL 쓰기와 최신 B1/B3 읽기. A가 소유권·현재 버전·Audit·커밋 담당 | `JdbcRecommendationMetadataWriter`, `JdbcLatestRecommendationReader` |
 | `configuration/preview/` | 파일 비교·민감 입력 검사·지문 생성 | `PreviewFileComparator`, `PreviewFingerprint`, `PreviewSensitiveContentGuard` |
 | `configuration/export/` | 승인 유효성·만료 검사와 ZIP 재생성 | `PreviewApprovalIssuer`, `ApprovedPreviewZipExporter` |
 | `configuration/history/` | 생성 이력 메타데이터·조회 투영 | `ApprovedConfigurationGenerator`, `ConfigurationHistoryQueryService` |
