@@ -35,6 +35,10 @@ UUID primary keys, parent foreign keys, required values, nonnegative basis versi
 
 The cross-project event/profile relation, selected item's membership in the Preview's recommendation, state-dependent child counts, source field allowlist, Catalog references, and concurrency cannot be proven by these single-column foreign keys alone. They remain **open integration checks**, not silently satisfied by the DDL.
 
-## Verification status
+## Local PostgreSQL and verification status
 
-The B script has been compared field-by-field with baseline pages 20–24 and checked to contain exactly nine `CREATE TABLE` statements. This workstation has no running PostgreSQL server or `psql` binary available to execute it, so SQL execution, real constraints, transaction behavior, deletion, and Spring JDBC adapter tests are **NOT_RUN**. Do not mark B05 or B12 complete until A's schema and a real PostgreSQL integration test are available.
+Run `docker compose -f infra/postgres/compose.yaml up -d --wait` from the repository root. The development server is reachable only at `127.0.0.1:5433`, with database/user `agentfit`. The Compose file's default password is for this local-only instance; set `AGENTFIT_LOCAL_DB_PASSWORD` before first startup if a different local password is desired. The named volume preserves data across container restarts. Use `docker compose -f infra/postgres/compose.yaml stop` to stop it without deleting data.
+
+Run `./infra/postgres/verify-b-schema.ps1` to exercise B's DDL against the container's real PostgreSQL engine. The script creates minimum A parent tables and all nine B tables **inside one rolled-back transaction**, inserts a valid B1–B9 chain, and rejects invalid status, partial approval, incomplete reports/questions, and an absent parent. It leaves the `agentfit` database untouched. On 2026-10-11 this passed on PostgreSQL 17.11; the container remained healthy at `127.0.0.1:5433` afterward. The test also caught and fixed a PostgreSQL `CHECK`/`NULL` three-valued-logic hole in the report and question constraints.
+
+The running `agentfit` database intentionally has no A/B application tables yet. A's real schema, migration ordering, JDBC adapters, authenticated transactions, deletion, and Spring integration tests remain **NOT_RUN**. Do not mark B05 or B12 complete from this standalone DDL smoke test.

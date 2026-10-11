@@ -66,7 +66,8 @@ CREATE TABLE recommendation_notice (
     message TEXT NOT NULL CHECK (btrim(message) <> ''),
     input_refs TEXT[] NOT NULL DEFAULT '{}',
     CONSTRAINT recommendation_notice_question_shape CHECK (
-        (type = 'QUESTION' AND question_owner IN ('AI', 'B')
+        (type = 'QUESTION' AND question_owner IS NOT NULL
+            AND question_owner IN ('AI', 'B')
             AND answer_target IS NOT NULL AND btrim(answer_target) <> '')
         OR (type = 'REASON' AND question_owner IS NULL AND answer_target IS NULL)
     )
@@ -150,10 +151,12 @@ CREATE TABLE config_export (
     CONSTRAINT config_export_report_shape CHECK (
         (latest_report_id IS NULL AND reported_state IS NULL
             AND reason_code IS NULL AND reported_by IS NULL AND reported_at IS NULL)
-        OR (latest_report_id IS NOT NULL AND reported_by IS NOT NULL
+        OR (latest_report_id IS NOT NULL AND reported_state IS NOT NULL
+            AND reported_by IS NOT NULL
             AND reported_at IS NOT NULL AND (
                 (reported_state = 'APPLIED' AND reason_code IS NULL)
-                OR (reported_state = 'FAILED' AND reason_code IN (
+                OR (reported_state = 'FAILED' AND reason_code IS NOT NULL
+                    AND reason_code IN (
                     'COPY_FAILED', 'AUTH_REQUIRED', 'DEPENDENCY_MISSING', 'UNKNOWN'
                 ))
             ))
