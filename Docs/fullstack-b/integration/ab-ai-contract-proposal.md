@@ -23,7 +23,7 @@
 
 현재 B의 `PreviewBasis`는 `projectId`, `projectVersion`, `confirmedProfileId`, `confirmedProfileVersion`, `confirmationEventId`, `reviewVersion`, `developerVersion`, `environmentVersion`, `catalogReleaseId`, `catalogHash`를 요구한다. 필드 의미와 증가 시점은 A가 DB 모델에 맞춰 확인해야 한다. A는 Preview 생성·승인·내보내기 직전 **현재** 값을 재조회해야 한다. Project 삭제 시 B 메타데이터·감사·사용자 보고도 함께 삭제한다.
 
-추천 생성 스냅샷에서 환경 대상이 없거나 설치 목록 자체를 아직 확인하지 못했다면 각각 `null`로 전달한다. B는 이를 `NEEDS_INFORMATION`의 `environment_target`·`installed_components` 질문으로 처리한다. 설치 목록을 확인했고 비어 있는 경우만 빈 Map으로 전달한다. 이 구분은 A의 저장/응답 계약에서 유지해야 한다.
+추천 생성 요청의 `expectedVersions`는 Project/Developer/Environment 세 값을 필수로 받는다. B의 `RecommendationCreationService.create(projectId, expectedVersions)`는 A의 신뢰된 스냅샷과 먼저 비교해 불일치 시 AI 호출 전에 충돌로 처리한다. A의 저장 트랜잭션은 동일 버전을 다시 확인해야 한다. 추천 생성 스냅샷에서 환경 대상이 없거나 설치 목록 자체를 아직 확인하지 못했다면 각각 `null`로 전달한다. B는 이를 `NEEDS_INFORMATION`의 `environment_target`·`installed_components` 질문으로 처리한다. 설치 목록을 확인했고 비어 있는 경우만 빈 Map으로 전달한다. 이 구분은 A의 저장/응답 계약에서 유지해야 한다.
 
 ## AI ↔ Spring: Capability 후보
 

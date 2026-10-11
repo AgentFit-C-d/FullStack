@@ -61,7 +61,8 @@ class CoreWorkflowConfigurationTest {
         runner.withBean(RecommendationCreationService.RecommendationStore.class,
                 () -> (snapshot, basis, result) -> "rec-1")
             .run(context -> {
-                var created = context.getBean(RecommendationCreationService.class).create("project-1");
+                var created = context.getBean(RecommendationCreationService.class).create("project-1",
+                    new RecommendationCreationService.ExpectedVersions(1, 0, 1));
                 assertEquals("rec-1", created.recommendationId());
                 assertEquals(List.of("example-tool"), created.result().decision().toolKeys());
             });

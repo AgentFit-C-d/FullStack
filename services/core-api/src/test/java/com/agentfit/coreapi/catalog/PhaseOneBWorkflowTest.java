@@ -62,7 +62,8 @@ class PhaseOneBWorkflowTest {
                 return "rec-1";
             });
 
-        var created = recommendationService.create("project-1");
+        var created = recommendationService.create("project-1",
+            new RecommendationCreationService.ExpectedVersions(7, 4, 5));
         assertEquals(RecommendationDecision.Status.RECOMMENDED,
             created.result().decision().status());
         var request = new CatalogPreviewRequest(created.basis(), created.recommendationId(),

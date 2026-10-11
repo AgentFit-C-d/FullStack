@@ -94,6 +94,15 @@ public final class RecommendationCreationService {
         }
     }
 
+    /** Client's optimistic version precondition; A rechecks these values in the save transaction. */
+    public record ExpectedVersions(long project, long developer, long environment) {
+        public ExpectedVersions {
+            if (project <= 0 || developer < 0 || environment < 0) {
+                throw new IllegalArgumentException("invalid expected recommendation versions");
+            }
+        }
+    }
+
     public record Created(String recommendationId, PreviewBasis basis,
                           CatalogRecommendationWorkflow.Result result) {}
 
@@ -118,11 +127,18 @@ public final class RecommendationCreationService {
         this.store = Objects.requireNonNull(store);
     }
 
-    public Created create(String projectId) {
-        if (blank(projectId)) throw new IllegalArgumentException("project ID required");
+    public Created create(String projectId, ExpectedVersions expectedVersions) {
+        if (blank(projectId) || expectedVersions == null) {
+            throw new IllegalArgumentException("project ID and expected versions required");
+        }
         OwnerCheckedSnapshot snapshot = Objects.requireNonNull(snapshots.load(projectId));
         if (!projectId.equals(snapshot.projectId())) {
             throw new IllegalArgumentException("snapshot belongs to another project");
+        }
+        if (snapshot.projectVersion() != expectedVersions.project()
+            || snapshot.developerVersion() != expectedVersions.developer()
+            || snapshot.environmentVersion() != expectedVersions.environment()) {
+            throw new SnapshotChangedException();
         }
         ApprovedCatalog catalog = Objects.requireNonNull(catalogs.current());
         CapabilityAssessment assessment = Objects.requireNonNull(analyzer.analyze(snapshot));

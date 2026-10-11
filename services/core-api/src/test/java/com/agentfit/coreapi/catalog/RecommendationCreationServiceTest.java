@@ -39,7 +39,7 @@ class RecommendationCreationServiceTest {
                 return "recommendation-1";
             });
 
-        var created = service.create("project-1");
+        var created = service.create("project-1", expected());
 
         assertEquals("recommendation-1", created.recommendationId());
         assertEquals(List.of("example-tool"), created.result().decision().toolKeys());
@@ -56,7 +56,7 @@ class RecommendationCreationServiceTest {
             () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
             (snapshot, basis, result) -> fail("foreign project must not be saved"));
 
-        assertThrows(IllegalArgumentException.class, () -> service.create("project-1"));
+        assertThrows(IllegalArgumentException.class, () -> service.create("project-1", expected()));
         assertEquals(0, aiCalls.get());
     }
 
@@ -69,7 +69,7 @@ class RecommendationCreationServiceTest {
             () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
             (snapshot, basis, result) -> fail("failed assessment must not be saved"));
 
-        assertThrows(IllegalStateException.class, () -> service.create("project-1"));
+        assertThrows(IllegalStateException.class, () -> service.create("project-1", expected()));
     }
 
     @Test
@@ -84,7 +84,7 @@ class RecommendationCreationServiceTest {
             });
 
         assertThrows(RecommendationCreationService.SnapshotChangedException.class,
-            () -> service.create("project-1"));
+            () -> service.create("project-1", expected()));
     }
 
     @Test
@@ -109,7 +109,9 @@ class RecommendationCreationServiceTest {
             });
 
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION,
-            service.create("project-1").result().decision().status());
+            service.create("project-1",
+                new RecommendationCreationService.ExpectedVersions(7, 4, 0))
+                .result().decision().status());
         assertEquals(1, saves.get());
     }
 
@@ -125,7 +127,7 @@ class RecommendationCreationServiceTest {
             () -> fail("invalid snapshot must not read Catalog"),
             (snapshot, basis, result) -> fail("invalid snapshot must not be saved"));
 
-        assertThrows(IllegalArgumentException.class, () -> service.create("project-1"));
+        assertThrows(IllegalArgumentException.class, () -> service.create("project-1", expected()));
         assertEquals(0, aiCalls.get());
     }
 
@@ -139,11 +141,51 @@ class RecommendationCreationServiceTest {
                 Map.of("example-tool", " ")));
     }
 
+    @Test
+    void rejectsStaleExpectedVersionsBeforeCatalogOrAi() {
+        AtomicInteger aiCalls = new AtomicInteger();
+        var service = new RecommendationCreationService(
+            RecommendationCreationServiceTest::snapshot,
+            snapshot -> { aiCalls.incrementAndGet(); return assessment(); },
+            () -> fail("stale request must not read Catalog"),
+            (snapshot, basis, result) -> fail("stale request must not be saved"));
+
+        assertThrows(RecommendationCreationService.SnapshotChangedException.class,
+            () -> service.create("project-1",
+                new RecommendationCreationService.ExpectedVersions(6, 4, 5)));
+        assertThrows(RecommendationCreationService.SnapshotChangedException.class,
+            () -> service.create("project-1",
+                new RecommendationCreationService.ExpectedVersions(7, 3, 5)));
+        assertThrows(RecommendationCreationService.SnapshotChangedException.class,
+            () -> service.create("project-1",
+                new RecommendationCreationService.ExpectedVersions(7, 4, 4)));
+        assertEquals(0, aiCalls.get());
+    }
+
+    @Test
+    void rejectsMissingOrMalformedExpectedVersions() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationCreationService.ExpectedVersions(0, 0, 0));
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationCreationService.ExpectedVersions(1, -1, 0));
+        var service = new RecommendationCreationService(
+            projectId -> fail("invalid request must not read snapshot"),
+            snapshot -> fail("invalid request must not call AI"),
+            () -> fail("invalid request must not read Catalog"),
+            (snapshot, basis, result) -> fail("invalid request must not save"));
+        assertThrows(IllegalArgumentException.class,
+            () -> service.create("project-1", null));
+    }
+
     private static RecommendationCreationService.OwnerCheckedSnapshot snapshot(String projectId) {
         return new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
             "profile-1", 3, "confirmation-1", 2, 4, 5,
             Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
+    }
+
+    private static RecommendationCreationService.ExpectedVersions expected() {
+        return new RecommendationCreationService.ExpectedVersions(7, 4, 5);
     }
 
     private static RecommendationCreationService.CapabilityAssessment assessment() {
