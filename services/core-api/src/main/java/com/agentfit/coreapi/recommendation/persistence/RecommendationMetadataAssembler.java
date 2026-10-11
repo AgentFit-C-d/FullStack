@@ -13,18 +13,18 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
-/** Projects B's validated internal outcome into B1-B3 metadata; B4 text remains a caller contract. */
+/** Projects validated claims, selected tools, and B-owned verdict reasons into B1-B4 metadata. */
 public final class RecommendationMetadataAssembler {
     private RecommendationMetadataAssembler() {}
 
     public static JdbcRecommendationMetadataWriter.Draft assemble(
         String recommendationId, PreviewBasis basis, CatalogRecommendationWorkflow.Result result,
         JdbcRecommendationMetadataWriter.EvidenceLevel evidenceLevel, Instant createdAt,
-        List<JdbcRecommendationMetadataWriter.Notice> notices, Supplier<String> itemIds) {
+        List<JdbcRecommendationMetadataWriter.Notice> notices, Supplier<String> childIds) {
         Objects.requireNonNull(basis);
         Objects.requireNonNull(result);
         Objects.requireNonNull(result.decision());
-        Objects.requireNonNull(itemIds);
+        Objects.requireNonNull(childIds);
         if (!basis.catalogReleaseId().equals(result.catalogReleaseId())
             || !basis.catalogHash().equals(result.catalogHash())) {
             throw new IllegalArgumentException("recommendation Catalog differs from stored basis");
@@ -38,7 +38,7 @@ public final class RecommendationMetadataAssembler {
                 || item.supportEvidence() == null) {
                 throw new IllegalArgumentException("invalid verified recommendation item");
             }
-            items.add(new JdbcRecommendationMetadataWriter.Item(itemIds.get(), item.toolKey(),
+            items.add(new JdbcRecommendationMetadataWriter.Item(childIds.get(), item.toolKey(),
                 item.catalogVersion(), item.supportKey(), true,
                 "Verified Catalog support in the selected environment",
                 JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE));
@@ -59,10 +59,35 @@ public final class RecommendationMetadataAssembler {
                 JdbcRecommendationMetadataWriter.Necessity.valueOf(claim.need().name()),
                 claim.reason(), claim.sourceFields()));
         }
+        List<JdbcRecommendationMetadataWriter.Notice> completeNotices = new ArrayList<>(notices);
+        Set<String> reasonCodes = new HashSet<>();
+        for (String code : decision.reasonCodes()) {
+            if (!reasonCodes.add(code) || completeNotices.stream().anyMatch(notice ->
+                notice != null && notice.type() == JdbcRecommendationMetadataWriter.NoticeType.REASON
+                    && code.equals(notice.code()))) {
+                throw new IllegalArgumentException("duplicate recommendation reason");
+            }
+            completeNotices.add(new JdbcRecommendationMetadataWriter.Notice(childIds.get(),
+                JdbcRecommendationMetadataWriter.NoticeType.REASON, null, null, code,
+                reasonMessage(code), List.of()));
+        }
         var draft = new JdbcRecommendationMetadataWriter.Draft(recommendationId, basis,
             decision.status(), evidenceLevel, createdAt, List.copyOf(capabilities),
-            List.copyOf(items), notices);
+            List.copyOf(items), List.copyOf(completeNotices));
         JdbcRecommendationMetadataWriter.validate(draft);
         return draft;
+    }
+
+    private static String reasonMessage(String code) {
+        return switch (code) {
+            case "no_required_capabilities" -> "확인된 필수 기능이 없어 추가 도구가 필요하지 않습니다.";
+            case "installed_components_cover_required" ->
+                "현재 설치된 검증 도구가 필수 기능을 충족합니다.";
+            case "no_verified_capability_support" ->
+                "필수 기능을 지원하는 검증된 도구가 없습니다.";
+            case "no_verified_compatible_combination" ->
+                "필수 기능을 모두 충족하는 검증된 도구 조합이 없습니다.";
+            default -> throw new IllegalArgumentException("unknown B recommendation reason");
+        };
     }
 }

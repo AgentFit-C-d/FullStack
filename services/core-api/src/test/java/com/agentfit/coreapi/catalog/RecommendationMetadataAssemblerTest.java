@@ -79,6 +79,44 @@ class RecommendationMetadataAssemblerTest {
         assertEquals(List.of(question), draft.notices());
     }
 
+    @Test
+    void createsBReasonForNoAdditionsWithoutCallerWrittenExplanation() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
+            new CatalogRecommendationWorkflow.Request(claims(null), List.of(),
+                Set.of("profile.features"), false,
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
+
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.ENVIRONMENT_DECLARED,
+            Instant.now(), List.of(), () -> UUID.randomUUID().toString());
+
+        assertEquals(RecommendationDecision.Status.NO_ADDITIONS_NEEDED, draft.status());
+        assertTrue(draft.items().isEmpty());
+        assertEquals(List.of("no_required_capabilities"),
+            draft.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code).toList());
+        assertEquals(JdbcRecommendationMetadataWriter.NoticeType.REASON,
+            draft.notices().getFirst().type());
+        assertFalse(draft.notices().getFirst().message().isBlank());
+    }
+
+    @Test
+    void createsBReasonForMissingVerifiedCapabilitySupport() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
+            new CatalogRecommendationWorkflow.Request(claims("cap_ai_evaluation"), List.of(),
+                Set.of("profile.features"), false,
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
+
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.ENVIRONMENT_DECLARED,
+            Instant.now(), List.of(), () -> UUID.randomUUID().toString());
+
+        assertEquals(RecommendationDecision.Status.NO_COMPATIBLE_TOOLS, draft.status());
+        assertEquals(List.of("no_verified_capability_support"),
+            draft.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code).toList());
+    }
+
     private CatalogRecommendationWorkflow.Result recommendation(String hash) {
         return CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(), List.of(),
@@ -87,8 +125,12 @@ class RecommendationMetadataAssemblerTest {
     }
 
     private static List<AiCapabilityIntake.Claim> claims() {
+        return claims("cap_document_reference");
+    }
+
+    private static List<AiCapabilityIntake.Claim> claims(String requiredKey) {
         return CapabilityKey.keys().stream().sorted().map(key -> new AiCapabilityIntake.Claim(key,
-            key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
+            key.equals(requiredKey) ? AiCapabilityIntake.Need.REQUIRED
                 : AiCapabilityIntake.Need.OPTIONAL,
             "Confirmed profile requirement", List.of("profile.features"))).toList();
     }

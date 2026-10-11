@@ -1,9 +1,11 @@
 package com.agentfit.coreapi.recommendation.persistence;
 
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.catalog.CatalogRecommendationWorkflow;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
+import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -155,6 +157,44 @@ class JdbcRecommendationMetadataWriterTest {
     }
 
     @Test
+    void rejectsNoAdditionsOutcomeWithoutItsReasonBeforeAnyInsert() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        var missing = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            RecommendationDecision.Status.NO_ADDITIONS_NEEDED, original.evidenceLevel(),
+            original.createdAt(), original.capabilities(), List.of(), List.of());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcRecommendationMetadataWriter().write(connection, missing));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "recommendation"));
+        }
+    }
+
+    @Test
+    void writesAndRestoresBGeneratedNoAdditionsReason() throws Exception {
+        var basis = recommended(UUID.randomUUID()).basis();
+        var claims = Arrays.stream(CapabilityKey.values()).map(key ->
+            new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.OPTIONAL,
+                "confirmed profile", List.of("profile.features"))).toList();
+        var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
+            basis.catalogHash(), new RecommendationDecision(
+                RecommendationDecision.Status.NO_ADDITIONS_NEEDED, List.of(), List.of(),
+                List.of("no_required_capabilities")), claims, List.of(), List.of());
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis, result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
+            Instant.parse("2026-10-12T00:00:00Z"), List.of(), () -> UUID.randomUUID().toString());
+
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+        var restored = new JdbcLatestRecommendationReader().latestMetadata(connection,
+            PROJECT.toString());
+
+        assertEquals(draft.id(), restored.id());
+        assertEquals(List.of("no_required_capabilities"),
+            restored.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code).toList());
+        assertTrue(restored.items().isEmpty());
+    }
+
+    @Test
     void readsLatestStoredRecommendationWithItsBasisAndTools() throws Exception {
         var writer = new JdbcRecommendationMetadataWriter();
         var earlier = recommended(UUID.randomUUID());
@@ -162,7 +202,7 @@ class JdbcRecommendationMetadataWriterTest {
         var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
             earlier.basis(), RecommendationDecision.Status.NO_ADDITIONS_NEEDED,
             earlier.evidenceLevel(), earlier.createdAt().plusSeconds(1),
-            earlier.capabilities(), List.of(), List.of());
+            earlier.capabilities(), List.of(), List.of(noAdditionsReason()));
         writer.write(connection, later);
 
         var stored = new JdbcLatestRecommendationReader().latest(connection, PROJECT.toString());
@@ -198,7 +238,7 @@ class JdbcRecommendationMetadataWriterTest {
         var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
             earlier.basis(), RecommendationDecision.Status.NO_ADDITIONS_NEEDED,
             earlier.evidenceLevel(), earlier.createdAt().plusSeconds(1),
-            earlier.capabilities(), List.of(), List.of());
+            earlier.capabilities(), List.of(), List.of(noAdditionsReason()));
         var writer = new JdbcRecommendationMetadataWriter();
         writer.write(connection, earlier);
         writer.write(connection, later);
@@ -291,6 +331,13 @@ class JdbcRecommendationMetadataWriterTest {
             List.of(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
                 JdbcRecommendationMetadataWriter.NoticeType.REASON, null, null,
                 "VERIFIED_MATCH", "verified catalog match", List.of())));
+    }
+
+    private static JdbcRecommendationMetadataWriter.Notice noAdditionsReason() {
+        return new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.REASON, null, null,
+            "installed_components_cover_required", "current verified tools cover the requirement",
+            List.of());
     }
 
     private static int count(Statement statement, String table) throws Exception {
