@@ -28,6 +28,20 @@ class HistoryWorkflowConfigurationTest {
     }
 
     @Test
+    void historyPageNeedsOwnerCheckedBasisAndPageReader() {
+        var runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(HistoryWorkflowConfiguration.class))
+            .withBean(ConfigurationHistoryQueryService.OwnerCheckedBasisReader.class,
+                () -> projectId -> null);
+
+        runner.run(context -> assertFalse(context.containsBean("configurationHistoryPageService")));
+        runner.withBean(ConfigurationHistoryPageService.PageReader.class,
+                () -> (projectId, after, limit) ->
+                    new ConfigurationHistoryPageService.StoredPage(java.util.List.of(), null))
+            .run(context -> assertNotNull(context.getBean(ConfigurationHistoryPageService.class)));
+    }
+
+    @Test
     void userReportNeedsTrustedGenerationStoreServerIdAndClock() {
         var runner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(HistoryWorkflowConfiguration.class))

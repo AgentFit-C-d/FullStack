@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Generation-history page projection (2026-10-11): B now maps an owner-checked B9 page to content-free CURRENT/STALE read models with USER reports and validates page order/cursor shape. Spring creates the page service only when A supplies basis and page-reader ports. Full `mvn verify`: 285 tests, no failures or errors, one Windows symlink test skipped. A's actual JDBC adapter, shared transaction, opaque HTTP cursor, Audit, and route remain pending.
+
 Existing-file state consistency (2026-10-11): a `PROVIDED` Preview with only PROPOSAL files passed because `existing_state` is not hashed. B now rejects this contradiction both before storage and when reading an approved context. Full `mvn verify`: 280 tests, no failures or errors, one Windows symlink test skipped. A must still prevent mutation of approved metadata.
 
 Preview creation integrity (2026-10-11): the PostgreSQL writer previously accepted arbitrary B5 selection/content/final hashes. It now recomputes those hashes from B5–B8 metadata before inserting and rejects a mismatched Draft. Full `mvn verify`: 278 tests, no failures or errors, one Windows symlink test skipped. A's authenticated transaction and Catalog verification remain external.

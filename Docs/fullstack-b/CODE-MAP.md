@@ -13,7 +13,7 @@
 | `recommendation/persistence/` | B1–B4 추천 메타데이터 PostgreSQL 쓰기, 최신 추천 상세와 Preview가 참조하는 특정 추천 읽기. A가 소유권·현재 버전·Audit·커밋 담당 | `JdbcRecommendationMetadataWriter`, `JdbcLatestRecommendationReader` |
 | `configuration/preview/` | 파일 비교·민감 입력 검사·지문 생성 | `PreviewFileComparator`, `PreviewFingerprint`, `PreviewSensitiveContentGuard` |
 | `configuration/export/` | 승인 유효성·만료 검사와 ZIP 재생성 | `PreviewApprovalIssuer`, `ApprovedPreviewZipExporter` |
-| `configuration/history/` | 생성 이력 메타데이터·조회 투영 | `ApprovedConfigurationGenerator`, `ConfigurationHistoryQueryService` |
+| `configuration/history/` | 생성 이력 메타데이터·단건/페이지 조회 투영 | `ApprovedConfigurationGenerator`, `ConfigurationHistoryQueryService`, `ConfigurationHistoryPageService` |
 | `configuration/report/` | 사용자 적용 진술 검증·서비스 경계 | `ConfigurationUserReport`, `ConfigurationUserReportService` |
 | `configuration/persistence/` | B5–B9 PostgreSQL 메타데이터 쓰기·Preview/승인·참조 추천·생성 이력/보고 읽기·B1–B9 프로젝트 데이터 삭제. A가 소유권 검사·현재 버전·Audit·커밋 담당 | `JdbcPreviewMetadataWriter`, `JdbcStoredPreviewReader`, `JdbcConfigurationContextReader`, `JdbcConfigurationExportWriter`, `JdbcConfigurationHistoryReader`, `JdbcConfigurationReportWriter`, `JdbcProjectBDataDeleter` |
 

@@ -22,6 +22,7 @@
 | `ConfigurationUserReport.accept` | 소유권을 확인한 generation ID, 사용자 APPLIED/FAILED 보고 | 사용자 진술로 표시하고 서버 시각 부여 | 보고 저장·조회 주체와 실패 코드 공개 계약 |
 | `ConfigurationUserReportService.report` | A가 소유권 확인한 생성 이력 ID·생성 시각, A의 보고 저장 포트 | APPLIED/FAILED만 검증하고 서버 시각·USER 출처를 부여한 뒤 저장 성공을 확인; 검증 완료로 승격하지 않음 | 실제 A 저장·중복 보고/최신 보고 조회·삭제·HTTP 오류 계약 |
 | `ConfigurationHistoryQueryService.find` | A의 소유권 확인된 현재 basis·프로젝트 내 생성 이력·최신 USER 보고 | 내용 없는 생성 이력을 CURRENT/STALE로 표시하고 보고를 설치 검증과 분리; 미존재와 다른 프로젝트 레코드 구분 | 실제 A 조회·페이지네이션·프로젝트 삭제·공개 GET 계약 |
+| `ConfigurationHistoryPageService.list` | A가 같은 소유권 확인·일관된 읽기에서 제공한 현재 basis와 B9 페이지(`StoredPage`), 1–100 한도·내부 키셋 커서 | 각 항목의 CURRENT/STALE·USER 보고를 투영하고 다른 프로젝트 행·정렬/커서 불일치를 거부 | JDBC 페이지를 B 포트로 매핑, 공개 불투명 커서 인코딩·Audit·GET 계약 |
 
 ## 연결 순서와 저장 효과
 

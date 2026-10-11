@@ -1,6 +1,7 @@
 package com.agentfit.autoconfigure;
 
 import com.agentfit.coreapi.configuration.history.ConfigurationHistoryQueryService;
+import com.agentfit.coreapi.configuration.history.ConfigurationHistoryPageService;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReportService;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -24,6 +25,15 @@ public class HistoryWorkflowConfiguration {
         ConfigurationHistoryQueryService.GenerationReader generations,
         ConfigurationHistoryQueryService.LatestReportReader reports) {
         return new ConfigurationHistoryQueryService(bases, generations, reports);
+    }
+
+    @Bean
+    @ConditionalOnBean({ConfigurationHistoryQueryService.OwnerCheckedBasisReader.class,
+        ConfigurationHistoryPageService.PageReader.class})
+    ConfigurationHistoryPageService configurationHistoryPageService(
+        ConfigurationHistoryQueryService.OwnerCheckedBasisReader bases,
+        ConfigurationHistoryPageService.PageReader pages) {
+        return new ConfigurationHistoryPageService(bases, pages);
     }
 
     @Bean
