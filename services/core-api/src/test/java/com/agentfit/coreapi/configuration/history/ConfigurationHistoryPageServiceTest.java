@@ -87,6 +87,26 @@ class ConfigurationHistoryPageServiceTest {
             () -> service.list("project-1", null, 20));
     }
 
+    @Test
+    void rejectsPageThatRepeatsOrPrecedesTheRequestedCursor() {
+        var after = new ConfigurationHistoryPageService.Cursor(NOW.minusSeconds(1),
+            "generation-2");
+        var repeated = history("generation-2", CURRENT, after.generatedAt());
+        var service = new ConfigurationHistoryPageService(projectId -> CURRENT,
+            (projectId, cursor, limit) -> new ConfigurationHistoryPageService.StoredPage(
+                List.of(new ConfigurationHistoryPageService.StoredItem(repeated, null)), null));
+
+        assertThrows(IllegalStateException.class,
+            () -> service.list("project-1", after, 20));
+
+        var newer = history("generation-1", CURRENT, NOW);
+        var newerPage = new ConfigurationHistoryPageService(projectId -> CURRENT,
+            (projectId, cursor, limit) -> new ConfigurationHistoryPageService.StoredPage(
+                List.of(new ConfigurationHistoryPageService.StoredItem(newer, null)), null));
+        assertThrows(IllegalStateException.class,
+            () -> newerPage.list("project-1", after, 20));
+    }
+
     private static ConfigurationGenerationHistory history(String id, PreviewBasis basis,
                                                           Instant createdAt) {
         return ConfigurationGenerationHistory.fromStoredMetadata(id, "recommendation-1",

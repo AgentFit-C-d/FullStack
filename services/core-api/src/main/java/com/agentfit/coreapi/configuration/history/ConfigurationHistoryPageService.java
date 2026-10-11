@@ -56,7 +56,7 @@ public final class ConfigurationHistoryPageService {
             throw new IllegalStateException("invalid generation history page");
         }
         List<ConfigurationHistoryReadModel> result = new ArrayList<>();
-        Cursor previous = null;
+        Cursor previous = after;
         for (StoredItem item : stored.items()) {
             ConfigurationGenerationHistory generation = item.generation();
             if (!projectId.equals(generation.basis().projectId())) {
