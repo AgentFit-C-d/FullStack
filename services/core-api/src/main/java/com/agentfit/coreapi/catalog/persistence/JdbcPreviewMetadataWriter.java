@@ -55,8 +55,8 @@ public final class JdbcPreviewMetadataWriter {
             createdAt, expiresAt);
     }
 
-    private static void requireMatchingRecommendation(Connection connection, UUID id,
-                                                      PreviewBasis basis) throws SQLException {
+    static void requireMatchingRecommendation(Connection connection, UUID id,
+                                              PreviewBasis basis) throws SQLException {
         String sql = "SELECT project_id, confirmed_profile_id, confirmed_profile_version, "
             + "confirmation_event_id, project_version, review_version, developer_version, "
             + "environment_version, catalog_release, catalog_hash, status "

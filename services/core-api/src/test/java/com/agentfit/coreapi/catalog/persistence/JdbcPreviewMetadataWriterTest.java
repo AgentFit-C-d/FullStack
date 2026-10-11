@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.catalog.persistence;
 
 import com.agentfit.coreapi.catalog.PreviewCreationService;
+import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
@@ -137,6 +138,39 @@ class JdbcPreviewMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             assertEquals(0, count(statement, "config_preview"));
         }
+    }
+
+    @Test
+    void storesApprovalOnlyOnceAgainstExactPreviewFingerprint() throws Exception {
+        UUID previewId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
+        Instant expiresAt = createdAt.plusSeconds(600);
+        var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
+            draft(basis()), createdAt, expiresAt);
+        var issued = new StoredApprovalState(UUID.randomUUID().toString(),
+            previewId.toString(), preview.fingerprint(), createdAt.plusSeconds(60),
+            createdAt.plusSeconds(300));
+
+        var saved = new JdbcPreviewApprovalWriter().approve(connection, actorId.toString(),
+            preview, issued);
+
+        assertEquals(issued, saved);
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery(
+                 "SELECT approval_id, approved_by, approved_at, approval_expires_at "
+                     + "FROM config_preview WHERE id = '" + previewId + "'")) {
+            assertTrue(row.next());
+            assertEquals(UUID.fromString(issued.approvalId()), row.getObject(1, UUID.class));
+            assertEquals(actorId, row.getObject(2, UUID.class));
+            assertEquals(issued.approvedAt(), row.getTimestamp(3).toInstant());
+            assertEquals(issued.expiresAt(), row.getTimestamp(4).toInstant());
+        }
+        var second = new StoredApprovalState(UUID.randomUUID().toString(), previewId.toString(),
+            preview.fingerprint(), issued.approvedAt(), issued.expiresAt());
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcPreviewApprovalWriter().approve(connection, actorId.toString(),
+                preview, second));
     }
 
     private static PreviewBasis basis() {
