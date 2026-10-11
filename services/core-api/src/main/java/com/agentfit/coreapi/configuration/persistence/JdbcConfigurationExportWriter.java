@@ -74,7 +74,8 @@ public final class JdbcConfigurationExportWriter {
         Set<FileKey> stored = new HashSet<>();
         int count = 0;
         try (PreparedStatement query = connection.prepareStatement(
-            "SELECT relative_path, action, after_hash FROM config_preview_file WHERE preview_id = ?")) {
+            "SELECT relative_path, action, after_hash FROM config_preview_file "
+                + "WHERE preview_id = ? FOR SHARE")) {
             query.setObject(1, previewId);
             try (ResultSet rows = query.executeQuery()) {
                 while (rows.next()) {

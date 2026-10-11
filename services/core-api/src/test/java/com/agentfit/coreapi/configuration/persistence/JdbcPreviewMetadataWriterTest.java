@@ -507,6 +507,27 @@ class JdbcPreviewMetadataWriterTest {
         }
     }
 
+    @Test
+    void exportSaveLocksApprovedFileMetadataUntilTransactionEnds() throws Exception {
+        var fixture = approvedGeneratedExport();
+        commitSharedSchema();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+
+        try (Connection competing = secondConnection()) {
+            try (Statement statement = competing.createStatement()) {
+                statement.execute("SET LOCAL lock_timeout = '300ms'");
+            }
+            SQLException locked = assertThrows(SQLException.class, () -> {
+                try (Statement statement = competing.createStatement()) {
+                    statement.executeUpdate("UPDATE config_preview_file SET after_hash = '"
+                        + "e".repeat(64) + "'");
+                }
+            });
+            assertEquals("55P03", locked.getSQLState());
+            competing.rollback();
+        }
+    }
+
     private void commitSharedSchema() throws Exception {
         try (Statement statement = connection.createStatement();
              ResultSet row = statement.executeQuery("SELECT current_schema()")) {

@@ -63,4 +63,6 @@ A two-connection PostgreSQL test also confirms that an active B9 history read bl
 
 A second two-connection test confirms that competing USER report writes serialize on B9's row lock. Once a newer report commits, an older report time is rejected and the latest APPLIED statement remains. A must still authenticate the actor and append each historical report to common Audit atomically.
 
+`JdbcConfigurationExportWriter` now holds B8 file rows with `FOR SHARE` while comparing them to the generated ZIP metadata and inserting B9. A concurrent B8 hash update cannot change the checked values before commit. The approved B8 rows must remain immutable after commit through A's migration/write policy; the lock alone does not enforce that longer-lived invariant.
+
 The running `agentfit` database intentionally has no A/B application tables yet. A's real schema and migration ordering, the authenticated adapter that passes its locked transaction to B, current A version recheck, Audit, deletion, and public API remain **NOT_RUN**. Do not mark B05, B10, or B12 complete from this B-only JDBC test.
