@@ -73,4 +73,6 @@ A second two-connection test confirms that competing USER report writes serializ
 
 `JdbcConfigurationExportWriter` now holds B8 file rows with `FOR SHARE` while comparing them to the generated ZIP metadata and inserting B9. A concurrent B8 hash update cannot change the checked values before commit. The approved B8 rows must remain immutable after commit through A's migration/write policy; the lock alone does not enforce that longer-lived invariant.
 
+The export writer also invokes the B5–B8 metadata integrity read immediately before inserting B9. A policy choice changed between the earlier download-context lookup and the save now rejects the export. This B check does not establish A's current versions or commit the caller-owned transaction.
+
 The running `agentfit` database intentionally has no A/B application tables yet. A's real schema and migration ordering, the authenticated adapter that passes its locked transaction to B, current A version recheck, Audit, deletion, and public API remain **NOT_RUN**. Do not mark B05, B10, or B12 complete from this B-only JDBC test.

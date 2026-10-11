@@ -49,6 +49,12 @@ public final class JdbcConfigurationExportWriter {
         }
         JdbcPreviewMetadataWriter.requireMatchingRecommendation(transaction, recommendationId,
             history.basis());
+        // Recheck B5-B8 at the write boundary as well: a download-context read may have
+        // completed before a stored selection or policy changed.
+        if (new JdbcConfigurationContextReader().byPreviewId(transaction,
+            history.basis().projectId(), history.previewId()) == null) {
+            throw new IllegalStateException("approved Preview context disappeared");
+        }
         requireMatchingFiles(transaction, previewId, history);
 
         try (PreparedStatement insert = transaction.prepareStatement(

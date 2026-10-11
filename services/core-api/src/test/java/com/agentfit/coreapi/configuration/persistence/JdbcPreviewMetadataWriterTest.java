@@ -287,6 +287,24 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void rejectsExportWhenStoredPermissionChangesAfterContextRead() throws Exception {
+        var fixture = approvedGeneratedExport();
+        var reader = new JdbcConfigurationContextReader();
+        assertNotNull(reader.byApprovalId(connection, PROJECT.toString(),
+            fixture.generated().history().approvalId()));
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_permission_selection SET policy = 'ALWAYS_ALLOW'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationExportWriter().save(connection,
+                fixture.generated().history()));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "config_export"));
+        }
+    }
+
+    @Test
     void storesOnlyLatestUserStatementAfterExport() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
