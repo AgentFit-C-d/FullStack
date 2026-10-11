@@ -44,18 +44,32 @@ public final class JdbcLatestRecommendationReader {
     }
 
     public StoredRecommendationState latest(Connection transaction, String projectId) throws SQLException {
+        return read(transaction, projectId, null);
+    }
+
+    /** Reads the recommendation referenced by a Preview, scoped to A's owner-checked project. */
+    public StoredRecommendationState byId(Connection transaction, String projectId,
+                                          String recommendationId) throws SQLException {
+        return read(transaction, projectId, uuid(recommendationId));
+    }
+
+    private static StoredRecommendationState read(Connection transaction, String projectId,
+                                                   UUID recommendationId) throws SQLException {
         Objects.requireNonNull(transaction);
         if (transaction.getAutoCommit()) {
-            throw new IllegalArgumentException("latest recommendation requires a caller-owned transaction");
+            throw new IllegalArgumentException("recommendation read requires a caller-owned transaction");
         }
         UUID project = uuid(projectId);
         String sql = "SELECT id, project_id, project_version, confirmed_profile_id, "
             + "confirmed_profile_version, confirmation_event_id, review_version, "
             + "developer_version, environment_version, catalog_release, catalog_hash, status "
             + "FROM recommendation WHERE project_id = ? "
-            + "ORDER BY created_at DESC, id DESC LIMIT 1 FOR SHARE";
+            + (recommendationId == null
+                ? "ORDER BY created_at DESC, id DESC LIMIT 1 FOR SHARE"
+                : "AND id = ? FOR SHARE");
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             query.setObject(1, project);
+            if (recommendationId != null) query.setObject(2, recommendationId);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
                 UUID id = row.getObject("id", UUID.class);

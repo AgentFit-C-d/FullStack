@@ -193,6 +193,28 @@ class JdbcRecommendationMetadataWriterTest {
     }
 
     @Test
+    void readsExactOwnedRecommendationEvenAfterNewerRecommendationExists() throws Exception {
+        var earlier = recommended(UUID.randomUUID());
+        var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
+            earlier.basis(), RecommendationDecision.Status.NO_ADDITIONS_NEEDED,
+            earlier.evidenceLevel(), earlier.createdAt().plusSeconds(1),
+            earlier.capabilities(), List.of(), List.of());
+        var writer = new JdbcRecommendationMetadataWriter();
+        writer.write(connection, earlier);
+        writer.write(connection, later);
+        var reader = new JdbcLatestRecommendationReader();
+
+        var stored = reader.byId(connection, PROJECT.toString(), earlier.id());
+
+        assertEquals(earlier.id(), stored.recommendationId());
+        assertEquals(earlier.basis(), stored.basis());
+        assertEquals(List.of("tool-a"), stored.toolKeys());
+        assertEquals(later.id(), reader.latest(connection, PROJECT.toString()).recommendationId());
+        assertNull(reader.byId(connection, UUID.randomUUID().toString(), earlier.id()));
+        assertNull(reader.byId(connection, PROJECT.toString(), UUID.randomUUID().toString()));
+    }
+
+    @Test
     void readsCompleteLatestRecommendationMetadataWithoutRerunningAi() throws Exception {
         var draft = recommended(UUID.randomUUID());
         new JdbcRecommendationMetadataWriter().write(connection, draft);
