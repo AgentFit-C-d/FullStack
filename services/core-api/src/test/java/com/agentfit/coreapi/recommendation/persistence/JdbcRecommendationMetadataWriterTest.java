@@ -192,6 +192,66 @@ class JdbcRecommendationMetadataWriterTest {
         assertEquals(RecommendationDecision.Status.RECOMMENDED, stored.status());
     }
 
+    @Test
+    void readsCompleteLatestRecommendationMetadataWithoutRerunningAi() throws Exception {
+        var draft = recommended(UUID.randomUUID());
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+
+        var stored = new JdbcLatestRecommendationReader().latestMetadata(connection, PROJECT.toString());
+
+        assertNotNull(stored);
+        assertEquals(draft.id(), stored.id());
+        assertEquals(draft.basis(), stored.basis());
+        assertEquals(draft.status(), stored.status());
+        assertEquals(draft.evidenceLevel(), stored.evidenceLevel());
+        assertEquals(draft.createdAt(), stored.createdAt());
+        assertEquals(9, stored.capabilities().size());
+        assertEquals(draft.capabilities().stream().map(JdbcRecommendationMetadataWriter.Capability::key)
+            .collect(java.util.stream.Collectors.toSet()),
+            stored.capabilities().stream().map(JdbcRecommendationMetadataWriter.Capability::key)
+                .collect(java.util.stream.Collectors.toSet()));
+        assertEquals(draft.items(), stored.items());
+        assertEquals(draft.notices(), stored.notices());
+        assertNull(new JdbcLatestRecommendationReader().latestMetadata(
+            connection, UUID.randomUUID().toString()));
+    }
+
+    @Test
+    void rejectsStoredRecommendedResultAfterItsOnlyItemDisappears() throws Exception {
+        var draft = recommended(UUID.randomUUID());
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("DELETE FROM recommendation_item WHERE recommendation_id = '"
+                + draft.id() + "'");
+        }
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcLatestRecommendationReader().latestMetadata(connection, PROJECT.toString()));
+    }
+
+    @Test
+    void readsLatestNeedsInformationQuestionWithoutRecommendedItems() throws Exception {
+        var earlier = recommended(UUID.randomUUID());
+        var question = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+            JdbcRecommendationMetadataWriter.QuestionOwner.AI, "profile.constraints",
+            "MISSING_SCOPE", "clarify project scope", List.of("profile.constraints"));
+        var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
+            earlier.basis(), RecommendationDecision.Status.NEEDS_INFORMATION,
+            earlier.evidenceLevel(), earlier.createdAt().plusSeconds(1),
+            earlier.capabilities(), List.of(), List.of(question));
+        var writer = new JdbcRecommendationMetadataWriter();
+        writer.write(connection, earlier);
+        writer.write(connection, later);
+
+        var stored = new JdbcLatestRecommendationReader().latestMetadata(connection, PROJECT.toString());
+
+        assertEquals(later.id(), stored.id());
+        assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, stored.status());
+        assertTrue(stored.items().isEmpty());
+        assertEquals(List.of(question), stored.notices());
+    }
+
     private static JdbcRecommendationMetadataWriter.Draft recommended(UUID id) {
         var capabilities = Arrays.stream(CapabilityKey.values()).map(key ->
             new JdbcRecommendationMetadataWriter.Capability(key.key(),

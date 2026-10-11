@@ -44,7 +44,7 @@ public final class JdbcRecommendationMetadataWriter {
         insertNotices(transaction, id, draft.notices());
     }
 
-    private static void validate(Draft draft) {
+    static void validate(Draft draft) {
         if (draft == null || draft.basis() == null || draft.status() == null
             || draft.evidenceLevel() == null || draft.createdAt() == null
             || draft.capabilities() == null || draft.items() == null || draft.notices() == null) {
