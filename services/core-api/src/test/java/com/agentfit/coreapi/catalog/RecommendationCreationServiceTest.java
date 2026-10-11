@@ -87,6 +87,32 @@ class RecommendationCreationServiceTest {
             () -> service.create("project-1"));
     }
 
+    @Test
+    void persistsInformationRequestWhenEnvironmentAndInstallInventoryAreMissing() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory);
+        AtomicInteger saves = new AtomicInteger();
+        var service = new RecommendationCreationService(
+            projectId -> new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
+                "profile-1", 3, "confirmation-1", 2, 4, 0,
+                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                false, null, null),
+            snapshot -> assessment(),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
+            (snapshot, basis, result) -> {
+                assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION,
+                    result.decision().status());
+                assertEquals(List.of("environment_target", "installed_components"),
+                    result.decision().questionCodes());
+                assertTrue(result.items().isEmpty());
+                saves.incrementAndGet();
+                return "recommendation-1";
+            });
+
+        assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION,
+            service.create("project-1").result().decision().status());
+        assertEquals(1, saves.get());
+    }
+
     private static RecommendationCreationService.OwnerCheckedSnapshot snapshot(String projectId) {
         return new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
             "profile-1", 3, "confirmation-1", 2, 4, 5,

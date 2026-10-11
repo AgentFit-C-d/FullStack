@@ -23,6 +23,8 @@
 
 현재 B의 `PreviewBasis`는 `projectId`, `projectVersion`, `confirmedProfileId`, `confirmedProfileVersion`, `confirmationEventId`, `reviewVersion`, `developerVersion`, `environmentVersion`, `catalogReleaseId`, `catalogHash`를 요구한다. 필드 의미와 증가 시점은 A가 DB 모델에 맞춰 확인해야 한다. A는 Preview 생성·승인·내보내기 직전 **현재** 값을 재조회해야 한다. Project 삭제 시 B 메타데이터·감사·사용자 보고도 함께 삭제한다.
 
+추천 생성 스냅샷에서 환경 대상이 없거나 설치 목록 자체를 아직 확인하지 못했다면 각각 `null`로 전달한다. B는 이를 `NEEDS_INFORMATION`의 `environment_target`·`installed_components` 질문으로 처리한다. 설치 목록을 확인했고 비어 있는 경우만 빈 Map으로 전달한다. 이 구분은 A의 저장/응답 계약에서 유지해야 한다.
+
 ## AI ↔ Spring: Capability 후보
 
 요청은 A가 허용한 기획·역할·환경 필드만 포함한다. Secret, 기존 설정 원문, 문서 원문·추출문 전체, 다른 사용자의 정보는 전달하지 않는다. 요청 ID와 계약/스키마 버전을 양쪽 로그에 연결하고 모델·프롬프트 버전, 지연·오류 유형을 관측한다. 재시도 가능성과 중복 방지는 분석 작업 ID 또는 idempotency key의 소유자를 정한 뒤 확정한다.

@@ -63,9 +63,8 @@ public final class RecommendationCreationService {
             if (!allowedSourceFields.containsAll(aiSourceValues.keySet())) {
                 throw new IllegalArgumentException("AI source values contain an unapproved field");
             }
-            environment = Objects.requireNonNull(environment);
-            installedToolVersions = Collections.unmodifiableMap(
-                new HashMap<>(Objects.requireNonNull(installedToolVersions)));
+            installedToolVersions = installedToolVersions == null ? null
+                : Collections.unmodifiableMap(new HashMap<>(installedToolVersions));
         }
 
         PreviewBasis basisFor(CatalogRecommendationWorkflow.Result result) {
