@@ -95,7 +95,7 @@ class JdbcPreviewMetadataWriterTest {
         Instant expiresAt = createdAt.plusSeconds(600);
 
         var saved = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
-            draft(basis()), createdAt, expiresAt);
+            calculatedDraft(), createdAt, expiresAt);
 
         assertEquals(previewId.toString(), saved.previewId());
         assertEquals(createdAt, saved.createdAt());
@@ -118,8 +118,21 @@ class JdbcPreviewMetadataWriterTest {
                 assertEquals("config/main.txt", rows.getString(2));
                 assertEquals("PROPOSAL", rows.getString(3));
                 assertNull(rows.getString(4));
-                assertEquals("d".repeat(64), rows.getString(5));
+                assertEquals(calculatedDraft().fileMetadata().getFirst().afterHash(),
+                    rows.getString(5));
             }
+        }
+    }
+
+    @Test
+    void rejectsPreviewDraftWhoseFingerprintDoesNotMatchStoredFields() throws Exception {
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcPreviewMetadataWriter().write(connection,
+                UUID.randomUUID().toString(), draft(basis()),
+                Instant.parse("2026-10-11T05:00:00Z"),
+                Instant.parse("2026-10-11T05:10:00Z")));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "config_preview"));
         }
     }
 

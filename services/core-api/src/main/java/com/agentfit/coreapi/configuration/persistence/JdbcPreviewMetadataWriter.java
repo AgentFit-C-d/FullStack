@@ -3,6 +3,8 @@ package com.agentfit.coreapi.configuration.persistence;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.configuration.preview.PreviewFile;
+import com.agentfit.coreapi.configuration.preview.PreviewFingerprint;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -45,6 +47,16 @@ public final class JdbcPreviewMetadataWriter {
         if (draft.policies().stream().anyMatch(policy -> policy == null
             || !itemIds.containsKey(policy.toolKey()))) {
             throw new IllegalArgumentException("policy does not belong to a selected tool");
+        }
+        var hashes = PreviewFingerprint.computeStoredMetadata(draft.basis(),
+            draft.recommendationId(), draft.selectedToolKeys(), draft.policies(),
+            draft.generatorVersion(), draft.fileMetadata().stream()
+                .map(file -> new PreviewFile(file.targetKey(), file.relativePath(), file.action(),
+                    file.beforeHash(), file.afterHash(), null, null, null)).toList());
+        if (!hashes.selectionDigest().equals(draft.selectionDigest())
+            || !hashes.contentDigest().equals(draft.contentDigest())
+            || !hashes.fingerprint().equals(draft.fingerprint())) {
+            throw new IllegalArgumentException("Preview draft metadata and fingerprint differ");
         }
 
         insertPreview(transaction, id, recommendationId, draft, createdAt, expiresAt);
