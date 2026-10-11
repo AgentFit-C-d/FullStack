@@ -9,8 +9,9 @@
 3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
 4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
 5. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
-6. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
-7. 중간 공유에는 [발표용 핵심 문구](PRESENTATION-MIDPOINT.md)를 사용하되, 구현/미구현 경계를 유지한다.
+6. Java 구현 위치는 [코드 길잡이](CODE-MAP.md)에서 기능별로 찾는다.
+7. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
+8. 중간 공유에는 [발표용 핵심 문구](PRESENTATION-MIDPOINT.md)를 사용하되, 구현/미구현 경계를 유지한다.
 
 ## 문서 구조
 
@@ -24,12 +25,15 @@ FullStack/Docs/
    ├─ NEXT-STEPS.md                  # 다음 작업·의존성
    ├─ HISTORY.md                     # 단계별 검증 이력
    ├─ integration/                   # A·AI 연동 계약 제안과 미합의 항목
+   ├─ db/                            # PostgreSQL B 테이블과 A 인계
    ├─ catalog/                       # 릴리스·해시·스키마·호환 조합
    ├─ recommendation/                # 추천·도구/권한 선택
-   └─ configuration/                 # 조립 → 비교·지문 → 승인·ZIP
+   └─ configuration/                 # 조립 → 비교·지문 → 승인·ZIP·이력
       ├─ assembly/                   # Catalog 템플릿·조립·크기 예산 설계
       ├─ preview/                    # 비교·민감정보·지문·신선도 설계
-      └─ export/                     # 승인·ZIP 내보내기 설계
+      ├─ export/                     # 승인·ZIP 내보내기 설계
+      ├─ history/                    # 생성 이력·조회 모델
+      └─ report/                     # 사용자 적용 진술
 ```
 
 ## Java 파일 찾기
@@ -47,6 +51,7 @@ FullStack/Docs/
 | 만료·승인·ZIP 내보내기 | `configuration/export/` | [내보내기](configuration/README.md) |
 | 사용자 적용 보고 검증 | `configuration/report/` | [적용 보고](configuration/report/user-application-report-plan.md) |
 | 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](configuration/history/generation-history-plan.md) |
+| Preview·승인·생성 이력·적용 보고의 B5–B9 JDBC 기록 | `configuration/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 
 B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관리한다. 이 문서에서 말하는 구현은 외부 서비스·DB에 연결되지 않은 경계 코드다.
 
@@ -56,13 +61,13 @@ B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관
 | --- | --- | --- |
 | 추천·선택 | 9개 Capability, AI 후보의 내부 검증, 결정적 추천 결과, 정확한 OS/Client/버전 지원·조합·의존성·충돌·권한 검증 | A의 현재 스냅샷, AI 전송 계약·실패 처리, 추천 저장·API |
 | Catalog | 매니페스트 SHA-256 검증, 엄격한 합성 v1 스키마, 템플릿 출처·승인 해시 확인 | 실제 Client 지원·템플릿 검증과 승인된 릴리스 |
-| Preview·설정 | 임시 비교·Diff, 식별 가능한 Secret 검사, 지문 계산, 저장된 승인 메타데이터를 검사하는 동일 바이트 ZIP 재생성, Catalog 기반 임시 Preview 연결, 사용자 적용 보고 값 검증, 최소 생성 이력 메타데이터 | 인증/소유권, 승인·만료·감사·DB, 공개 API·화면 연동 |
+| Preview·설정 | 임시 비교·Diff, 식별 가능한 Secret 검사, 지문 계산, 저장된 승인 메타데이터를 검사하는 동일 바이트 ZIP 재생성, Catalog 기반 임시 Preview 연결, 사용자 적용 보고 값 검증, 최소 생성 이력 메타데이터, B5–B9 JDBC 저장 경계 | 인증/소유권, 현재 A 버전 확인, Audit·원자적 커밋, 공개 API·화면 연동 |
 
-마지막 전체 검증은 `mvn clean verify`에서 **119개 테스트 발견, 118개 통과, 1개 건너뜀**이었다. 건너뛴 테스트는 이 Windows 환경에서 심볼릭 링크 생성 권한이 없어 실행되지 않은 파일시스템 테스트다. JDK 24로 Java 21 대상 바이트코드를 만들었으며 Java 21 런타임 실행은 아직 확인하지 못했다. 세부 검증은 [HISTORY.md](HISTORY.md)에 기록했다.
+최근 B5–B9 JDBC 구현까지의 전체 `mvn verify`에서는 **250개 테스트 발견, 실패·오류 0개, 1개 건너뜀**이었다. 로컬 Docker PostgreSQL 연결을 포함한 결과이며, 건너뛴 항목은 Windows 심볼릭 링크 생성 권한이 필요한 파일시스템 테스트다. 현재 파일 재배치의 검증 결과는 별도 커밋 기록을 참조한다.
 
 **1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
 
-현재 코드는 도메인/메모리 경계의 구현이다. **실제 Catalog 데이터, PostgreSQL 영속화, 인증된 B API, AI 연동, 사용자 승인 흐름은 완료되지 않았다.**
+현재 코드는 도메인/메모리 경계와 B5–B9의 호출자 트랜잭션용 JDBC 기록 경계까지 구현했다. **실제 Catalog 데이터, A의 실테이블·인증·Audit와 연결된 영속화, 인증된 B API, AI 연동, 사용자 승인 흐름은 완료되지 않았다.**
 1차 실제 Catalog는 **Claude Code부터**, Codex는 후속이다. 현재 Java 테스트의 `example-client`/`1.0` 값은 합성 환경 fixture이며 실제 지원 증거가 아니다. 각 Client의 지원 버전·템플릿·권한 매핑·조합은 검증된 Catalog가 준비되기 전까지 활성화하지 않는다.
 
 ## 재개할 때

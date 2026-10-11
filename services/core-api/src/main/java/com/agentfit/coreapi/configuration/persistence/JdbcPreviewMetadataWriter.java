@@ -1,4 +1,4 @@
-package com.agentfit.coreapi.catalog.persistence;
+package com.agentfit.coreapi.configuration.persistence;
 
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;

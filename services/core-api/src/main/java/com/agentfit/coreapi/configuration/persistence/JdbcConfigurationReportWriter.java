@@ -1,4 +1,4 @@
-package com.agentfit.coreapi.catalog.persistence;
+package com.agentfit.coreapi.configuration.persistence;
 
 import com.agentfit.coreapi.configuration.history.ConfigurationHistoryReadModel;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
