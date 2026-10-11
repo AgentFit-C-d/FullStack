@@ -69,6 +69,19 @@ class CatalogReadServiceTest {
     }
 
     @Test
+    void omitsToolsWithNoVerifiedSupportForTheRequestedTarget() {
+        var unverifiedVersion = CatalogReadService.list(parsed(), HASH,
+            new CatalogReadService.Filter("WINDOWS", "claude-code", "2.0",
+                "cap_document_reference"));
+        assertTrue(unverifiedVersion.items().isEmpty());
+
+        var all = CatalogReadService.list(parsed(), HASH,
+            new CatalogReadService.Filter(null, null, null));
+        assertEquals(List.of("doc-skill"), all.items().stream()
+            .map(CatalogReadService.Item::key).toList());
+    }
+
+    @Test
     void refusesUnapprovedHashAndUnknownCapabilityFilter() {
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadService.list(parsed(), "b".repeat(64),

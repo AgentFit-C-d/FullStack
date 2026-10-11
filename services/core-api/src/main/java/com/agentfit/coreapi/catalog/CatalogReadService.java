@@ -94,8 +94,7 @@ public final class CatalogReadService {
                     row.clientVersion(), row.documentation(), row.format(), row.standalone(),
                     verified, evidence));
             }
-            if ((filter.osFamily() != null || filter.clientId() != null
-                || filter.clientVersion() != null) && support.isEmpty()) continue;
+            if (support.stream().noneMatch(Support::verified)) continue;
             List<Permission> permissions = new ArrayList<>();
             for (PermissionMapping mapping : parsed.permissionMappings().stream()
                 .filter(row -> row.toolKey().equals(tool.key()))

@@ -1,6 +1,6 @@
 # 승인 Catalog 읽기 내부 모델
 
-`CatalogReadService.list(releaseDirectory, approvedCatalogHash, filter)`는 해시·스키마 검증된 Catalog 파일에서 읽기 전용 목록을 만든다. OS, Client, **정확한 Client 버전**, Capability 필터를 적용하고 각 도구의 지원 행별 검증 단계와 근거 URL·확인일, 권한 매핑을 함께 돌려준다. 버전 필터에 맞는 지원 행이 없으면 해당 도구는 결과에서 제외한다. `documentation`, `format`, `standalone`이 모두 PASS인 정확한 지원 행만 `verified=true`다. 다른 버전의 PASS를 현재 버전 지원으로 합치지 않는다.
+`CatalogReadService.list(releaseDirectory, approvedCatalogHash, filter)`는 해시·스키마 검증된 Catalog 파일에서 읽기 전용 목록을 만든다. OS, Client, **정확한 Client 버전**, Capability 필터를 적용하고 각 도구의 지원 행별 검증 단계와 근거 URL·확인일, 권한 매핑을 함께 돌려준다. 필터에 맞는 지원 행 중 `documentation`, `format`, `standalone`이 모두 PASS인 행이 하나도 없으면 해당 도구는 목록에서 제외한다. 목록에 포함된 도구의 다른 미검증 지원 행은 `verified=false`로 남겨 검증 범위를 구분한다. 다른 버전의 PASS를 현재 버전 지원으로 합치지 않는다.
 
 이 모델은 도구의 이름·종류(`PLUGIN`/`MCP`/`SKILL`/`HOOK`)·출처 URL도 반환한다. 이름·종류·출처가 없는 릴리스는 파싱 단계에서 거부한다. 이 정보는 해당 Client에서 동작한다는 검증 결과와 별개다.
 
