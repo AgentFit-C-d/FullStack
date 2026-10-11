@@ -82,4 +82,15 @@ class PreviewAssemblyLimitsTest {
                 files(1, "ok").stream().map(file -> new PreviewInputFile("t".repeat(201),
                     file.relativePath(), file.content())).toList())));
     }
+
+    @Test
+    void rejectsMalformedUnicodeMetadataBeforeCatalogLoading() {
+        assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
+            () -> PreviewAssemblyLimits.validateRequest(new CatalogPreviewRequest(null,
+                "rec", null, List.of("tool"), List.of(), ExistingState.UNKNOWN,
+                List.of(), "v1-\uD800")));
+        assertThrows(PreviewAssemblyLimits.LimitExceededException.class,
+            () -> PreviewAssemblyLimits.validateRequest(request(List.of("tool"), List.of(),
+                List.of(new PreviewInputFile("target-\uDC00", "config.txt", "ok")))));
+    }
 }

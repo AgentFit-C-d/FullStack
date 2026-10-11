@@ -85,8 +85,18 @@ public final class PreviewAssemblyLimits {
     }
 
     private static void validateLength(String value, int maximum) {
-        if (value != null && value.codePointCount(0, value.length()) > maximum) {
-            throw new LimitExceededException("Preview metadata too long");
+        if (value != null) {
+            if (value.codePointCount(0, value.length()) > maximum) {
+                throw new LimitExceededException("Preview metadata too long");
+            }
+            try {
+                StandardCharsets.UTF_8.newEncoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .encode(CharBuffer.wrap(value));
+            } catch (CharacterCodingException exception) {
+                throw new LimitExceededException("invalid Preview metadata text");
+            }
         }
     }
 
