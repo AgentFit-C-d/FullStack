@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Approval-time Preview integrity (2026-10-11): a PostgreSQL counterexample changed B7 policy after Preview creation and still saved a B5 approval. The approval writer now rechecks locked B5–B8 canonical hashes before filling the one-time approval bundle. Full `mvn verify`: 277 tests, no failures or errors, one Windows symlink test skipped. A's current-basis/Audit integration remains open.
+
 Export commit-time integrity (2026-10-11): a PostgreSQL counterexample changed a stored permission after the download-context read and still inserted B9. `JdbcConfigurationExportWriter` now repeats the locked B5–B8 fingerprint check just before its insert. Full `mvn verify`: 276 tests, no failures or errors, one Windows symlink test skipped. A must still owner-check current versions and commit Audit with B9.
 
 Stored Preview metadata integrity (2026-10-11): PostgreSQL counterexamples showed that changing an approved policy or file target did not stop the B download-context read. It now recomputes the same canonical selection/content/final hashes from locked B5–B8 metadata and rejects mismatches without storing configuration content. Full `mvn verify`: 275 tests, no failures or errors, one Windows symlink test skipped. A's immutable approved-record policy and current-state transaction remain pending.

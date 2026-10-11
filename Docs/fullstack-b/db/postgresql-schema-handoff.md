@@ -63,6 +63,8 @@ The B-only `JdbcPreviewMetadataWriter` accepts an A-owned JDBC transaction after
 
 The context reader also locks B6–B8 rows and recomputes B5's selection, content, and final fingerprints from tool choices, permission policies, generator version, and file path/action/hash metadata. This detects a changed stored policy or file target without loading configuration bytes. The digest check does not replace A's approved-record immutability rule or its atomic current-state check at export commit.
 
+`JdbcPreviewApprovalWriter` invokes the same metadata integrity read under its B5 row lock before filling the approval bundle. A changed B6/B7/B8 record therefore cannot receive a new approval ID even if B5's original fingerprint is still present. A still checks current project versions and writes Audit in the same owner-checked transaction.
+
 Its `list` method returns 1–100 generations per page, ordered by `generated_at DESC, id ASC`, with a keyset cursor from the last returned row. The DDL includes a matching B9 order index. A must authenticate and authorize the project, encode/decode the cursor for HTTP, and apply the owner-checked current basis to each item. The B reader does not turn a USER report into verified installation.
 
 `JdbcProjectBDataDeleter` removes B9, B8, B7, B6, B5, B4, B2, B3, then B1 for one project in foreign-key order. It neither authenticates the caller nor deletes A rows or common Audit. A must lock and owner-check the project, delete its Audit and A rows in the agreed order, and commit once; otherwise roll back all B deletes. The opt-in PostgreSQL test verifies a full B chain is removed while another project's recommendation remains. A's real cross-table migration and late-write race checks remain pending.

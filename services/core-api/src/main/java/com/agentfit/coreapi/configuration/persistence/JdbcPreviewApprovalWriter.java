@@ -54,6 +54,10 @@ public final class JdbcPreviewApprovalWriter {
         }
         JdbcPreviewMetadataWriter.requireMatchingRecommendation(
             transaction, recommendationId, preview.basis());
+        if (new JdbcConfigurationContextReader().byPreviewId(transaction,
+            preview.basis().projectId(), preview.previewId()) == null) {
+            throw new IllegalStateException("Preview context disappeared before approval");
+        }
 
         try (PreparedStatement update = transaction.prepareStatement(
             "UPDATE config_preview SET approval_id = ?, approved_by = ?, "

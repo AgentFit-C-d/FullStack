@@ -163,7 +163,7 @@ class JdbcPreviewMetadataWriterTest {
         Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
         Instant expiresAt = createdAt.plusSeconds(600);
         var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
-            draft(basis()), createdAt, expiresAt);
+            calculatedDraft(), createdAt, expiresAt);
         var issued = new StoredApprovalState(UUID.randomUUID().toString(),
             previewId.toString(), preview.fingerprint(), createdAt.plusSeconds(60),
             createdAt.plusSeconds(300));
@@ -190,11 +190,32 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void rejectsApprovalWhenStoredPermissionChangedAfterPreviewCreation() throws Exception {
+        Instant now = Instant.parse("2026-10-11T05:00:00Z");
+        var preview = new JdbcPreviewMetadataWriter().write(connection,
+            UUID.randomUUID().toString(), calculatedDraft(), now, now.plusSeconds(600));
+        var approval = new StoredApprovalState(UUID.randomUUID().toString(),
+            preview.previewId(), preview.fingerprint(), now.plusSeconds(60), now.plusSeconds(300));
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_permission_selection SET policy = 'ALWAYS_ALLOW'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcPreviewApprovalWriter().approve(connection,
+                UUID.randomUUID().toString(), preview, approval));
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT approval_id FROM config_preview")) {
+            assertTrue(row.next());
+            assertNull(row.getObject(1));
+        }
+    }
+
+    @Test
     void readsStoredPreviewAndApprovalWithinOwnerCheckedTransaction() throws Exception {
         UUID previewId = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
         var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
-            draft(basis()), createdAt, createdAt.plusSeconds(600));
+            calculatedDraft(), createdAt, createdAt.plusSeconds(600));
         var reader = new JdbcStoredPreviewReader();
 
         var beforeApproval = reader.byPreviewId(connection, PROJECT.toString(), previewId.toString());
@@ -663,6 +684,21 @@ class JdbcPreviewMetadataWriterTest {
             List.of(new PreviewCreationService.FileMetadata("main", "config/main.txt",
                 PreviewFile.Action.PROPOSAL, null, "d".repeat(64))),
             "static-v1", "a".repeat(64), "b".repeat(64), "c".repeat(64));
+    }
+
+    private static PreviewCreationService.Draft calculatedDraft() {
+        var input = new PreviewFingerprintInput(basis(), RECOMMENDATION.toString(),
+            List.of("tool-a"), List.of(new PermissionSelection("tool-a", "read",
+                PermissionPolicy.ASK_EACH_TIME)), "static-v1",
+            List.of(new PreviewInputFile("main", "config/main.txt", "safe config\n")),
+            ExistingState.UNKNOWN, List.of());
+        var computed = PreviewFingerprint.compute(input);
+        return new PreviewCreationService.Draft(basis(), RECOMMENDATION.toString(),
+            input.selectedToolIds(), input.policies(), input.existingState(),
+            computed.files().stream().map(file -> new PreviewCreationService.FileMetadata(
+                file.targetKey(), file.relativePath(), file.action(), file.beforeHash(),
+                file.afterHash())).toList(), input.generatorVersion(), computed.selectionDigest(),
+            computed.contentDigest(), computed.fingerprint());
     }
 
     private static int count(Statement statement, String table) throws Exception {
