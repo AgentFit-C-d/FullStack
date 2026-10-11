@@ -407,6 +407,32 @@ class JdbcPreviewMetadataWriterTest {
             () -> reader.find(connection, PROJECT.toString(), fixture.generationId().toString()));
     }
 
+    @Test
+    void pagesProjectGenerationHistoryWithoutRepeatingEqualTimestampRows() throws Exception {
+        var firstExport = approvedGeneratedExport();
+        var secondExport = approvedGeneratedExport();
+        var thirdExport = approvedGeneratedExport();
+        var writer = new JdbcConfigurationExportWriter();
+        writer.save(connection, firstExport.generated().history());
+        writer.save(connection, secondExport.generated().history());
+        writer.save(connection, thirdExport.generated().history());
+        var reader = new JdbcConfigurationHistoryReader();
+
+        var firstPage = reader.list(connection, PROJECT.toString(), null, 2);
+        assertEquals(2, firstPage.items().size());
+        assertNotNull(firstPage.nextCursor());
+        var secondPage = reader.list(connection, PROJECT.toString(), firstPage.nextCursor(), 2);
+        assertEquals(1, secondPage.items().size());
+        assertNull(secondPage.nextCursor());
+        assertEquals(3, java.util.stream.Stream.concat(firstPage.items().stream(),
+            secondPage.items().stream()).map(item -> item.generation().id()).distinct().count());
+        assertTrue(reader.list(connection, UUID.randomUUID().toString(), null, 2).items().isEmpty());
+        assertThrows(IllegalArgumentException.class,
+            () -> reader.list(connection, PROJECT.toString(), null, 0));
+        assertThrows(IllegalArgumentException.class,
+            () -> reader.list(connection, PROJECT.toString(), null, 51));
+    }
+
     private ExportFixture approvedGeneratedExport() throws Exception {
         Instant now = Instant.parse("2026-10-11T05:02:00Z");
         UUID previewId = UUID.randomUUID();

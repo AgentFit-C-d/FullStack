@@ -20,6 +20,61 @@ public final class JdbcConfigurationHistoryReader {
     public record Snapshot(ConfigurationGenerationHistory generation,
                            ConfigurationHistoryReadModel.UserReport latestUserReport) {}
 
+    /** Database keyset; A encodes this only after its project ownership check. */
+    public record Cursor(Instant generatedAt, String generationId) {
+        public Cursor {
+            Objects.requireNonNull(generatedAt);
+            uuid(generationId);
+        }
+    }
+
+    public record Page(List<Snapshot> items, Cursor nextCursor) {
+        public Page { items = List.copyOf(items); }
+    }
+
+    /** Returns newest first, with UUID as the tie breaker for equal generation times. */
+    public Page list(Connection transaction, String projectId, Cursor after, int limit)
+        throws SQLException {
+        Objects.requireNonNull(transaction);
+        if (transaction.getAutoCommit()) {
+            throw new IllegalArgumentException("history read requires a caller-owned transaction");
+        }
+        if (limit < 1 || limit > 50) {
+            throw new IllegalArgumentException("history page limit must be between 1 and 50");
+        }
+        UUID project = uuid(projectId);
+        String sql = "SELECT e.id, e.generated_at FROM config_export e "
+            + "JOIN config_preview cp ON cp.id = e.preview_id "
+            + "JOIN recommendation r ON r.id = cp.recommendation_id "
+            + "WHERE r.project_id = ? "
+            + (after == null ? "" : "AND (e.generated_at, e.id) < (?, ?) ")
+            + "ORDER BY e.generated_at DESC, e.id DESC LIMIT ? FOR SHARE OF e, cp, r";
+        List<Cursor> rows = new ArrayList<>();
+        try (PreparedStatement query = transaction.prepareStatement(sql)) {
+            int position = 1;
+            query.setObject(position++, project);
+            if (after != null) {
+                query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
+                query.setObject(position++, uuid(after.generationId()));
+            }
+            query.setInt(position, limit + 1);
+            try (ResultSet result = query.executeQuery()) {
+                while (result.next()) {
+                    rows.add(new Cursor(result.getTimestamp(2).toInstant(),
+                        result.getObject(1, UUID.class).toString()));
+                }
+            }
+        }
+        boolean hasMore = rows.size() > limit;
+        List<Snapshot> items = new ArrayList<>();
+        for (int index = 0; index < Math.min(rows.size(), limit); index++) {
+            Snapshot snapshot = find(transaction, projectId, rows.get(index).generationId());
+            if (snapshot == null) throw new IllegalStateException("listed generation disappeared");
+            items.add(snapshot);
+        }
+        return new Page(items, hasMore ? rows.get(limit - 1) : null);
+    }
+
     public Snapshot find(Connection transaction, String projectId, String generationId)
         throws SQLException {
         Objects.requireNonNull(transaction);
