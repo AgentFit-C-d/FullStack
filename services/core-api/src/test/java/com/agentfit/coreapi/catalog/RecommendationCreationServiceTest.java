@@ -113,6 +113,32 @@ class RecommendationCreationServiceTest {
         assertEquals(1, saves.get());
     }
 
+    @Test
+    void rejectsUnconfirmedProjectVersionBeforeAnyAiRequest() throws Exception {
+        AtomicInteger aiCalls = new AtomicInteger();
+        var service = new RecommendationCreationService(
+            projectId -> new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 0,
+                "profile-1", 3, "confirmation-1", 2, 4, 5,
+                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()),
+            snapshot -> { aiCalls.incrementAndGet(); return assessment(); },
+            () -> fail("invalid snapshot must not read Catalog"),
+            (snapshot, basis, result) -> fail("invalid snapshot must not be saved"));
+
+        assertThrows(IllegalArgumentException.class, () -> service.create("project-1"));
+        assertEquals(0, aiCalls.get());
+    }
+
+    @Test
+    void rejectsMalformedInstalledVersionBeforeAnyAiRequest() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationCreationService.OwnerCheckedSnapshot("project-1", 7,
+                "profile-1", 3, "confirmation-1", 2, 4, 5,
+                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
+                Map.of("example-tool", " ")));
+    }
+
     private static RecommendationCreationService.OwnerCheckedSnapshot snapshot(String projectId) {
         return new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
             "profile-1", 3, "confirmation-1", 2, 4, 5,

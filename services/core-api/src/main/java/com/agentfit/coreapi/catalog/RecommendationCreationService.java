@@ -54,7 +54,7 @@ public final class RecommendationCreationService {
                                        Map<String, String> installedToolVersions) {
         public OwnerCheckedSnapshot {
             if (blank(projectId) || blank(confirmedProfileId) || blank(confirmationEventId)
-                || projectVersion < 0 || confirmedProfileVersion < 0 || reviewVersion < 0
+                || projectVersion <= 0 || confirmedProfileVersion <= 0 || reviewVersion < 0
                 || developerVersion < 0 || environmentVersion < 0) {
                 throw new IllegalArgumentException("invalid owner-checked snapshot");
             }
@@ -62,6 +62,11 @@ public final class RecommendationCreationService {
             aiSourceValues = Map.copyOf(Objects.requireNonNull(aiSourceValues));
             if (!allowedSourceFields.containsAll(aiSourceValues.keySet())) {
                 throw new IllegalArgumentException("AI source values contain an unapproved field");
+            }
+            if (installedToolVersions != null && installedToolVersions.entrySet().stream()
+                .anyMatch(entry -> blank(entry.getKey())
+                    || entry.getValue() != null && entry.getValue().isBlank())) {
+                throw new IllegalArgumentException("invalid installed component declaration");
             }
             installedToolVersions = installedToolVersions == null ? null
                 : Collections.unmodifiableMap(new HashMap<>(installedToolVersions));
