@@ -214,6 +214,23 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void readsApprovedConfigurationContextWithItsReferencedRecommendation() throws Exception {
+        var fixture = approvedGeneratedExport();
+        var reader = new JdbcConfigurationContextReader();
+        String approvalId = fixture.generated().history().approvalId();
+
+        var context = reader.byApprovalId(connection, PROJECT.toString(), approvalId);
+        assertEquals(RECOMMENDATION.toString(), context.recommendation().recommendationId());
+        assertEquals(List.of("tool-a"), context.recommendation().toolKeys());
+        assertEquals(context.recommendation().basis(), context.preview().basis());
+        assertEquals(approvalId, context.approval().approvalId());
+        assertEquals(context, reader.byPreviewId(connection, PROJECT.toString(),
+            fixture.previewId().toString()));
+        assertNull(reader.byApprovalId(connection, UUID.randomUUID().toString(), approvalId));
+        assertNull(reader.byPreviewId(connection, PROJECT.toString(), UUID.randomUUID().toString()));
+    }
+
+    @Test
     void storesOnlyGeneratedExportMetadataAfterMatchingApprovedPreview() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());

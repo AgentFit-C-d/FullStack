@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Stored download context boundary (2026-10-11): a project-scoped JDBC reader now combines B5 Preview/approval with the exact B1/B3 recommendation it references inside A's caller-owned transaction. PostgreSQL tests cover approval/Preview lookup and foreign-project denial. Full `mvn verify`: 273 tests, no failures or errors, one Windows symlink test skipped. A's authenticated current basis/Environment/installed-version lookup and HTTP delivery remain open; milestone count stays 4/12.
+
 Preview temporal-order boundary (2026-10-10): stored Preview metadata now carries server-issued `createdAt`. The B creation boundary rejects inverted creation/expiry; approval and export reject a future Preview or an approval timestamp before Preview creation. Full `mvn verify` found 213 tests, no failures, one Windows symlink test skipped. A must issue and persist these timestamps from its server-side transaction; the B10/B11 top-level goals remain open.
 
 Catalog 근거 키 충돌 차단 (2026-10-07): 서로 다른 권한 매핑 두 개가 같은 문자열 근거 키가 되어 한 검증 출처가 조용히 덮이는 반례를 재현했다. 지원·권한·조합의 근거 키 충돌을 모두 릴리스 오류로 처리한다. `mvn clean verify`에서 112개 발견, 111개 통과, Windows 심볼릭 링크 테스트 1개 건너뜀.

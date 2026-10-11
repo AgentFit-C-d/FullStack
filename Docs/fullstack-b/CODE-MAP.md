@@ -15,7 +15,7 @@
 | `configuration/export/` | 승인 유효성·만료 검사와 ZIP 재생성 | `PreviewApprovalIssuer`, `ApprovedPreviewZipExporter` |
 | `configuration/history/` | 생성 이력 메타데이터·조회 투영 | `ApprovedConfigurationGenerator`, `ConfigurationHistoryQueryService` |
 | `configuration/report/` | 사용자 적용 진술 검증·서비스 경계 | `ConfigurationUserReport`, `ConfigurationUserReportService` |
-| `configuration/persistence/` | B5–B9 PostgreSQL 메타데이터 쓰기·Preview/승인·생성 이력/보고 읽기·B1–B9 프로젝트 데이터 삭제. A가 소유권 검사·현재 버전·Audit·커밋 담당 | `JdbcPreviewMetadataWriter`, `JdbcStoredPreviewReader`, `JdbcConfigurationExportWriter`, `JdbcConfigurationHistoryReader`, `JdbcConfigurationReportWriter`, `JdbcProjectBDataDeleter` |
+| `configuration/persistence/` | B5–B9 PostgreSQL 메타데이터 쓰기·Preview/승인·참조 추천·생성 이력/보고 읽기·B1–B9 프로젝트 데이터 삭제. A가 소유권 검사·현재 버전·Audit·커밋 담당 | `JdbcPreviewMetadataWriter`, `JdbcStoredPreviewReader`, `JdbcConfigurationContextReader`, `JdbcConfigurationExportWriter`, `JdbcConfigurationHistoryReader`, `JdbcConfigurationReportWriter`, `JdbcProjectBDataDeleter` |
 
 Catalog 관련 상위 서비스는 현재 `catalog/`에 함께 있다. A·AI의 실제 계약과 라우트가 아직 없으므로 공개 인터페이스를 바꾸는 패키지 분할은 이번 정리에 포함하지 않았다. `configuration/persistence/`의 네 JDBC 쓰기 클래스와 PostgreSQL 테스트는 Preview·설정 책임으로 함께 이동했다.
 
