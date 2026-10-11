@@ -33,6 +33,14 @@ class PreviewCreationServiceTest {
                 assertEquals("project-1", context.currentBasis().projectId());
                 assertEquals("rec-1", draft.recommendationId());
                 assertEquals(List.of("example-tool"), draft.selectedToolKeys());
+                assertEquals(ExistingState.UNKNOWN, draft.existingState());
+                assertEquals(1, draft.fileMetadata().size());
+                var file = draft.fileMetadata().getFirst();
+                assertEquals("config/main.txt", file.relativePath());
+                assertEquals("main", file.targetKey());
+                assertNull(file.beforeHash());
+                assertEquals(64, file.afterHash().length());
+                assertFalse(draft.toString().contains("literal config"));
                 assertEquals(64, draft.fingerprint().length());
                 saves.incrementAndGet();
                 return new StoredPreviewState("preview-1", draft.basis(), draft.fingerprint(),

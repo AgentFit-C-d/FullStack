@@ -1,0 +1,162 @@
+package com.agentfit.coreapi.catalog.persistence;
+
+import com.agentfit.coreapi.catalog.PreviewCreationService;
+import com.agentfit.coreapi.configuration.preview.ExistingState;
+import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.configuration.preview.PreviewFile;
+import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
+import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** Opt-in real PostgreSQL test: no A tables or test data survive the rollback. */
+@EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
+class JdbcPreviewMetadataWriterTest {
+    private static final UUID PROJECT = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private static final UUID RECOMMENDATION = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    private static final UUID ITEM = UUID.fromString("55555555-5555-5555-5555-555555555555");
+    private Connection connection;
+
+    @BeforeEach
+    void open() throws Exception {
+        connection = DriverManager.getConnection(System.getenv("AGENTFIT_TEST_POSTGRES_URL"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_USER", "agentfit"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only"));
+        connection.setAutoCommit(false);
+        String schema = "b_writer_" + UUID.randomUUID().toString().replace("-", "");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE SCHEMA " + schema);
+            statement.execute("SET LOCAL search_path TO " + schema);
+            statement.execute("CREATE TABLE project (id UUID PRIMARY KEY)");
+            statement.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY)");
+            statement.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY)");
+            try (var stream = getClass().getResourceAsStream("/db/postgresql/b-schema.sql")) {
+                assertNotNull(stream);
+                String ddl = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                for (String sql : ddl.split(";")) {
+                    if (!sql.isBlank()) statement.execute(sql);
+                }
+            }
+            statement.execute("INSERT INTO project VALUES ('" + PROJECT + "')");
+            statement.execute("INSERT INTO project_profile VALUES ('" + PROFILE + "')");
+            statement.execute("INSERT INTO profile_confirmation_event VALUES ('" + EVENT + "')");
+            statement.execute("INSERT INTO recommendation VALUES ('" + RECOMMENDATION + "', '"
+                + PROJECT + "', '" + PROFILE + "', 1, '" + EVENT
+                + "', 1, 0, 0, 1, 'test-release', '" + "a".repeat(64)
+                + "', 'RECOMMENDED', 'PLAN_ONLY', now())");
+            statement.execute("INSERT INTO recommendation_item VALUES ('" + ITEM + "', '"
+                + RECOMMENDATION + "', 'tool-a', '1.0', 'support-a', true, 'reason', 'AI')");
+        }
+    }
+
+    @AfterEach
+    void close() throws Exception {
+        if (connection != null) {
+            connection.rollback();
+            connection.close();
+        }
+    }
+
+    @Test
+    void writesPreviewSelectionsPoliciesAndOnlyFileMetadata() throws Exception {
+        UUID previewId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
+        Instant expiresAt = createdAt.plusSeconds(600);
+
+        var saved = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
+            draft(basis()), createdAt, expiresAt);
+
+        assertEquals(previewId.toString(), saved.previewId());
+        assertEquals(createdAt, saved.createdAt());
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "config_preview"));
+            assertEquals(1, count(statement, "config_selection"));
+            assertEquals(1, count(statement, "config_permission_selection"));
+            assertEquals(1, count(statement, "config_preview_file"));
+            try (ResultSet rows = statement.executeQuery(
+                "SELECT existing_state, approval_id FROM config_preview")) {
+                assertTrue(rows.next());
+                assertEquals("UNKNOWN", rows.getString(1));
+                assertNull(rows.getObject(2));
+            }
+            try (ResultSet rows = statement.executeQuery(
+                "SELECT target_key, relative_path, action, before_hash, after_hash "
+                    + "FROM config_preview_file")) {
+                assertTrue(rows.next());
+                assertEquals("main", rows.getString(1));
+                assertEquals("config/main.txt", rows.getString(2));
+                assertEquals("PROPOSAL", rows.getString(3));
+                assertNull(rows.getString(4));
+                assertEquals("d".repeat(64), rows.getString(5));
+            }
+        }
+    }
+
+    @Test
+    void rejectsChangedRecommendationBasisBeforeAnyInsert() throws Exception {
+        PreviewBasis changed = new PreviewBasis(PROJECT.toString(), 2, PROFILE.toString(), 1,
+            EVENT.toString(), 0, 0, 1, "test-release", "a".repeat(64));
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcPreviewMetadataWriter().write(connection, UUID.randomUUID().toString(),
+                draft(changed), Instant.now(), Instant.now().plusSeconds(600)));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "config_preview"));
+        }
+    }
+
+    @Test
+    void rejectsSelectionThatOmitsRequiredRecommendationItem() throws Exception {
+        UUID optionalItem = UUID.randomUUID();
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("INSERT INTO recommendation_item VALUES ('" + optionalItem + "', '"
+                + RECOMMENDATION + "', 'tool-b', '1.0', 'support-b', false, 'reason', 'AI')");
+        }
+        var original = draft(basis());
+        var onlyOptional = new PreviewCreationService.Draft(original.basis(),
+            original.recommendationId(), List.of("tool-b"), List.of(),
+            original.existingState(), original.fileMetadata(), original.generatorVersion(),
+            original.selectionDigest(), original.contentDigest(), original.fingerprint());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcPreviewMetadataWriter().write(connection, UUID.randomUUID().toString(),
+                onlyOptional, Instant.now(), Instant.now().plusSeconds(600)));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "config_preview"));
+        }
+    }
+
+    private static PreviewBasis basis() {
+        return new PreviewBasis(PROJECT.toString(), 1, PROFILE.toString(), 1,
+            EVENT.toString(), 0, 0, 1, "test-release", "a".repeat(64));
+    }
+
+    private static PreviewCreationService.Draft draft(PreviewBasis basis) {
+        return new PreviewCreationService.Draft(basis, RECOMMENDATION.toString(),
+            List.of("tool-a"), List.of(new PermissionSelection("tool-a", "read",
+                PermissionPolicy.ASK_EACH_TIME)), ExistingState.UNKNOWN,
+            List.of(new PreviewCreationService.FileMetadata("main", "config/main.txt",
+                PreviewFile.Action.PROPOSAL, null, "d".repeat(64))),
+            "static-v1", "a".repeat(64), "b".repeat(64), "c".repeat(64));
+    }
+
+    private static int count(Statement statement, String table) throws Exception {
+        try (ResultSet rows = statement.executeQuery("SELECT count(*) FROM " + table)) {
+            assertTrue(rows.next());
+            return rows.getInt(1);
+        }
+    }
+}
