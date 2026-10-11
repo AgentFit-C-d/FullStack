@@ -172,4 +172,16 @@ class PreviewFingerprintTest {
                 List.of("doc"), List.of(), "generator-1", List.of(normal),
                 ExistingState.UNKNOWN, List.of())));
     }
+
+    @Test
+    void rejectsMalformedUnicodeInApprovalMetadata() {
+        PreviewInputFile normal = new PreviewInputFile("client", "config.txt", "hello");
+        assertThrows(PreviewFingerprint.InvalidFingerprintInputException.class,
+            () -> PreviewFingerprint.compute(new PreviewFingerprintInput(basis(), "rec-1",
+                List.of("doc"), List.of(), "generator-\uD800", List.of(normal),
+                ExistingState.UNKNOWN, List.of())));
+        assertThrows(PreviewFingerprint.InvalidFingerprintInputException.class,
+            () -> PreviewFingerprint.compute(input(List.of("doc"), List.of(),
+                List.of(new PreviewInputFile("client-\uDC00", "config.txt", "hello")))));
+    }
 }
