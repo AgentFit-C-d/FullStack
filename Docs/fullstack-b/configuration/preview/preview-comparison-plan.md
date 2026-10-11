@@ -26,7 +26,7 @@
 
 - [x] Write tests for unknown/provided states, exact hashes, path conflicts/traversal, unchanged and changed contents.
 - [x] Run focused tests and observe the missing comparator failure.
-- [x] Implement immutable value types, strict validation, SHA-256, and deterministic full-file unified diff.
+- [x] Implement immutable value types, strict validation, SHA-256, and deterministic unified diff. A later refinement preserves unchanged leading/trailing lines as up to three context lines around one changed block, including final-newline markers; distant separate edits may still appear in one block.
 - [x] Run focused tests; add edge tests for BOM/newline, empty originals, case-insensitive path collision, and malformed surrogate.
 - [x] Run full Maven package and update B tracker with this partial B10 milestone. Result: 45 tests discovered, 44 passed, one Windows symlink test skipped; `git diff --check` passed. Compiled for Java 21 using JDK 24.
 

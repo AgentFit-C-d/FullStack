@@ -134,32 +134,52 @@ public final class PreviewFileComparator {
 
     private static String diff(String path, String before, String after) {
         if (before.equals(after)) return "";
-        List<String> oldLines = lines(before);
-        List<String> newLines = lines(after);
+        List<Line> oldLines = lines(before);
+        List<Line> newLines = lines(after);
+        int prefix = 0;
+        while (prefix < Math.min(oldLines.size(), newLines.size())
+            && oldLines.get(prefix).equals(newLines.get(prefix))) prefix++;
+        int suffix = 0;
+        while (suffix < oldLines.size() - prefix && suffix < newLines.size() - prefix
+            && oldLines.get(oldLines.size() - 1 - suffix).equals(
+                newLines.get(newLines.size() - 1 - suffix))) suffix++;
+        int oldStart = prefix - Math.min(prefix, 3);
+        int oldEnd = oldLines.size() - suffix + Math.min(suffix, 3);
+        int newEnd = newLines.size() - suffix + Math.min(suffix, 3);
+        int oldCount = oldEnd - oldStart;
+        int newCount = newEnd - oldStart;
         StringBuilder result = new StringBuilder("--- a/").append(path).append('\n')
             .append("+++ b/").append(path).append('\n')
-            .append("@@ -").append(oldLines.isEmpty() ? 0 : 1).append(',')
-            .append(oldLines.size()).append(" +")
-            .append(newLines.isEmpty() ? 0 : 1).append(',')
-            .append(newLines.size()).append(" @@\n");
-        appendLines(result, '-', oldLines, before);
-        appendLines(result, '+', newLines, after);
+            .append("@@ -").append(oldCount == 0 ? oldStart : oldStart + 1).append(',')
+            .append(oldCount).append(" +")
+            .append(newCount == 0 ? oldStart : oldStart + 1).append(',')
+            .append(newCount).append(" @@\n");
+        appendLines(result, ' ', oldLines.subList(oldStart, prefix));
+        appendLines(result, '-', oldLines.subList(prefix, oldLines.size() - suffix));
+        appendLines(result, '+', newLines.subList(prefix, newLines.size() - suffix));
+        appendLines(result, ' ', oldLines.subList(oldLines.size() - suffix, oldEnd));
         return result.toString();
     }
 
-    private static List<String> lines(String value) {
+    private static List<Line> lines(String value) {
         if (value.isEmpty()) return List.of();
-        List<String> result = new ArrayList<>(List.of(value.split("\n", -1)));
-        if (value.endsWith("\n")) result.removeLast();
+        String[] parts = value.split("\n", -1);
+        int count = parts.length - (value.endsWith("\n") ? 1 : 0);
+        List<Line> result = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            result.add(new Line(parts[index], index < parts.length - 1));
+        }
         return result;
     }
 
-    private static void appendLines(StringBuilder out, char prefix, List<String> lines, String source) {
-        for (String line : lines) out.append(prefix).append(line).append('\n');
-        if (!lines.isEmpty() && !source.endsWith("\n")) {
-            out.append("\\ No newline at end of file\n");
+    private static void appendLines(StringBuilder out, char prefix, List<Line> lines) {
+        for (Line line : lines) {
+            out.append(prefix).append(line.text()).append('\n');
+            if (!line.terminated()) out.append("\\ No newline at end of file\n");
         }
     }
+
+    private record Line(String text, boolean terminated) {}
 
     private static InvalidPreviewInputException invalid(String reason) {
         return new InvalidPreviewInputException(reason);

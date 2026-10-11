@@ -61,6 +61,30 @@ class PreviewFileComparatorTest {
     }
 
     @Test
+    void keepsUnchangedLinesAsContextAroundAnEditedSetting() {
+        String original = "first\nsecond\nthird\nfourth\nfifth\nsixth\nseventh\n";
+        String generated = "first\nsecond\nthird\nupdated\nfifth\nsixth\nseventh\n";
+
+        PreviewFile preview = PreviewFileComparator.compare(
+            List.of(file("client", "config.txt", generated)), ExistingState.PROVIDED,
+            List.of(file("client", "config.txt", original))).getFirst();
+
+        assertEquals("--- a/config.txt\n+++ b/config.txt\n@@ -1,7 +1,7 @@\n"
+            + " first\n second\n third\n-fourth\n+updated\n"
+            + " fifth\n sixth\n seventh\n", preview.diff());
+    }
+
+    @Test
+    void distinguishesMissingFinalNewlineInPreviewDiff() {
+        PreviewFile preview = PreviewFileComparator.compare(
+            List.of(file("client", "config.txt", "first\nsetting\n")), ExistingState.PROVIDED,
+            List.of(file("client", "config.txt", "first\nsetting"))).getFirst();
+
+        assertEquals("--- a/config.txt\n+++ b/config.txt\n@@ -1,2 +1,2 @@\n"
+            + " first\n-setting\n\\ No newline at end of file\n+setting\n", preview.diff());
+    }
+
+    @Test
     void rejectsInvalidStateUnmatchedFileAndKeyPathConflicts() {
         List<PreviewInputFile> generated = List.of(file("client", "config.txt", "hello"));
         List<PreviewInputFile> provided = List.of(file("client", "config.txt", "old"));
