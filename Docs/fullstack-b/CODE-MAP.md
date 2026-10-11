@@ -5,6 +5,7 @@
 | 하고 싶은 일 | 먼저 따라갈 코드 |
 | --- | --- |
 | 추천 판정 이해 | `catalog/RecommendationCreationService` → `catalog/CatalogRecommendationWorkflow` → `recommendation/RecommendationEngine` → `recommendation/persistence/RecommendationMetadataAssembler` |
+| 최신 추천 상세 읽기 | `recommendation/persistence/JdbcLatestRecommendationReader` → `catalog/RecommendationLatestDetailsService` → `catalog/CatalogRecommendationDetails`(CURRENT만) |
 | Catalog 후보·승인 경계 확인 | `catalog/discovery/` 후보 수집 → `catalog/CatalogBundleLoader` → `catalog/CatalogSemanticParser` → `catalog/ServerConfiguredCatalogReader` |
 | 설정 다운로드 흐름 이해 | `catalog/PreviewCreationService` → `catalog/CatalogPreviewAssembler` → `catalog/ApprovalCreationService` → `catalog/ConfigurationDownloadService` → `configuration/persistence/` |
 
