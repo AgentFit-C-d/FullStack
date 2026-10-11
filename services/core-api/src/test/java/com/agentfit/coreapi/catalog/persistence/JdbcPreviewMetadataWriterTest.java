@@ -3,6 +3,7 @@ package com.agentfit.coreapi.catalog.persistence;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.history.ApprovedConfigurationGenerator;
+import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
@@ -208,6 +209,83 @@ class JdbcPreviewMetadataWriterTest {
             () -> new JdbcConfigurationExportWriter().save(connection, fixture.generated().history()));
         try (Statement statement = connection.createStatement()) {
             assertEquals(0, count(statement, "config_export"));
+        }
+    }
+
+    @Test
+    void storesOnlyLatestUserStatementAfterExport() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        UUID actorId = UUID.randomUUID();
+        UUID reportId = UUID.randomUUID();
+        Instant reportedAt = fixture.generated().history().createdAt().plusSeconds(5);
+        var accepted = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
+                ConfigurationUserReport.ReasonCode.COPY_FAILED), Clock.fixed(reportedAt, ZoneOffset.UTC));
+
+        var saved = new JdbcConfigurationReportWriter().save(connection,
+            fixture.generationId().toString(), actorId.toString(), reportId.toString(), accepted);
+
+        assertEquals(reportId.toString(), saved.id());
+        assertEquals(fixture.generationId().toString(), saved.configurationId());
+        assertEquals(ConfigurationUserReport.Source.USER, saved.source());
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT latest_report_id, reported_state, "
+                 + "reason_code, reported_by, reported_at FROM config_export")) {
+            assertTrue(row.next());
+            assertEquals(reportId, row.getObject(1, UUID.class));
+            assertEquals("FAILED", row.getString(2));
+            assertEquals("COPY_FAILED", row.getString(3));
+            assertEquals(actorId, row.getObject(4, UUID.class));
+            assertEquals(reportedAt, row.getTimestamp(5).toInstant());
+        }
+    }
+
+    @Test
+    void rejectsReportPredatingGenerationWithoutChangingExport() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var accepted = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
+            Clock.fixed(fixture.generated().history().createdAt().minusSeconds(1), ZoneOffset.UTC));
+
+        assertThrows(IllegalArgumentException.class, () -> new JdbcConfigurationReportWriter().save(
+            connection, fixture.generationId().toString(), UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(), accepted));
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT latest_report_id FROM config_export")) {
+            assertTrue(row.next());
+            assertNull(row.getObject(1));
+        }
+    }
+
+    @Test
+    void newerUserStatementReplacesLatestAndOlderStatementCannotOverwriteIt() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var writer = new JdbcConfigurationReportWriter();
+        Instant firstTime = fixture.generated().history().createdAt().plusSeconds(5);
+        var first = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
+                ConfigurationUserReport.ReasonCode.UNKNOWN), Clock.fixed(firstTime, ZoneOffset.UTC));
+        writer.save(connection, fixture.generationId().toString(), UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(), first);
+        UUID latestId = UUID.randomUUID();
+        var latest = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
+            Clock.fixed(firstTime.plusSeconds(1), ZoneOffset.UTC));
+        writer.save(connection, fixture.generationId().toString(), UUID.randomUUID().toString(),
+            latestId.toString(), latest);
+
+        assertThrows(IllegalArgumentException.class, () -> writer.save(connection,
+            fixture.generationId().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), first));
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery(
+                 "SELECT latest_report_id, reported_state, reason_code FROM config_export")) {
+            assertTrue(row.next());
+            assertEquals(latestId, row.getObject(1, UUID.class));
+            assertEquals("APPLIED", row.getString(2));
+            assertNull(row.getString(3));
         }
     }
 
