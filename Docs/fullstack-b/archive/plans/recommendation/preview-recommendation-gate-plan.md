@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 대상 Spring Boot 모듈, JUnit 5.
 
-**Spec:** [설정 API 초안](../../../../Docs/api/03-configuration.draft.md)의 `RECOMMENDATION_NOT_READY`·`CONFIG_STALE` 조건 및 [B 다음 작업](../NEXT-STEPS.md)의 A 인계 경계.
+**Spec:** [설정 API 초안](../../../../../../Docs/api/03-configuration.draft.md)의 `RECOMMENDATION_NOT_READY`·`CONFIG_STALE` 조건 및 [B 다음 작업](../../../NEXT-STEPS.md)의 A 인계 경계.
 
 ## Global Constraints
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 대상 Spring Boot 모듈, JUnit 5.
 
-**Spec:** [설정 API 초안의 승인·다운로드·생성 이력](../../../../../Docs/api/03-configuration.draft.md), [생성 이력 메타데이터](generation-history-plan.md).
+**Spec:** [설정 API 초안의 승인·다운로드·생성 이력](../../../../../../../Docs/api/03-configuration.draft.md), [생성 이력 메타데이터](generation-history-plan.md).
 
 ## Global Constraints
 

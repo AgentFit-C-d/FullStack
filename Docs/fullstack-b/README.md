@@ -10,8 +10,8 @@
 4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
 5. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
 6. Java 구현 위치는 [코드 길잡이](CODE-MAP.md)에서 기능별로 찾는다.
-7. 이전 단계별 빌드 결과는 [이력](HISTORY.md)에 따로 보관했다.
-8. 중간 공유에는 [발표용 핵심 문구](PRESENTATION-MIDPOINT.md)를 사용하되, 구현/미구현 경계를 유지한다.
+7. 이전 단계별 빌드 결과는 [이력](HISTORY.md), 당시의 상세 구현 계획은 [계획 기록](archive/README.md)에 따로 보관했다.
+8. 첫 PR 설명은 [PR 본문](PR-BODY.md), 중간 공유 문구는 [발표용 핵심 문구](PRESENTATION-MIDPOINT.md)를 사용한다.
 
 ## 문서 구조
 
@@ -24,16 +24,13 @@ FullStack/Docs/
    ├─ STATUS.md                      # 현재 체크리스트
    ├─ NEXT-STEPS.md                  # 다음 작업·의존성
    ├─ HISTORY.md                     # 단계별 검증 이력
+   ├─ PR-BODY.md                     # 첫 B PR 설명
    ├─ integration/                   # A·AI 연동 계약 제안과 미합의 항목
    ├─ db/                            # PostgreSQL B 테이블과 A 인계
-   ├─ catalog/                       # 릴리스·해시·스키마·호환 조합
+   ├─ catalog/                       # 승인 릴리스와 조사 근거
    ├─ recommendation/                # 추천·도구/권한 선택
-   └─ configuration/                 # 조립 → 비교·지문 → 승인·ZIP·이력
-      ├─ assembly/                   # Catalog 템플릿·조립·크기 예산 설계
-      ├─ preview/                    # 비교·민감정보·지문·신선도 설계
-      ├─ export/                     # 승인·ZIP 내보내기 설계
-      ├─ history/                    # 생성 이력·조회 모델
-      └─ report/                     # 사용자 적용 진술
+   ├─ configuration/                 # Preview·승인·ZIP·이력
+   └─ archive/plans/                # 기능별 과거 구현 계획 18개
 ```
 
 ## Java 파일 찾기
@@ -46,12 +43,12 @@ FullStack/Docs/
 | Catalog의 도구·지원·조합 모델 | `catalog/model/` | [Catalog](catalog/README.md) |
 | Capability 및 결정적 추천 | `recommendation/` | [추천](recommendation/README.md) |
 | B1–B4 추천 메타데이터 JDBC 기록·최신 추천 조회 | `recommendation/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
-| AI Capability 후보의 내부 검증 | `recommendation/ai/` | [AI 후보 검증](recommendation/ai-capability-intake-plan.md) |
+| AI Capability 후보의 내부 검증 | `recommendation/ai/` | [AI 후보 검증](archive/plans/recommendation/ai-capability-intake-plan.md) |
 | 도구 선택·권한 정책 검증 | `recommendation/selection/` | [선택·권한](recommendation/README.md) |
 | 파일 비교·민감정보·지문 | `configuration/preview/` | [Preview](configuration/README.md) |
 | 만료·승인·ZIP 내보내기 | `configuration/export/` | [내보내기](configuration/README.md) |
-| 사용자 적용 보고 검증 | `configuration/report/` | [적용 보고](configuration/report/user-application-report-plan.md) |
-| 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](configuration/history/generation-history-plan.md) |
+| 사용자 적용 보고 검증 | `configuration/report/` | [적용 보고](archive/plans/configuration/report/user-application-report-plan.md) |
+| 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](archive/plans/configuration/history/generation-history-plan.md) |
 | Preview·승인·생성 이력·적용 보고의 B5–B9 JDBC 기록 | `configuration/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 
 B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관리한다. 이 문서에서 말하는 구현은 외부 서비스·DB에 연결되지 않은 경계 코드다.

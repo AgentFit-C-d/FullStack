@@ -1,16 +1,16 @@
 # Catalog: 릴리스·스키마·호환성
 
-## 이 폴더의 설계 기록
+## 현재 확인할 문서
 
 | 파일 | 다루는 내용 |
 | --- | --- |
-| [릴리스 검증](catalog-release-validation-plan.md) | manifest, 파일별 SHA-256, 전체 Catalog 해시, 경로·크기·심볼릭 링크 거부 |
-| [의미 검증](catalog-semantic-parser-plan.md) | 6개 JSON 파일의 합성 v1 스키마, 참조·중복·근거 검사 |
-| [정확한 대상 조합](targeted-combinations-plan.md) | OS/Client/버전별 다중 도구 조합과 검증 근거 |
+| [매니페스트 작성](catalog-manifest-authoring.md) | 릴리스 파일과 해시를 작성·검사하는 절차 |
 | [Claude Code 공식 근거 조사](claude-code-evidence-seed.md) | 공식 구성 문서와 실제 릴리스 검증에 필요한 증거·미수행 항목 |
 | [Playwright MCP 후보 파일럿](playwright-mcp-pilot-2026-10-10.md) | 고정 npm 버전의 로컬 MCP·Edge 탐색과 미검증 항목 |
 | [skills.sh 후보 수집](skills-sh-discovery.md) | 외부 API 검색, 변경 감지, 검토 대기 파일과 승인 경계 |
 | [승인 Catalog 조회](catalog-read-model.md) | OS·Client·Capability 필터와 지원 행별 검증 근거의 내부 읽기 모델 |
+
+릴리스 파일·의미 검증·정확한 대상 조합을 구현할 때 사용한 상세 체크리스트는 [계획 기록](../archive/README.md)에 있다.
 
 ## 코드 위치
 

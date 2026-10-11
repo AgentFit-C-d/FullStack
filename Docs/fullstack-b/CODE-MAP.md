@@ -2,6 +2,14 @@
 
 기준 루트: `services/core-api/src/main/java/com/agentfit/coreapi/`. 테스트는 `src/test/java`에서 같은 패키지를 찾는다. 이 표는 구현 위치를 안내하며 Phase 1 완료 판정은 [STATUS.md](STATUS.md)를 따른다.
 
+| 하고 싶은 일 | 먼저 따라갈 코드 |
+| --- | --- |
+| 추천 판정 이해 | `catalog/RecommendationCreationService` → `catalog/CatalogRecommendationWorkflow` → `recommendation/RecommendationEngine` → `recommendation/persistence/RecommendationMetadataAssembler` |
+| Catalog 후보·승인 경계 확인 | `catalog/discovery/` 후보 수집 → `catalog/CatalogBundleLoader` → `catalog/CatalogSemanticParser` → `catalog/ServerConfiguredCatalogReader` |
+| 설정 다운로드 흐름 이해 | `catalog/PreviewCreationService` → `catalog/CatalogPreviewAssembler` → `catalog/ApprovalCreationService` → `catalog/ConfigurationDownloadService` → `configuration/persistence/` |
+
+이 연결 순서는 **B 내부 포트** 기준이다. A의 인증·현재 스냅샷·Audit와 AI HTTP 응답이 실제로 연결됐다는 뜻은 아니다.
+
 | 폴더 | 역할 | 먼저 볼 파일 |
 | --- | --- | --- |
 | `catalog/` | 검증된 릴리스 로딩·파싱, 정적 템플릿, Catalog를 사용하는 추천·Preview 흐름 | `CatalogBundleLoader`, `CatalogSemanticParser`, `CatalogRecommendationWorkflow`, `CatalogPreviewAssembler` |

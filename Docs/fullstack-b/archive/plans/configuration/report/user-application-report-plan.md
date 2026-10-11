@@ -1,6 +1,6 @@
 # B12a 사용자 적용 보고 검증
 
-설정 ZIP을 생성한 것과 사용자의 PC에 복사·적용한 것은 다르다. 사용자가 `APPLIED`라고 보고해도 AgentFit이 실제 설치·인증·연결을 검증한 결과로 승격하지 않는다. 이 경계는 [설정 API 초안의 생성 이력·사용자 진술](../../../../../Docs/api/03-configuration.draft.md)에 나온 상태와 사유를 내부 도메인 값으로 제한한다.
+설정 ZIP을 생성한 것과 사용자의 PC에 복사·적용한 것은 다르다. 사용자가 `APPLIED`라고 보고해도 AgentFit이 실제 설치·인증·연결을 검증한 결과로 승격하지 않는다. 이 경계는 [설정 API 초안의 생성 이력·사용자 진술](../../../../../../../Docs/api/03-configuration.draft.md)에 나온 상태와 사유를 내부 도메인 값으로 제한한다.
 
 `ConfigurationUserReport.Submission`에는 `reportedState`와 `reasonCode`만 있다. `APPLIED`에는 사유가 없어야 하며 `FAILED`에는 `COPY_FAILED`, `AUTH_REQUIRED`, `DEPENDENCY_MISSING`, `UNKNOWN` 중 하나가 필요하다. 수락 결과의 출처는 항상 `USER`, 시각은 서버 Clock에서 얻는다. 결과 객체는 외부에서 임의로 생성할 수 없다. 자유 형식 로그·설정 본문·Secret·검증 성공 상태는 이 모델에 포함하지 않는다.
 

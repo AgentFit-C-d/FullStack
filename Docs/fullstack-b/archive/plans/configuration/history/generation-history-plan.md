@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 대상 Spring Boot 모듈, JUnit 5.
 
-**Spec:** [설정 API 초안 — 생성 이력](../../../../../Docs/api/03-configuration.draft.md) 및 [B12 상태](../../STATUS.md).
+**Spec:** [설정 API 초안 — 생성 이력](../../../../../../../Docs/api/03-configuration.draft.md) 및 [B12 상태](../../../../STATUS.md).
 
 ## Global Constraints
 

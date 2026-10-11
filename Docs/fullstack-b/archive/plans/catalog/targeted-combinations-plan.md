@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 target, JUnit 5, Jackson already provided by Spring Boot.
 
-**Spec:** `Docs/AgentFit_AB_1차통합_개발기준.pdf` sections 7–12, `Docs/fullstack-b/catalog/catalog-semantic-parser-plan.md`, and `Docs/fullstack-b/recommendation/configuration-selection-plan.md`. The JSON shape below remains a team-review proposal, not a claim that actual Client tools have been verified.
+**Spec:** `Docs/AgentFit_AB_1차통합_개발기준.pdf` sections 7–12, `Docs/fullstack-b/archive/plans/catalog/catalog-semantic-parser-plan.md`, and `Docs/fullstack-b/archive/plans/recommendation/configuration-selection-plan.md`. The JSON shape below remains a team-review proposal, not a claim that actual Client tools have been verified.
 
 ## Global constraints
 
@@ -47,7 +47,7 @@
 
 ### Task 3: Catalog schema and evidence
 
-**Files:** `catalog/CatalogSemanticParser.java`, `CatalogSemanticParserTest.java`, `Docs/fullstack-b/catalog/catalog-semantic-parser-plan.md`, `Docs/fullstack-b/STATUS.md`, `services/core-api/README.md`.
+**Files:** `catalog/CatalogSemanticParser.java`, `CatalogSemanticParserTest.java`, `Docs/fullstack-b/archive/plans/catalog/catalog-semantic-parser-plan.md`, `Docs/fullstack-b/STATUS.md`, `services/core-api/README.md`.
 
 - [x] Write tests for valid synthetic targeted combination, duplicate pair, missing evidence, ambiguous support target, and unverified member support.
 - [x] Run focused tests and observe failure, including the ambiguous support target case.
