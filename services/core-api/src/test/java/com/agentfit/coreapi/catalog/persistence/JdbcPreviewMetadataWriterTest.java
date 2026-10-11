@@ -2,9 +2,13 @@ package com.agentfit.coreapi.catalog.persistence;
 
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
+import com.agentfit.coreapi.configuration.history.ApprovedConfigurationGenerator;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
+import com.agentfit.coreapi.configuration.preview.PreviewFingerprint;
+import com.agentfit.coreapi.configuration.preview.PreviewFingerprintInput;
+import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +17,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -172,6 +178,68 @@ class JdbcPreviewMetadataWriterTest {
             () -> new JdbcPreviewApprovalWriter().approve(connection, actorId.toString(),
                 preview, second));
     }
+
+    @Test
+    void storesOnlyGeneratedExportMetadataAfterMatchingApprovedPreview() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT id, preview_id, fingerprint, "
+                 + "generated_at, latest_report_id FROM config_export")) {
+            assertTrue(row.next());
+            assertEquals(fixture.generationId(), row.getObject("id", UUID.class));
+            assertEquals(fixture.previewId(), row.getObject("preview_id", UUID.class));
+            assertEquals(fixture.generated().history().fingerprint(), row.getString("fingerprint"));
+            assertEquals(fixture.generated().history().createdAt(), row.getTimestamp("generated_at").toInstant());
+            assertNull(row.getObject("latest_report_id"));
+            assertFalse(row.next());
+        }
+    }
+
+    @Test
+    void rejectsExportWhenStoredFileHashNoLongerMatchesGeneratedZip() throws Exception {
+        var fixture = approvedGeneratedExport();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_preview_file SET after_hash = '" + "e".repeat(64) + "'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationExportWriter().save(connection, fixture.generated().history()));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "config_export"));
+        }
+    }
+
+    private ExportFixture approvedGeneratedExport() throws Exception {
+        Instant now = Instant.parse("2026-10-11T05:02:00Z");
+        UUID previewId = UUID.randomUUID();
+        UUID generationId = UUID.randomUUID();
+        var input = new PreviewFingerprintInput(basis(), RECOMMENDATION.toString(),
+            List.of("tool-a"), List.of(new PermissionSelection("tool-a", "read",
+                PermissionPolicy.ASK_EACH_TIME)), "static-v1",
+            List.of(new PreviewInputFile("main", "config/main.txt", "safe config\n")),
+            ExistingState.UNKNOWN, List.of());
+        var computed = PreviewFingerprint.compute(input);
+        var draft = new PreviewCreationService.Draft(basis(), RECOMMENDATION.toString(),
+            input.selectedToolIds(), input.policies(), input.existingState(),
+            computed.files().stream().map(file -> new PreviewCreationService.FileMetadata(
+                file.targetKey(), file.relativePath(), file.action(), file.beforeHash(), file.afterHash())).toList(),
+            input.generatorVersion(), computed.selectionDigest(), computed.contentDigest(),
+            computed.fingerprint());
+        var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
+            draft, now.minusSeconds(120), now.plusSeconds(600));
+        var approval = new StoredApprovalState(UUID.randomUUID().toString(),
+            previewId.toString(), preview.fingerprint(), now.minusSeconds(60), now.plusSeconds(300));
+        new JdbcPreviewApprovalWriter().approve(connection, UUID.randomUUID().toString(), preview, approval);
+        var generated = ApprovedConfigurationGenerator.generate(preview, approval, basis(),
+            approval.approvalId(), previewId.toString(), preview.fingerprint(), input,
+            generationId.toString(), Clock.fixed(now, ZoneOffset.UTC));
+        return new ExportFixture(previewId, generationId, generated);
+    }
+
+    private record ExportFixture(UUID previewId, UUID generationId,
+                                 ApprovedConfigurationGenerator.Generated generated) {}
 
     private static PreviewBasis basis() {
         return new PreviewBasis(PROJECT.toString(), 1, PROFILE.toString(), 1,
