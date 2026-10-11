@@ -25,6 +25,8 @@
 
 추천 생성 요청의 `expectedVersions`는 Project/Developer/Environment 세 값을 필수로 받는다. B의 `RecommendationCreationService.create(projectId, expectedVersions)`는 A의 신뢰된 스냅샷과 먼저 비교해 불일치 시 AI 호출 전에 충돌로 처리한다. A의 저장 트랜잭션은 동일 버전을 다시 확인해야 한다. 추천 생성 스냅샷에서 환경 대상이 없거나 설치 목록 자체를 아직 확인하지 못했다면 각각 `null`로 전달한다. B는 이를 `NEEDS_INFORMATION`의 `environment_target`·`installed_components` 질문으로 처리한다. 설치 목록을 확인했고 비어 있는 경우만 빈 Map으로 전달한다. 이 구분은 A의 저장/응답 계약에서 유지해야 한다.
 
+B가 판정한 `environment_target`, `installed_components`, `installed_component_version` 질문은 저장 초안 조립 시 B4 `QUESTION`으로 자동 생성한다. 호출자가 같은 코드를 다시 제공하면 거부한다. `pending_conflict`와 `undetermined_capability`는 A·AI가 보유한 실제 문제·근거 및 응답 대상이 필요하므로 합의된 질문 notice를 호출자가 제공해야 한다. B의 질문 대상 문자열은 내부 저장 키이며 공개 API의 답변 경로나 A 필드 경로 확정값은 아니다.
+
 ## AI ↔ Spring: Capability 후보
 
 요청은 A가 허용한 기획·역할·환경 필드만 포함한다. Secret, 기존 설정 원문, 문서 원문·추출문 전체, 다른 사용자의 정보는 전달하지 않는다. 요청 ID와 계약/스키마 버전을 양쪽 로그에 연결하고 모델·프롬프트 버전, 지연·오류 유형을 관측한다. 재시도 가능성과 중복 방지는 분석 작업 ID 또는 idempotency key의 소유자를 정한 뒤 확정한다.

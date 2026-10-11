@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -327,6 +328,36 @@ class JdbcRecommendationMetadataWriterTest {
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, stored.status());
         assertTrue(stored.items().isEmpty());
         assertEquals(List.of(question), stored.notices());
+    }
+
+    @Test
+    void storesAndReadsBGeneratedEnvironmentQuestionsInCallerTransaction() throws Exception {
+        var basis = recommended(UUID.randomUUID()).basis();
+        var claims = Arrays.stream(CapabilityKey.values()).map(key ->
+            new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.REQUIRED,
+                "confirmed requirement", List.of("profile.features"))).toList();
+        var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
+            basis.catalogHash(), new RecommendationDecision(
+                RecommendationDecision.Status.NEEDS_INFORMATION, List.of(),
+                List.of("environment_target", "installed_components"), List.of()),
+            claims, List.of(), List.of());
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis, result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
+            Instant.parse("2026-10-12T00:00:00Z"), List.of(), () -> UUID.randomUUID().toString());
+
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+        var stored = new JdbcLatestRecommendationReader().latestMetadata(connection, PROJECT.toString());
+
+        assertEquals(draft.id(), stored.id());
+        assertEquals(draft.basis(), stored.basis());
+        assertEquals(draft.status(), stored.status());
+        assertEquals(new java.util.HashSet<>(draft.capabilities()),
+            new java.util.HashSet<>(stored.capabilities()));
+        assertEquals(new java.util.HashSet<>(draft.notices()),
+            new java.util.HashSet<>(stored.notices()));
+        assertEquals(Set.of("environment_target", "installed_components"),
+            stored.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code)
+                .collect(java.util.stream.Collectors.toSet()));
     }
 
     private static JdbcRecommendationMetadataWriter.Draft recommended(UUID id) {

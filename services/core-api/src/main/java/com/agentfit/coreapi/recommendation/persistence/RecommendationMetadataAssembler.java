@@ -60,6 +60,17 @@ public final class RecommendationMetadataAssembler {
                 claim.reason(), claim.sourceFields()));
         }
         List<JdbcRecommendationMetadataWriter.Notice> completeNotices = new ArrayList<>(notices);
+        for (String code : decision.questionCodes()) {
+            if (!isBQuestion(code)) continue;
+            if (completeNotices.stream().anyMatch(notice -> notice != null
+                && code.equals(notice.code()))) {
+                throw new IllegalArgumentException("B question cannot be overridden");
+            }
+            completeNotices.add(new JdbcRecommendationMetadataWriter.Notice(childIds.get(),
+                JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+                JdbcRecommendationMetadataWriter.QuestionOwner.B,
+                questionTarget(code), code, questionMessage(code), List.of()));
+        }
         Set<String> reasonCodes = new HashSet<>();
         for (String code : decision.reasonCodes()) {
             if (!reasonCodes.add(code) || completeNotices.stream().anyMatch(notice ->
@@ -88,6 +99,29 @@ public final class RecommendationMetadataAssembler {
             List.copyOf(items), List.copyOf(completeNotices));
         JdbcRecommendationMetadataWriter.validate(draft);
         return draft;
+    }
+
+    private static boolean isBQuestion(String code) {
+        return "environment_target".equals(code) || "installed_components".equals(code)
+            || "installed_component_version".equals(code);
+    }
+
+    private static String questionTarget(String code) {
+        return switch (code) {
+            case "environment_target" -> "environment.target";
+            case "installed_components" -> "environment.installedComponents";
+            case "installed_component_version" -> "environment.installedComponentVersions";
+            default -> throw new IllegalArgumentException("unknown B question");
+        };
+    }
+
+    private static String questionMessage(String code) {
+        return switch (code) {
+            case "environment_target" -> "사용 중인 OS와 AI 클라이언트 및 버전을 확인해 주세요.";
+            case "installed_components" -> "현재 설치된 도구 목록을 확인해 주세요.";
+            case "installed_component_version" -> "현재 설치된 도구의 버전을 확인해 주세요.";
+            default -> throw new IllegalArgumentException("unknown B question");
+        };
     }
 
     private static String reasonMessage(String code) {

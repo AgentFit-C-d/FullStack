@@ -68,30 +68,27 @@ class RecommendationMetadataAssemblerTest {
             Set.of("profile.features"), false, null, null);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash, request);
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, result.decision().status());
-        var question = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
-            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
-            JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.target",
-            "environment_target", "개발 환경을 확인해 주세요", List.of());
-        var installedQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
-            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
-            JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.installedComponents",
-            "installed_components", "현재 설치된 도구를 확인해 주세요", List.of());
         var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
             basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
-            Instant.now(), List.of(question, installedQuestion), () -> UUID.randomUUID().toString());
+            Instant.now(), List.of(), () -> UUID.randomUUID().toString());
         assertTrue(draft.items().isEmpty());
-        assertEquals(List.of(question, installedQuestion), draft.notices());
+        assertEquals(List.of("environment_target", "installed_components"),
+            draft.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code).toList());
+        assertTrue(draft.notices().stream().allMatch(notice ->
+            notice.type() == JdbcRecommendationMetadataWriter.NoticeType.QUESTION
+                && notice.questionOwner() == JdbcRecommendationMetadataWriter.QuestionOwner.B
+                && !notice.answerTarget().isBlank() && !notice.message().isBlank()));
     }
 
     @Test
-    void refusesToDropARequiredInformationQuestionDuringStorageProjection() throws Exception {
+    void refusesCallerOverrideOfBInformationQuestion() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(), List.of(),
                 Set.of("profile.features"), false, null, null));
         assertEquals(List.of("environment_target", "installed_components"),
             result.decision().questionCodes());
-        var incompleteQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+        var duplicateQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
             JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
             JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.target",
             "environment_target", "개발 환경을 확인해 주세요", List.of());
@@ -99,7 +96,27 @@ class RecommendationMetadataAssemblerTest {
         assertThrows(IllegalArgumentException.class, () -> RecommendationMetadataAssembler.assemble(
             UUID.randomUUID().toString(), basis(hash), result,
             JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY, Instant.now(),
-            List.of(incompleteQuestion), () -> UUID.randomUUID().toString()));
+            List.of(duplicateQuestion), () -> UUID.randomUUID().toString()));
+    }
+
+    @Test
+    void createsInstalledVersionQuestionFromVerifiedDecision() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
+            new CatalogRecommendationWorkflow.Request(claims(), List.of(),
+                Set.of("profile.features"), false,
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
+                java.util.Collections.singletonMap("example-tool", null)));
+
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
+            Instant.now(), List.of(), () -> UUID.randomUUID().toString());
+
+        assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, draft.status());
+        assertEquals(List.of("installed_component_version"),
+            draft.notices().stream().map(JdbcRecommendationMetadataWriter.Notice::code).toList());
+        assertEquals("environment.installedComponentVersions",
+            draft.notices().getFirst().answerTarget());
     }
 
     @Test
