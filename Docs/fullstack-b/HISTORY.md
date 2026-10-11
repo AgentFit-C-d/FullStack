@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Stored Preview metadata integrity (2026-10-11): PostgreSQL counterexamples showed that changing an approved policy or file target did not stop the B download-context read. It now recomputes the same canonical selection/content/final hashes from locked B5–B8 metadata and rejects mismatches without storing configuration content. Full `mvn verify`: 275 tests, no failures or errors, one Windows symlink test skipped. A's immutable approved-record policy and current-state transaction remain pending.
+
 Stored download context boundary (2026-10-11): a project-scoped JDBC reader now combines B5 Preview/approval with the exact B1/B3 recommendation it references inside A's caller-owned transaction. PostgreSQL tests cover approval/Preview lookup and foreign-project denial. Full `mvn verify`: 273 tests, no failures or errors, one Windows symlink test skipped. A's authenticated current basis/Environment/installed-version lookup and HTTP delivery remain open; milestone count stays 4/12.
 
 Preview temporal-order boundary (2026-10-10): stored Preview metadata now carries server-issued `createdAt`. The B creation boundary rejects inverted creation/expiry; approval and export reject a future Preview or an approval timestamp before Preview creation. Full `mvn verify` found 213 tests, no failures, one Windows symlink test skipped. A must issue and persist these timestamps from its server-side transaction; the B10/B11 top-level goals remain open.

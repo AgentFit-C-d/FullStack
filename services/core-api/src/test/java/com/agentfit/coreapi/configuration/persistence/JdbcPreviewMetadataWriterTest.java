@@ -231,6 +231,30 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void rejectsStoredApprovalWhenPermissionChoiceChangesAfterPreview() throws Exception {
+        var fixture = approvedGeneratedExport();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_permission_selection SET policy = 'ALWAYS_ALLOW'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationContextReader().byApprovalId(connection,
+                PROJECT.toString(), fixture.generated().history().approvalId()));
+    }
+
+    @Test
+    void rejectsStoredApprovalWhenFileTargetChangesAfterPreview() throws Exception {
+        var fixture = approvedGeneratedExport();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_preview_file SET target_key = 'other'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationContextReader().byApprovalId(connection,
+                PROJECT.toString(), fixture.generated().history().approvalId()));
+    }
+
+    @Test
     void storesOnlyGeneratedExportMetadataAfterMatchingApprovedPreview() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());

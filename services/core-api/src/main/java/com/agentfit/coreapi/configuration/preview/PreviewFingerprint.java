@@ -20,6 +20,9 @@ import java.util.Set;
 
 /** Canonical, server-side hash of a regenerated Preview; no persistence or approval. */
 public final class PreviewFingerprint {
+    /** Content-free hashes used to verify the B5-B8 rows after Preview creation. */
+    public record MetadataDigest(String selectionDigest, String contentDigest,
+                                 String fingerprint) {}
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final int MAX_TOOLS = 20;
     private static final int MAX_POLICIES = 200;
@@ -41,9 +44,40 @@ public final class PreviewFingerprint {
         validateBudget(input);
         validateBasis(input.basis());
 
+        List<PreviewFile> files = PreviewFileComparator.compare(input.generatedFiles(),
+            input.existingState(), input.providedFiles());
+        if (files.isEmpty()) throw invalid("empty generated file set");
+        MetadataDigest hashes = digestMetadata(input.basis(), input.recommendationId(),
+            input.selectedToolIds(), input.policies(), input.generatorVersion(), files);
+        return new PreviewFingerprintResult(files, hashes.selectionDigest(),
+            hashes.contentDigest(), hashes.fingerprint());
+    }
+
+    /** Recomputes the canonical hashes using only the stored Preview metadata, never file bytes. */
+    public static MetadataDigest computeStoredMetadata(PreviewBasis basis, String recommendationId,
+                                                        List<String> selectedToolIds,
+                                                        List<PermissionSelection> policies,
+                                                        String generatorVersion,
+                                                        List<PreviewFile> files) {
+        if (basis == null || blank(recommendationId) || blank(generatorVersion)
+            || selectedToolIds == null || selectedToolIds.isEmpty() || policies == null
+            || files == null || files.isEmpty() || selectedToolIds.size() > MAX_TOOLS
+            || policies.size() > MAX_POLICIES || files.size() > MAX_FILES) {
+            throw invalid("incomplete stored Preview metadata");
+        }
+        validateBasis(basis);
+        return digestMetadata(basis, recommendationId, selectedToolIds, policies,
+            generatorVersion, files);
+    }
+
+    private static MetadataDigest digestMetadata(PreviewBasis basis, String recommendationId,
+                                                  List<String> selectedToolIds,
+                                                  List<PermissionSelection> choices,
+                                                  String generatorVersion,
+                                                  List<PreviewFile> files) {
         List<String> selected = new ArrayList<>();
         Set<String> uniqueTools = new HashSet<>();
-        for (String key : input.selectedToolIds()) {
+        for (String key : selectedToolIds) {
             if (blank(key) || !uniqueTools.add(key)) throw invalid("invalid or duplicate selected tool");
             selected.add(key);
         }
@@ -51,7 +85,7 @@ public final class PreviewFingerprint {
 
         List<PermissionSelection> policies = new ArrayList<>();
         Set<String> uniqueMappings = new HashSet<>();
-        for (PermissionSelection policy : input.policies()) {
+        for (PermissionSelection policy : choices) {
             if (policy == null || blank(policy.toolKey()) || blank(policy.mappingKey())
                 || policy.policy() == null || !uniqueTools.contains(policy.toolKey())
                 || !uniqueMappings.add(policy.toolKey() + "\u0000" + policy.mappingKey())) {
@@ -62,13 +96,9 @@ public final class PreviewFingerprint {
         policies.sort(Comparator.comparing(PermissionSelection::toolKey)
             .thenComparing(PermissionSelection::mappingKey));
 
-        List<PreviewFile> files = PreviewFileComparator.compare(input.generatedFiles(),
-            input.existingState(), input.providedFiles());
-        if (files.isEmpty()) throw invalid("empty generated file set");
-
         Map<String, Object> selection = ordered();
-        selection.put("basis", basisFields(input.basis()));
-        selection.put("recommendationId", input.recommendationId());
+        selection.put("basis", basisFields(basis));
+        selection.put("recommendationId", recommendationId);
         selection.put("selectedToolIds", selected);
         List<Map<String, Object>> policyRows = new ArrayList<>();
         for (PermissionSelection policy : policies) {
@@ -82,7 +112,16 @@ public final class PreviewFingerprint {
         String selectionDigest = digest(selection);
 
         List<Map<String, Object>> fileRows = new ArrayList<>();
-        for (PreviewFile file : files) {
+        for (PreviewFile file : files.stream().sorted(Comparator.comparing(PreviewFile::relativePath)
+            .thenComparing(PreviewFile::targetKey)).toList()) {
+            if (blank(file.targetKey()) || blank(file.relativePath()) || file.action() == null
+                || file.afterHash() == null || !file.afterHash().matches("[0-9a-f]{64}")
+                || (file.action() == PreviewFile.Action.PROPOSAL && file.beforeHash() != null)
+                || (file.action() == PreviewFile.Action.UPDATE
+                    && (file.beforeHash() == null
+                        || !file.beforeHash().matches("[0-9a-f]{64}")))) {
+                throw invalid("invalid stored Preview file metadata");
+            }
             Map<String, Object> row = ordered();
             row.put("targetKey", file.targetKey());
             row.put("relativePath", file.relativePath());
@@ -98,9 +137,8 @@ public final class PreviewFingerprint {
         Map<String, Object> approvalTarget = ordered();
         approvalTarget.put("selectionDigest", selectionDigest);
         approvalTarget.put("contentDigest", contentDigest);
-        approvalTarget.put("generatorVersion", input.generatorVersion());
-        return new PreviewFingerprintResult(files, selectionDigest, contentDigest,
-            digest(approvalTarget));
+        approvalTarget.put("generatorVersion", generatorVersion);
+        return new MetadataDigest(selectionDigest, contentDigest, digest(approvalTarget));
     }
 
     private static Map<String, Object> basisFields(PreviewBasis basis) {
