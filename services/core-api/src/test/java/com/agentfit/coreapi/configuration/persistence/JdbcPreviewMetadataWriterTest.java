@@ -18,6 +18,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.Clock;
 import java.time.ZoneOffset;
@@ -39,6 +40,7 @@ class JdbcPreviewMetadataWriterTest {
     private static final UUID RECOMMENDATION = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private static final UUID ITEM = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private Connection connection;
+    private String committedSchema;
 
     @BeforeEach
     void open() throws Exception {
@@ -76,6 +78,12 @@ class JdbcPreviewMetadataWriterTest {
     void close() throws Exception {
         if (connection != null) {
             connection.rollback();
+            if (committedSchema != null) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("DROP SCHEMA " + committedSchema + " CASCADE");
+                }
+                connection.commit();
+            }
             connection.close();
         }
     }
@@ -431,6 +439,44 @@ class JdbcPreviewMetadataWriterTest {
             () -> reader.list(connection, PROJECT.toString(), null, 0));
         assertThrows(IllegalArgumentException.class,
             () -> reader.list(connection, PROJECT.toString(), null, 51));
+    }
+
+    @Test
+    void historyReadLockPreventsConcurrentProjectDeletionUntilReaderFinishes() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT current_schema()")) {
+            assertTrue(row.next());
+            committedSchema = row.getString(1);
+        }
+        connection.commit();
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("SET search_path TO " + committedSchema);
+        }
+        try (Connection deleting = DriverManager.getConnection(
+            System.getenv("AGENTFIT_TEST_POSTGRES_URL"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_USER", "agentfit"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only"))) {
+            deleting.setAutoCommit(false);
+            try (Statement statement = deleting.createStatement()) {
+                statement.execute("SET search_path TO " + committedSchema);
+                statement.execute("SET LOCAL lock_timeout = '300ms'");
+            }
+            assertNotNull(new JdbcConfigurationHistoryReader().find(connection,
+                PROJECT.toString(), fixture.generationId().toString()));
+            SQLException locked = assertThrows(SQLException.class,
+                () -> new JdbcProjectBDataDeleter().delete(deleting, PROJECT.toString()));
+            assertEquals("55P03", locked.getSQLState());
+
+            deleting.rollback();
+            connection.rollback();
+            try (Statement statement = deleting.createStatement()) {
+                statement.execute("SET search_path TO " + committedSchema);
+            }
+            assertTrue(new JdbcProjectBDataDeleter().delete(deleting, PROJECT.toString()) > 0);
+            deleting.rollback();
+        }
     }
 
     private ExportFixture approvedGeneratedExport() throws Exception {

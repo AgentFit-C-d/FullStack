@@ -59,4 +59,6 @@ Its `list` method returns at most 50 generations per page, newest first by `(gen
 
 `JdbcProjectBDataDeleter` removes B9, B8, B7, B6, B5, B4, B2, B3, then B1 for one project in foreign-key order. It neither authenticates the caller nor deletes A rows or common Audit. A must lock and owner-check the project, delete its Audit and A rows in the agreed order, and commit once; otherwise roll back all B deletes. The opt-in PostgreSQL test verifies a full B chain is removed while another project's recommendation remains. A's real cross-table migration and late-write race checks remain pending.
 
+A two-connection PostgreSQL test also confirms that an active B9 history read blocks B-row deletion until the read transaction releases its share locks, then deletion can be retried. This covers read/delete serialization only. A's project-row lock and its late-write/deletion race test are still required.
+
 The running `agentfit` database intentionally has no A/B application tables yet. A's real schema and migration ordering, the authenticated adapter that passes its locked transaction to B, current A version recheck, Audit, deletion, and public API remain **NOT_RUN**. Do not mark B05, B10, or B12 complete from this B-only JDBC test.
