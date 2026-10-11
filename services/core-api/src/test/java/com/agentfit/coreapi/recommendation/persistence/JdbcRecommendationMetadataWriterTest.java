@@ -1,0 +1,181 @@
+package com.agentfit.coreapi.recommendation.persistence;
+
+import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.recommendation.CapabilityKey;
+import com.agentfit.coreapi.recommendation.RecommendationDecision;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** B1-B4 are created in A's transaction; temporary A parent tables are rolled back. */
+@EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
+class JdbcRecommendationMetadataWriterTest {
+    private static final UUID PROJECT = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private Connection connection;
+
+    @BeforeEach
+    void open() throws Exception {
+        connection = DriverManager.getConnection(System.getenv("AGENTFIT_TEST_POSTGRES_URL"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_USER", "agentfit"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only"));
+        connection.setAutoCommit(false);
+        String schema = "b_recommendation_" + UUID.randomUUID().toString().replace("-", "");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE SCHEMA " + schema);
+            statement.execute("SET LOCAL search_path TO " + schema);
+            statement.execute("CREATE TABLE project (id UUID PRIMARY KEY)");
+            statement.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY)");
+            statement.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY)");
+            try (var stream = getClass().getResourceAsStream("/db/postgresql/b-schema.sql")) {
+                assertNotNull(stream);
+                for (String sql : new String(stream.readAllBytes(), StandardCharsets.UTF_8).split(";")) {
+                    if (!sql.isBlank()) statement.execute(sql);
+                }
+            }
+            statement.execute("INSERT INTO project VALUES ('" + PROJECT + "')");
+            statement.execute("INSERT INTO project_profile VALUES ('" + PROFILE + "')");
+            statement.execute("INSERT INTO profile_confirmation_event VALUES ('" + EVENT + "')");
+        }
+    }
+
+    @AfterEach
+    void close() throws Exception {
+        if (connection != null) {
+            connection.rollback();
+            connection.close();
+        }
+    }
+
+    @Test
+    void writesCompleteRecommendedMetadataWithoutAiRawResponse() throws Exception {
+        UUID id = UUID.randomUUID();
+        var draft = recommended(id);
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "recommendation"));
+            assertEquals(9, count(statement, "recommendation_capability"));
+            assertEquals(1, count(statement, "recommendation_item"));
+            assertEquals(1, count(statement, "recommendation_notice"));
+            try (ResultSet row = statement.executeQuery("SELECT status, evidence_level, "
+                + "confirmation_event_id, catalog_hash FROM recommendation WHERE id = '" + id + "'")) {
+                assertTrue(row.next());
+                assertEquals("RECOMMENDED", row.getString(1));
+                assertEquals("PLAN_ONLY", row.getString(2));
+                assertEquals(EVENT, row.getObject(3, UUID.class));
+                assertEquals("a".repeat(64), row.getString(4));
+            }
+        }
+    }
+
+    @Test
+    void rejectsMissingCapabilityBeforeAnyInsert() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        var missing = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            original.capabilities().subList(0, 8), original.items(), original.notices());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcRecommendationMetadataWriter().write(connection, missing));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "recommendation"));
+        }
+    }
+
+    @Test
+    void rejectsItemForNoAdditionsOutcomeBeforeAnyInsert() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        var inconsistent = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            RecommendationDecision.Status.NO_ADDITIONS_NEEDED, original.evidenceLevel(),
+            original.createdAt(), original.capabilities(), original.items(), original.notices());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcRecommendationMetadataWriter().write(connection, inconsistent));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "recommendation"));
+        }
+    }
+
+    @Test
+    void writesNeedsInformationWithQuestionAndNoTools() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        var question = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+            JdbcRecommendationMetadataWriter.QuestionOwner.AI, "profile.constraints",
+            "MISSING_SCOPE", "clarify project scope", List.of("profile.constraints"));
+        var draft = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            RecommendationDecision.Status.NEEDS_INFORMATION, original.evidenceLevel(),
+            original.createdAt(), original.capabilities(), List.of(), List.of(question));
+
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "recommendation"));
+            assertEquals(9, count(statement, "recommendation_capability"));
+            assertEquals(0, count(statement, "recommendation_item"));
+            try (ResultSet row = statement.executeQuery(
+                "SELECT type, question_owner, answer_target FROM recommendation_notice")) {
+                assertTrue(row.next());
+                assertEquals("QUESTION", row.getString(1));
+                assertEquals("AI", row.getString(2));
+                assertEquals("profile.constraints", row.getString(3));
+            }
+        }
+    }
+
+    @Test
+    void rejectsQuestionAndNoCompatibleOutcomesWithoutMatchingNotice() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        for (var status : List.of(RecommendationDecision.Status.NEEDS_INFORMATION,
+            RecommendationDecision.Status.NO_COMPATIBLE_TOOLS)) {
+            var missing = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
+                original.basis(), status, original.evidenceLevel(), original.createdAt(),
+                original.capabilities(), List.of(), List.of());
+            assertThrows(IllegalArgumentException.class,
+                () -> new JdbcRecommendationMetadataWriter().write(connection, missing));
+        }
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(0, count(statement, "recommendation"));
+        }
+    }
+
+    private static JdbcRecommendationMetadataWriter.Draft recommended(UUID id) {
+        var capabilities = Arrays.stream(CapabilityKey.values()).map(key ->
+            new JdbcRecommendationMetadataWriter.Capability(key.key(),
+                JdbcRecommendationMetadataWriter.Necessity.REQUIRED, "confirmed requirement",
+                List.of("profile.features"))).toList();
+        return new JdbcRecommendationMetadataWriter.Draft(id.toString(),
+            new PreviewBasis(PROJECT.toString(), 1, PROFILE.toString(), 1, EVENT.toString(),
+                0, 0, 1, "test-release", "a".repeat(64)),
+            RecommendationDecision.Status.RECOMMENDED,
+            JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
+            Instant.parse("2026-10-11T05:00:00Z"), capabilities,
+            List.of(new JdbcRecommendationMetadataWriter.Item(UUID.randomUUID().toString(),
+                "tool-a", "1.0", "support-a", true, "covers required capability",
+                JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE)),
+            List.of(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+                JdbcRecommendationMetadataWriter.NoticeType.REASON, null, null,
+                "VERIFIED_MATCH", "verified catalog match", List.of())));
+    }
+
+    private static int count(Statement statement, String table) throws Exception {
+        try (ResultSet rows = statement.executeQuery("SELECT count(*) FROM " + table)) {
+            assertTrue(rows.next());
+            return rows.getInt(1);
+        }
+    }
+}
