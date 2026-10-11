@@ -181,6 +181,30 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void readsStoredPreviewAndApprovalWithinOwnerCheckedTransaction() throws Exception {
+        UUID previewId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
+        var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
+            draft(basis()), createdAt, createdAt.plusSeconds(600));
+        var reader = new JdbcStoredPreviewReader();
+
+        var beforeApproval = reader.byPreviewId(connection, PROJECT.toString(), previewId.toString());
+        assertEquals(preview, beforeApproval.preview());
+        assertNull(beforeApproval.approval());
+        assertEquals(RECOMMENDATION.toString(), beforeApproval.recommendationId());
+
+        var issued = new StoredApprovalState(UUID.randomUUID().toString(), previewId.toString(),
+            preview.fingerprint(), createdAt.plusSeconds(60), createdAt.plusSeconds(300));
+        new JdbcPreviewApprovalWriter().approve(connection, UUID.randomUUID().toString(),
+            preview, issued);
+
+        var approved = reader.byApprovalId(connection, PROJECT.toString(), issued.approvalId());
+        assertEquals(preview, approved.preview());
+        assertEquals(issued, approved.approval());
+        assertNull(reader.byPreviewId(connection, UUID.randomUUID().toString(), previewId.toString()));
+    }
+
+    @Test
     void storesOnlyGeneratedExportMetadataAfterMatchingApprovedPreview() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
