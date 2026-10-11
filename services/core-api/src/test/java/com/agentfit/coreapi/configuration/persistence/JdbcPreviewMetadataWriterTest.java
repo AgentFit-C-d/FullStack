@@ -137,6 +137,21 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void rejectsProvidedExistingStateWithoutAnUpdatedFileAtCreation() throws Exception {
+        var original = calculatedDraft();
+        var inconsistent = new PreviewCreationService.Draft(original.basis(),
+            original.recommendationId(), original.selectedToolKeys(), original.policies(),
+            ExistingState.PROVIDED, original.fileMetadata(), original.generatorVersion(),
+            original.selectionDigest(), original.contentDigest(), original.fingerprint());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcPreviewMetadataWriter().write(connection,
+                UUID.randomUUID().toString(), inconsistent,
+                Instant.parse("2026-10-11T05:00:00Z"),
+                Instant.parse("2026-10-11T05:10:00Z")));
+    }
+
+    @Test
     void rejectsChangedRecommendationBasisBeforeAnyInsert() throws Exception {
         PreviewBasis changed = new PreviewBasis(PROJECT.toString(), 2, PROFILE.toString(), 1,
             EVENT.toString(), 0, 0, 1, "test-release", "a".repeat(64));
@@ -281,6 +296,18 @@ class JdbcPreviewMetadataWriterTest {
         var fixture = approvedGeneratedExport();
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE config_preview_file SET target_key = 'other'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationContextReader().byApprovalId(connection,
+                PROJECT.toString(), fixture.generated().history().approvalId()));
+    }
+
+    @Test
+    void rejectsStoredApprovalWhenExistingStateContradictsFiles() throws Exception {
+        var fixture = approvedGeneratedExport();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_preview SET existing_state = 'PROVIDED'");
         }
 
         assertThrows(IllegalStateException.class,

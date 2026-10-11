@@ -2,6 +2,7 @@ package com.agentfit.coreapi.configuration.persistence;
 
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
+import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprint;
 import com.agentfit.coreapi.recommendation.persistence.JdbcLatestRecommendationReader;
@@ -55,19 +56,21 @@ public final class JdbcConfigurationContextReader {
         throws SQLException {
         UUID previewId = UUID.fromString(stored.preview().previewId());
         String generatorVersion;
+        ExistingState existingState;
         String selectionDigest;
         String contentDigest;
         String fingerprint;
         try (PreparedStatement query = transaction.prepareStatement(
-            "SELECT generator_version, selection_digest, content_digest, fingerprint "
+            "SELECT generator_version, existing_state, selection_digest, content_digest, fingerprint "
                 + "FROM config_preview WHERE id = ? FOR SHARE")) {
             query.setObject(1, previewId);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) throw new IllegalStateException("stored Preview disappeared");
                 generatorVersion = row.getString(1);
-                selectionDigest = row.getString(2);
-                contentDigest = row.getString(3);
-                fingerprint = row.getString(4);
+                existingState = ExistingState.valueOf(row.getString(2));
+                selectionDigest = row.getString(3);
+                contentDigest = row.getString(4);
+                fingerprint = row.getString(5);
             }
         }
         List<String> selected = new ArrayList<>();
@@ -111,6 +114,7 @@ public final class JdbcConfigurationContextReader {
             }
         }
         try {
+            PreviewFingerprint.requireConsistentExistingState(existingState, files);
             var hashes = PreviewFingerprint.computeStoredMetadata(stored.preview().basis(),
                 recommendation.recommendationId(), selected, policies, generatorVersion, files);
             if (!hashes.selectionDigest().equals(selectionDigest)

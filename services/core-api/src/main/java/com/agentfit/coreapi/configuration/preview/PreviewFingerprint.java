@@ -70,6 +70,16 @@ public final class PreviewFingerprint {
             generatorVersion, files);
     }
 
+    /** PROVIDED means at least one supplied original was compared; other states compare none. */
+    public static void requireConsistentExistingState(ExistingState state, List<PreviewFile> files) {
+        if (state == null || files == null || files.isEmpty()
+            || files.stream().anyMatch(file -> file == null || file.action() == null)
+            || (state == ExistingState.PROVIDED) != files.stream()
+                .anyMatch(file -> file.action() == PreviewFile.Action.UPDATE)) {
+            throw invalid("existing state contradicts Preview files");
+        }
+    }
+
     private static MetadataDigest digestMetadata(PreviewBasis basis, String recommendationId,
                                                   List<String> selectedToolIds,
                                                   List<PermissionSelection> choices,

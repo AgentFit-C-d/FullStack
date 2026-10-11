@@ -1,5 +1,7 @@
 # Full Stack B milestone history
 
+Existing-file state consistency (2026-10-11): a `PROVIDED` Preview with only PROPOSAL files passed because `existing_state` is not hashed. B now rejects this contradiction both before storage and when reading an approved context. Full `mvn verify`: 280 tests, no failures or errors, one Windows symlink test skipped. A must still prevent mutation of approved metadata.
+
 Preview creation integrity (2026-10-11): the PostgreSQL writer previously accepted arbitrary B5 selection/content/final hashes. It now recomputes those hashes from B5–B8 metadata before inserting and rejects a mismatched Draft. Full `mvn verify`: 278 tests, no failures or errors, one Windows symlink test skipped. A's authenticated transaction and Catalog verification remain external.
 
 Approval-time Preview integrity (2026-10-11): a PostgreSQL counterexample changed B7 policy after Preview creation and still saved a B5 approval. The approval writer now rechecks locked B5–B8 canonical hashes before filling the one-time approval bundle. Full `mvn verify`: 277 tests, no failures or errors, one Windows symlink test skipped. A's current-basis/Audit integration remains open.

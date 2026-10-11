@@ -48,11 +48,13 @@ public final class JdbcPreviewMetadataWriter {
             || !itemIds.containsKey(policy.toolKey()))) {
             throw new IllegalArgumentException("policy does not belong to a selected tool");
         }
+        var files = draft.fileMetadata().stream()
+            .map(file -> new PreviewFile(file.targetKey(), file.relativePath(), file.action(),
+                file.beforeHash(), file.afterHash(), null, null, null)).toList();
+        PreviewFingerprint.requireConsistentExistingState(draft.existingState(), files);
         var hashes = PreviewFingerprint.computeStoredMetadata(draft.basis(),
             draft.recommendationId(), draft.selectedToolKeys(), draft.policies(),
-            draft.generatorVersion(), draft.fileMetadata().stream()
-                .map(file -> new PreviewFile(file.targetKey(), file.relativePath(), file.action(),
-                    file.beforeHash(), file.afterHash(), null, null, null)).toList());
+            draft.generatorVersion(), files);
         if (!hashes.selectionDigest().equals(draft.selectionDigest())
             || !hashes.contentDigest().equals(draft.contentDigest())
             || !hashes.fingerprint().equals(draft.fingerprint())) {
