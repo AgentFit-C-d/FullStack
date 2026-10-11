@@ -313,6 +313,56 @@ class JdbcPreviewMetadataWriterTest {
         }
     }
 
+    @Test
+    void deletesOnlySpecifiedProjectsBRowsInForeignKeyOrder() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var accepted = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
+            Clock.fixed(fixture.generated().history().createdAt().plusSeconds(1), ZoneOffset.UTC));
+        new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
+            UUID.randomUUID().toString(), UUID.randomUUID().toString(), accepted);
+
+        var deleter = new JdbcProjectBDataDeleter();
+        assertEquals(0, deleter.delete(connection, UUID.randomUUID().toString()));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "config_export"));
+        }
+
+        assertEquals(7, deleter.delete(connection, PROJECT.toString()));
+        try (Statement statement = connection.createStatement()) {
+            for (String table : List.of("config_export", "config_preview_file",
+                "config_permission_selection", "config_selection", "config_preview",
+                "recommendation_item", "recommendation", "recommendation_capability",
+                "recommendation_notice")) {
+                assertEquals(0, count(statement, table), table);
+            }
+            assertEquals(1, count(statement, "project"));
+        }
+    }
+
+    @Test
+    void projectDeletionKeepsOtherProjectsRecommendation() throws Exception {
+        UUID otherProject = UUID.randomUUID();
+        UUID otherRecommendation = UUID.randomUUID();
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("INSERT INTO project VALUES ('" + otherProject + "')");
+            statement.execute("INSERT INTO recommendation VALUES ('" + otherRecommendation + "', '"
+                + otherProject + "', '" + PROFILE + "', 1, '" + EVENT
+                + "', 1, 0, 0, 1, 'test-release', '" + "a".repeat(64)
+                + "', 'NO_ADDITIONS_NEEDED', 'PLAN_ONLY', now())");
+        }
+
+        assertEquals(2, new JdbcProjectBDataDeleter().delete(connection, PROJECT.toString()));
+
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT project_id FROM recommendation")) {
+            assertTrue(row.next());
+            assertEquals(otherProject, row.getObject(1, UUID.class));
+            assertFalse(row.next());
+        }
+    }
+
     private ExportFixture approvedGeneratedExport() throws Exception {
         Instant now = Instant.parse("2026-10-11T05:02:00Z");
         UUID previewId = UUID.randomUUID();
