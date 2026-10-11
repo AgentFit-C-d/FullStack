@@ -32,28 +32,30 @@ public final class JdbcConfigurationHistoryReader {
         public Page { items = List.copyOf(items); }
     }
 
-    /** Returns newest first, with UUID as the tie breaker for equal generation times. */
+    /** Returns newest time first, then ascending UUID for equal generation times. */
     public Page list(Connection transaction, String projectId, Cursor after, int limit)
         throws SQLException {
         Objects.requireNonNull(transaction);
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("history read requires a caller-owned transaction");
         }
-        if (limit < 1 || limit > 50) {
-            throw new IllegalArgumentException("history page limit must be between 1 and 50");
+        if (limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("history page limit must be between 1 and 100");
         }
         UUID project = uuid(projectId);
         String sql = "SELECT e.id, e.generated_at FROM config_export e "
             + "JOIN config_preview cp ON cp.id = e.preview_id "
             + "JOIN recommendation r ON r.id = cp.recommendation_id "
             + "WHERE r.project_id = ? "
-            + (after == null ? "" : "AND (e.generated_at, e.id) < (?, ?) ")
-            + "ORDER BY e.generated_at DESC, e.id DESC LIMIT ? FOR SHARE OF e, cp, r";
+            + (after == null ? "" : "AND (e.generated_at < ? "
+                + "OR (e.generated_at = ? AND e.id > ?)) ")
+            + "ORDER BY e.generated_at DESC, e.id ASC LIMIT ? FOR SHARE OF e, cp, r";
         List<Cursor> rows = new ArrayList<>();
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             int position = 1;
             query.setObject(position++, project);
             if (after != null) {
+                query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
                 query.setObject(position++, uuid(after.generationId()));
             }

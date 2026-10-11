@@ -432,13 +432,22 @@ class JdbcPreviewMetadataWriterTest {
         var secondPage = reader.list(connection, PROJECT.toString(), firstPage.nextCursor(), 2);
         assertEquals(1, secondPage.items().size());
         assertNull(secondPage.nextCursor());
-        assertEquals(3, java.util.stream.Stream.concat(firstPage.items().stream(),
-            secondPage.items().stream()).map(item -> item.generation().id()).distinct().count());
+        var actualIds = java.util.stream.Stream.concat(firstPage.items().stream(),
+            secondPage.items().stream()).map(item -> item.generation().id()).toList();
+        assertEquals(3, actualIds.stream().distinct().count());
+        try (Statement statement = connection.createStatement();
+             ResultSet rows = statement.executeQuery(
+                 "SELECT id FROM config_export ORDER BY generated_at DESC, id ASC")) {
+            var expectedIds = new java.util.ArrayList<String>();
+            while (rows.next()) expectedIds.add(rows.getObject(1, UUID.class).toString());
+            assertEquals(expectedIds, actualIds);
+        }
         assertTrue(reader.list(connection, UUID.randomUUID().toString(), null, 2).items().isEmpty());
+        assertEquals(3, reader.list(connection, PROJECT.toString(), null, 100).items().size());
         assertThrows(IllegalArgumentException.class,
             () -> reader.list(connection, PROJECT.toString(), null, 0));
         assertThrows(IllegalArgumentException.class,
-            () -> reader.list(connection, PROJECT.toString(), null, 51));
+            () -> reader.list(connection, PROJECT.toString(), null, 101));
     }
 
     @Test

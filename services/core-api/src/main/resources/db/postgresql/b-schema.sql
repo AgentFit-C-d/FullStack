@@ -167,4 +167,4 @@ CREATE INDEX config_export_preview_generated_idx
     ON config_export (preview_id, generated_at DESC, id DESC);
 
 CREATE INDEX config_export_generated_idx
-    ON config_export (generated_at DESC, id DESC);
+    ON config_export (generated_at DESC, id ASC);
