@@ -518,6 +518,25 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void databaseRejectsUserReportTimestampBeforeZipGeneration() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var accepted = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED,
+                null), Clock.fixed(fixture.generated().history().createdAt().plusSeconds(1),
+                ZoneOffset.UTC));
+        new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
+            UUID.randomUUID().toString(), UUID.randomUUID().toString(), accepted);
+
+        try (Statement statement = connection.createStatement()) {
+            SQLException rejected = assertThrows(SQLException.class, () -> statement.executeUpdate(
+                "UPDATE config_export SET reported_at = generated_at - INTERVAL '1 second' "
+                    + "WHERE id = '" + fixture.generationId() + "'"));
+            assertEquals("23514", rejected.getSQLState());
+        }
+    }
+
+    @Test
     void readsUnreportedGenerationAndRejectsChangedStoredFingerprint() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());

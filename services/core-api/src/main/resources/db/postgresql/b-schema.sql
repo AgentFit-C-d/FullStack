@@ -153,7 +153,7 @@ CREATE TABLE config_export (
             AND reason_code IS NULL AND reported_by IS NULL AND reported_at IS NULL)
         OR (latest_report_id IS NOT NULL AND reported_state IS NOT NULL
             AND reported_by IS NOT NULL
-            AND reported_at IS NOT NULL AND (
+            AND reported_at IS NOT NULL AND reported_at >= generated_at AND (
                 (reported_state = 'APPLIED' AND reason_code IS NULL)
                 OR (reported_state = 'FAILED' AND reason_code IS NOT NULL
                     AND reason_code IN (
