@@ -130,6 +130,30 @@ class CatalogPreviewAssemblerTest {
             () -> assemble(hash, request, null));
     }
 
+    @Test
+    void usesOnlyTrustedExactInstalledDependencyForWholeCombination() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithInstalledDependency(directory);
+        var basis = new PreviewBasis("project-1", 1, "profile-1", 1, "event-1",
+            0, 0, 1, "synthetic-recommendation", hash);
+        var target = new EnvironmentTarget("WINDOWS", "example-client", "1.0");
+        var request = new CatalogPreviewRequest(basis, "rec-1", target,
+            List.of("example-tool"),
+            List.of(new PermissionSelection("example-tool", "read", PermissionPolicy.ASK_EACH_TIME)),
+            ExistingState.UNKNOWN, List.of(), "static-v1");
+        var stored = new StoredRecommendationState("rec-1", basis, Status.RECOMMENDED,
+            List.of("example-tool"));
+
+        assertThrows(IllegalArgumentException.class,
+            () -> CatalogPreviewAssembler.assemble(directory, hash, stored, basis, target, request));
+        var preview = CatalogPreviewAssembler.assemble(directory, hash, stored, basis,
+            target, request, Map.of("runtime", "1.0"));
+        assertEquals(List.of("config/main.txt"), preview.files().stream()
+            .map(file -> file.relativePath()).toList());
+        assertThrows(IllegalArgumentException.class,
+            () -> CatalogPreviewAssembler.assemble(directory, hash, stored, basis,
+                target, request, Map.of("runtime", "0.9")));
+    }
+
     private PreviewFingerprintResult assemble(String approvedHash, CatalogPreviewRequest request) {
         return assemble(approvedHash, request, request.target());
     }

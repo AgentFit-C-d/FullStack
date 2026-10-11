@@ -115,4 +115,23 @@ class ConfigurationSelectionValidatorTest {
             () -> validator(release).validate(Set.of(), TARGET, List.of(mapping),
                 List.of(new PermissionSelection("doc", "network", PermissionPolicy.DENY))));
     }
+
+    @Test
+    void acceptsInstalledDependencyOnlyWithExactVersionAndReviewedWholeCombination() {
+        CatalogTool doc = tool("doc", Set.of("runtime"), Set.of(), Set.of("doc-part"),
+            ToolSupport.Check.PASS);
+        CatalogTool runtime = tool("runtime", Set.of(), Set.of(), Set.of("runtime-part"),
+            ToolSupport.Check.PASS);
+        CatalogRelease release = new CatalogRelease("r1", Map.of("doc", doc, "runtime", runtime),
+            Set.of(new VerifiedCombination(Set.of("doc", "runtime"), TARGET)));
+        var validator = validator(release);
+        assertEquals(List.of(), validator.validate(Set.of("doc"), TARGET, List.of(),
+            List.of(), Map.of("runtime", "1")));
+        assertThrows(ConfigurationSelectionValidator.InvalidSelectionException.class,
+            () -> validator.validate(Set.of("doc"), TARGET, List.of(), List.of(),
+                Map.of("runtime", "0")));
+        assertThrows(ConfigurationSelectionValidator.InvalidSelectionException.class,
+            () -> validator.validate(Set.of("doc"), TARGET, List.of(), List.of(),
+                java.util.Collections.singletonMap("runtime", null)));
+    }
 }

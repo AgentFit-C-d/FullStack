@@ -11,6 +11,7 @@ import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -89,6 +90,24 @@ class PreviewCreationServiceTest {
                 Instant.parse("2026-10-10T11:50:00Z")));
 
         assertThrows(IllegalStateException.class, () -> service.create("project-1", request));
+    }
+
+    @Test
+    void forwardsTrustedInstalledDependencyWithoutAddingItToGeneratedFiles() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithInstalledDependency(directory);
+        var request = request(hash);
+        var service = new PreviewCreationService(
+            (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
+                request.basis(), request.target(), context(request).recommendation(),
+                Map.of("runtime", "1.0")),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            (trusted, draft) -> new StoredPreviewState("preview-1", draft.basis(),
+                draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
+                Instant.parse("2026-10-10T12:00:00Z")));
+
+        var preview = service.create("project-1", request);
+        assertEquals(List.of("config/main.txt"), preview.preview().files().stream()
+            .map(file -> file.relativePath()).toList());
     }
 
     private static PreviewCreationService.TrustedContext context(CatalogPreviewRequest request) {

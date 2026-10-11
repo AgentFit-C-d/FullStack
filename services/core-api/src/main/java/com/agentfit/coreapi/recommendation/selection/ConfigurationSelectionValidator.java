@@ -9,6 +9,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Rechecks a complete tool/policy choice before a future Preview is generated. */
@@ -24,20 +25,37 @@ public final class ConfigurationSelectionValidator {
                                               EnvironmentTarget target,
                                               List<PermissionMapping> reviewedMappings,
                                               List<PermissionSelection> selections) {
+        return validate(selectedToolKeys, target, reviewedMappings, selections, Map.of());
+    }
+
+    /** Installed versions must come from A's owner-checked current Environment, never the request. */
+    public List<PermissionSelection> validate(Set<String> selectedToolKeys,
+                                              EnvironmentTarget target,
+                                              List<PermissionMapping> reviewedMappings,
+                                              List<PermissionSelection> selections,
+                                              Map<String, String> trustedInstalledVersions) {
         if (selectedToolKeys == null || target == null || !target.complete()
-            || reviewedMappings == null || selections == null
+            || reviewedMappings == null || selections == null || trustedInstalledVersions == null
             || !release.tools().keySet().containsAll(selectedToolKeys)) {
             throw new InvalidSelectionException("unknown tool or incomplete target/selection");
         }
+        Set<String> effectiveTools = new HashSet<>(selectedToolKeys);
+        for (var entry : trustedInstalledVersions.entrySet()) {
+            CatalogTool installed = release.tools().get(entry.getKey());
+            if (installed != null && installed.version().equals(entry.getValue())
+                && installed.support().stream().anyMatch(row -> row.verifiedFor(target))) {
+                effectiveTools.add(installed.key());
+            }
+        }
         Set<String> components = new HashSet<>();
-        for (String key : selectedToolKeys) {
+        for (String key : effectiveTools) {
             CatalogTool tool = release.tools().get(key);
             if (tool.support().stream().noneMatch(support -> support.verifiedFor(target))
-                || !selectedToolKeys.containsAll(tool.dependencyKeys())) {
+                || !effectiveTools.containsAll(tool.dependencyKeys())) {
                 throw new InvalidSelectionException("unsupported tool or missing dependency");
             }
             for (String conflict : tool.conflictKeys()) {
-                if (selectedToolKeys.contains(conflict)) {
+                if (effectiveTools.contains(conflict)) {
                     throw new InvalidSelectionException("conflicting tools");
                 }
             }
@@ -47,8 +65,8 @@ public final class ConfigurationSelectionValidator {
                 }
             }
         }
-        if (selectedToolKeys.size() > 1 && !release.verifiedCombinations()
-            .contains(new VerifiedCombination(selectedToolKeys, target))) {
+        if (effectiveTools.size() > 1 && !release.verifiedCombinations()
+            .contains(new VerifiedCombination(effectiveTools, target))) {
             throw new InvalidSelectionException("unverified combination for target");
         }
 

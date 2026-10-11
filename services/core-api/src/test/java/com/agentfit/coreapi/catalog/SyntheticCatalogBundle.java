@@ -37,6 +37,10 @@ final class SyntheticCatalogBundle {
         return write(directory, true, "literal config\n", false, false, "FAIL");
     }
 
+    static String writeWithInstalledDependency(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", false, false, "PASS", true);
+    }
+
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination) throws Exception {
         return write(directory, includeTemplate, templateContent, includeFallback,
@@ -46,6 +50,13 @@ final class SyntheticCatalogBundle {
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination,
                                 String standaloneCheck) throws Exception {
+        return write(directory, includeTemplate, templateContent, includeFallback,
+            oversizedCombination, standaloneCheck, false);
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback, boolean oversizedCombination,
+                                String standaloneCheck, boolean installedDependency) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -55,6 +66,10 @@ final class SyntheticCatalogBundle {
             + "\"name\":\"Example Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/example-tool\","
             + "\"version\":\"1.0\",\"capabilityKeys\":[\"cap_document_reference\"],"
             + "\"includedComponentKeys\":[\"example-component\"]}"
+            + (installedDependency ? ", {\"key\":\"runtime\",\"version\":\"1.0\","
+                + "\"name\":\"Runtime\",\"kind\":\"SKILL\","
+                + "\"sourceUrl\":\"https://example.org/runtime\","
+                + "\"capabilityKeys\":[],\"includedComponentKeys\":[\"runtime-component\"]}" : "")
             + (includeFallback ? ", {\"key\":\"fallback-tool\",\"version\":\"1.0\","
                 + "\"name\":\"Fallback Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/fallback-tool\","
                 + "\"capabilityKeys\":[\"cap_document_reference\"],"
@@ -64,14 +79,26 @@ final class SyntheticCatalogBundle {
             + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\",\"format\":\"PASS\","
             + "\"standalone\":\"" + standaloneCheck + "\",\"evidenceUrl\":\"https://example.org/review\","
             + "\"checkedAt\":\"2026-10-09\"}"
+            + (installedDependency ? ", {\"key\":\"support-runtime\",\"toolKey\":\"runtime\","
+                + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
+                + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\","
+                + "\"format\":\"PASS\",\"standalone\":\"PASS\","
+                + "\"evidenceUrl\":\"https://example.org/review-runtime\","
+                + "\"checkedAt\":\"2026-10-09\"}" : "")
             + (includeFallback ? ", {\"key\":\"support-2\",\"toolKey\":\"fallback-tool\","
                 + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
                 + "\"clientVersion\":\"1.0\",\"documentation\":\"PASS\","
                 + "\"format\":\"PASS\",\"standalone\":\"PASS\","
                 + "\"evidenceUrl\":\"https://example.org/review-fallback\","
                 + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
-        files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":[],\"conflicts\":[],"
+        files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":["
+            + (installedDependency ? "{\"toolKey\":\"example-tool\",\"targetKey\":\"runtime\"}" : "")
+            + "],\"conflicts\":[],"
             + "\"verifiedCombinations\":["
+            + (installedDependency ? "{\"toolKeys\":[\"example-tool\",\"runtime\"],"
+                + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
+                + "\"clientVersion\":\"1.0\",\"evidenceUrl\":\"https://example.org/combination\","
+                + "\"checkedAt\":\"2026-10-09\"}" : "")
             + (oversizedCombination ? "{\"toolKeys\":[\"example-tool\",\"fallback-tool\"],"
                 + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
                 + "\"clientVersion\":\"1.0\",\"evidenceUrl\":\"https://example.org/combination\","

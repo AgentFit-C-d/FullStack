@@ -5,6 +5,10 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
+import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
+import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
+import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.configuration.preview.ExistingState;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -119,6 +123,30 @@ class CatalogRecommendationWorkflowTest {
         assertEquals(List.of("fallback-tool"), outcome.decision().toolKeys());
         assertEquals(List.of("fallback-tool"), outcome.items().stream()
             .map(CatalogRecommendationDetails.Item::toolKey).toList());
+    }
+
+    @Test
+    void recommendedAdditionWithInstalledDependencyCanReachPreview() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithInstalledDependency(directory);
+        var input = new CatalogRecommendationWorkflow.Request(request().claims(), List.of(),
+            Set.of("profile.features"), false,
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
+            Map.of("runtime", "1.0"));
+        var outcome = CatalogRecommendationWorkflow.evaluate(directory, hash, input);
+        assertEquals(List.of("example-tool"), outcome.decision().toolKeys());
+
+        var basis = new PreviewBasis("project-1", 1, "profile-1", 1, "event-1",
+            0, 0, 1, outcome.catalogReleaseId(), outcome.catalogHash());
+        var stored = new StoredRecommendationState("rec-1", basis,
+            outcome.decision().status(), outcome.decision().toolKeys());
+        var previewRequest = new CatalogPreviewRequest(basis, "rec-1", input.environment(),
+            outcome.decision().toolKeys(),
+            List.of(new PermissionSelection("example-tool", "read",
+                PermissionPolicy.ASK_EACH_TIME)), ExistingState.UNKNOWN, List.of(), "static-v1");
+        var preview = CatalogPreviewAssembler.assemble(directory, hash, stored, basis,
+            input.environment(), previewRequest, input.installedToolVersions());
+        assertEquals(List.of("config/main.txt"), preview.files().stream()
+            .map(file -> file.relativePath()).toList());
     }
 
     private CatalogRecommendationWorkflow.Request request() {

@@ -9,6 +9,9 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.time.Clock;
 import java.util.Objects;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 import java.util.function.Supplier;
 
 /** ZIP bytes leave B only after A atomically saves content-free generation history. */
@@ -25,7 +28,19 @@ public final class ConfigurationDownloadService {
 
     public record TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
                                  StoredRecommendationState recommendation,
-                                 StoredPreviewState preview, StoredApprovalState approval) {}
+                                 StoredPreviewState preview, StoredApprovalState approval,
+                                 Map<String, String> installedToolVersions) {
+        public TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
+                              StoredRecommendationState recommendation,
+                              StoredPreviewState preview, StoredApprovalState approval) {
+            this(currentBasis, currentTarget, recommendation, preview, approval, Map.of());
+        }
+
+        public TrustedContext {
+            installedToolVersions = Collections.unmodifiableMap(
+                new HashMap<>(Objects.requireNonNull(installedToolVersions)));
+        }
+    }
 
     private final TrustedDownloadReader downloads;
     private final RecommendationCreationService.ApprovedCatalogReader catalogs;
@@ -61,7 +76,7 @@ public final class ConfigurationDownloadService {
             catalog.directory(), catalog.approvedHash(), context.recommendation(),
             context.currentBasis(), context.currentTarget(), request, context.preview(),
             context.approval(), requestedApprovalId, requestedPreviewId, submittedFingerprint,
-            serverGenerationIds.get(), serverClock);
+            serverGenerationIds.get(), serverClock, context.installedToolVersions());
         String savedId = historyStore.saveIfCurrent(context, generated.history());
         if (!generated.history().id().equals(savedId)) {
             throw new IllegalStateException("generation history was not saved correctly");

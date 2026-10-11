@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -28,8 +29,18 @@ public final class CatalogPreviewAssembler {
                                                      PreviewBasis currentBasis,
                                                      EnvironmentTarget currentTarget,
                                                      CatalogPreviewRequest request) {
+        return assemble(releaseDirectory, approvedCatalogHash, storedRecommendation, currentBasis,
+            currentTarget, request, Map.of());
+    }
+
+    public static PreviewFingerprintResult assemble(Path releaseDirectory, String approvedCatalogHash,
+                                                     StoredRecommendationState storedRecommendation,
+                                                     PreviewBasis currentBasis,
+                                                     EnvironmentTarget currentTarget,
+                                                     CatalogPreviewRequest request,
+                                                     Map<String, String> trustedInstalledVersions) {
         return PreviewFingerprint.compute(prepare(releaseDirectory, approvedCatalogHash,
-            storedRecommendation, currentBasis, currentTarget, request));
+            storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions));
     }
 
     static PreviewFingerprintInput prepare(Path releaseDirectory, String approvedCatalogHash,
@@ -37,10 +48,21 @@ public final class CatalogPreviewAssembler {
                                            PreviewBasis currentBasis,
                                            EnvironmentTarget currentTarget,
                                            CatalogPreviewRequest request) {
+        return prepare(releaseDirectory, approvedCatalogHash, storedRecommendation, currentBasis,
+            currentTarget, request, Map.of());
+    }
+
+    static PreviewFingerprintInput prepare(Path releaseDirectory, String approvedCatalogHash,
+                                           StoredRecommendationState storedRecommendation,
+                                           PreviewBasis currentBasis,
+                                           EnvironmentTarget currentTarget,
+                                           CatalogPreviewRequest request,
+                                           Map<String, String> trustedInstalledVersions) {
         if (request == null || request.basis() == null || request.selectedToolKeys() == null
             || request.selectedToolKeys().isEmpty()
             || request.selectedToolKeys().stream().anyMatch(key -> key == null || key.isBlank())
-            || request.permissionSelections() == null || request.providedFiles() == null) {
+            || request.permissionSelections() == null || request.providedFiles() == null
+            || trustedInstalledVersions == null) {
             throw new InvalidAssemblyException("incomplete Preview request");
         }
         if (currentTarget == null || !currentTarget.complete() || request.target() == null
@@ -68,7 +90,8 @@ public final class CatalogPreviewAssembler {
 
         ParsedCatalog parsed = CatalogSemanticParser.parse(bundle);
         List<PermissionSelection> validatedPolicies = new ConfigurationSelectionValidator(parsed.release())
-            .validate(selected, request.target(), parsed.permissionMappings(), request.permissionSelections());
+            .validate(selected, request.target(), parsed.permissionMappings(),
+                request.permissionSelections(), trustedInstalledVersions);
         // v1 static output is scoped to a tool, not an individual permission mapping.
         // A denied optional mapping cannot safely be omitted from those bytes yet.
         if (validatedPolicies.stream().anyMatch(policy -> policy.policy() == PermissionPolicy.DENY)) {

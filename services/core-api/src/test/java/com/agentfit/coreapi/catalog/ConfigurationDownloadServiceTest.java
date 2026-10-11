@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipInputStream;
 import java.io.ByteArrayInputStream;
@@ -95,6 +96,31 @@ class ConfigurationDownloadServiceTest {
         assertEquals(0, catalogReads.get());
     }
 
+    @Test
+    void regeneratesWithCurrentTrustedInstalledDependencyAndRejectsVersionDrift() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithInstalledDependency(directory);
+        var request = request(hash);
+        var original = contextWithInstalled(hash, request, "1.0");
+        var service = new ConfigurationDownloadService(
+            (projectId, approvalId) -> original,
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            () -> "generation-1", CLOCK, (trusted, history) -> history.id());
+        var generated = service.download("project-1", "approval-1", "preview-1",
+            original.preview().fingerprint(), request);
+        assertEquals(List.of("config/main.txt"), generated.history().files().stream()
+            .map(file -> file.relativePath()).toList());
+
+        var changed = new ConfigurationDownloadService(
+            (projectId, approvalId) -> contextWithInstalled(hash, request, "0.9",
+                original.preview(), original.approval()),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            () -> "generation-2", CLOCK,
+            (trusted, history) -> fail("changed dependency must not produce history"));
+        assertThrows(IllegalArgumentException.class,
+            () -> changed.download("project-1", "approval-1", "preview-1",
+                original.preview().fingerprint(), request));
+    }
+
     private ConfigurationDownloadService.TrustedContext context(String hash,
                                                                   CatalogPreviewRequest request) {
         var rec = new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
@@ -107,6 +133,28 @@ class ConfigurationDownloadServiceTest {
             NOW.minusSeconds(60), NOW.plusSeconds(600));
         return new ConfigurationDownloadService.TrustedContext(request.basis(), request.target(),
             rec, preview, approval);
+    }
+
+    private ConfigurationDownloadService.TrustedContext contextWithInstalled(String hash,
+        CatalogPreviewRequest request, String version) {
+        var rec = new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
+            List.of("example-tool"));
+        var fingerprint = CatalogPreviewAssembler.assemble(directory, hash, rec, request.basis(),
+            request.target(), request, Map.of("runtime", "1.0")).fingerprint();
+        var preview = new StoredPreviewState("preview-1", request.basis(), fingerprint,
+            NOW.minusSeconds(120), NOW.plusSeconds(600));
+        var approval = new StoredApprovalState("approval-1", "preview-1", fingerprint,
+            NOW.minusSeconds(60), NOW.plusSeconds(600));
+        return contextWithInstalled(hash, request, version, preview, approval);
+    }
+
+    private ConfigurationDownloadService.TrustedContext contextWithInstalled(String hash,
+        CatalogPreviewRequest request, String version, StoredPreviewState preview,
+        StoredApprovalState approval) {
+        var rec = new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
+            List.of("example-tool"));
+        return new ConfigurationDownloadService.TrustedContext(request.basis(), request.target(),
+            rec, preview, approval, Map.of("runtime", version));
     }
 
     private static CatalogPreviewRequest request(String hash) {
