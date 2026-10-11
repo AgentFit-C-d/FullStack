@@ -101,4 +101,26 @@ class ConfigurationGenerationHistoryTest {
         assertThrows(IllegalArgumentException.class, () -> ConfigurationGenerationHistory.capture(
             "generation-1", "preview-1", "a".repeat(129), fingerprint, input, CLOCK));
     }
+
+    @Test
+    void restoresOnlyValidatedStoredMetadataWithoutPreviewContent() {
+        var metadata = new ConfigurationGenerationHistory.FileMetadata("config/main.txt",
+            PreviewFile.Action.PROPOSAL, "b".repeat(64));
+        var restored = ConfigurationGenerationHistory.fromStoredMetadata("generation-1", "rec-1",
+            "preview-1", "approval-1", BASIS, "a".repeat(64), List.of(metadata), NOW);
+
+        assertEquals(List.of(metadata), restored.files());
+        assertEquals(NOW, restored.createdAt());
+        assertEquals(ConfigurationGenerationHistory.VerificationStatus.NOT_RUN,
+            restored.verificationStatus());
+        assertThrows(IllegalArgumentException.class,
+            () -> ConfigurationGenerationHistory.fromStoredMetadata("generation-1", "rec-1",
+                "preview-1", "approval-1", BASIS, "a".repeat(64),
+                List.of(metadata, metadata), NOW));
+        assertThrows(IllegalArgumentException.class,
+            () -> ConfigurationGenerationHistory.fromStoredMetadata("generation-1", "rec-1",
+                "preview-1", "approval-1", BASIS, "a".repeat(64),
+                List.of(new ConfigurationGenerationHistory.FileMetadata("../unsafe",
+                    PreviewFile.Action.PROPOSAL, "b".repeat(64))), NOW));
+    }
 }

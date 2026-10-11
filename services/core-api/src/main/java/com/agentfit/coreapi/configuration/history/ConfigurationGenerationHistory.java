@@ -9,7 +9,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /** Minimum metadata for one generated ZIP; never contains configuration bytes or Diff. */
 public final class ConfigurationGenerationHistory {
@@ -64,6 +67,38 @@ public final class ConfigurationGenerationHistory {
             Instant.now(serverClock));
     }
 
+    /** Rebuilds content-free history from B9/B8/B5/B1 rows after an owner-checked DB lookup. */
+    public static ConfigurationGenerationHistory fromStoredMetadata(
+        String generationId, String recommendationId, String previewId, String approvalId,
+        PreviewBasis basis, String fingerprint, List<FileMetadata> files, Instant generatedAt) {
+        if (!validId(generationId) || !validId(recommendationId) || !validId(previewId)
+            || !validId(approvalId) || basis == null || !validId(basis.projectId())
+            || basis.projectVersion() <= 0 || !validId(basis.confirmedProfileId())
+            || basis.confirmedProfileVersion() <= 0 || !validId(basis.confirmationEventId())
+            || basis.reviewVersion() < 0 || basis.developerVersion() < 0
+            || basis.environmentVersion() < 0 || blank(basis.catalogReleaseId())
+            || basis.catalogHash() == null || !basis.catalogHash().matches("[0-9a-f]{64}")
+            || fingerprint == null || !fingerprint.matches("[0-9a-f]{64}")
+            || files == null || files.isEmpty() || files.size() > 20 || generatedAt == null) {
+            throw invalid();
+        }
+        Set<String> paths = new HashSet<>();
+        for (FileMetadata file : files) {
+            if (file == null || file.action() == null || file.afterHash() == null
+                || !file.afterHash().matches("[0-9a-f]{64}") || !safePath(file.relativePath())
+                || !paths.add(file.relativePath().toLowerCase(Locale.ROOT))) {
+                throw invalid();
+            }
+        }
+        for (String path : paths) {
+            for (int slash = path.indexOf('/'); slash >= 0; slash = path.indexOf('/', slash + 1)) {
+                if (paths.contains(path.substring(0, slash))) throw invalid();
+            }
+        }
+        return new ConfigurationGenerationHistory(generationId, recommendationId, previewId,
+            approvalId, basis, fingerprint, files, generatedAt);
+    }
+
     public String id() { return id; }
     public String recommendationId() { return recommendationId; }
     public String previewId() { return previewId; }
@@ -89,6 +124,21 @@ public final class ConfigurationGenerationHistory {
 
     private static boolean validId(String value) {
         return !blank(value) && value.codePointCount(0, value.length()) <= 128;
+    }
+
+    private static boolean safePath(String path) {
+        if (blank(path) || path.startsWith("/") || path.contains("\\") || path.contains(":")
+            || path.codePointCount(0, path.length()) > 200) return false;
+        for (String part : path.split("/", -1)) {
+            if (part.isEmpty() || part.equals(".") || part.equals("..") || part.endsWith(".")
+                || part.endsWith(" ") || part.chars().anyMatch(c -> c < 32 || c == 127
+                    || "<>\"|?*".indexOf(c) >= 0)) return false;
+            String stem = part.split("\\.", 2)[0].toUpperCase(Locale.ROOT);
+            if (Set.of("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4",
+                    "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3",
+                    "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9").contains(stem)) return false;
+        }
+        return true;
     }
 
     private static IllegalArgumentException invalid() {

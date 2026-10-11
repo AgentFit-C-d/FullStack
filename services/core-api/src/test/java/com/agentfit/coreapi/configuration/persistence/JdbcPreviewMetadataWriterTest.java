@@ -3,6 +3,7 @@ package com.agentfit.coreapi.configuration.persistence;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.history.ApprovedConfigurationGenerator;
+import com.agentfit.coreapi.configuration.history.ConfigurationGenerationHistory;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
@@ -361,6 +362,49 @@ class JdbcPreviewMetadataWriterTest {
             assertEquals(otherProject, row.getObject(1, UUID.class));
             assertFalse(row.next());
         }
+    }
+
+    @Test
+    void readsStoredGenerationAndLatestUserReportWithoutConfigurationBytes() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var accepted = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
+                ConfigurationUserReport.ReasonCode.AUTH_REQUIRED),
+            Clock.fixed(fixture.generated().history().createdAt().plusSeconds(5), ZoneOffset.UTC));
+        UUID reportId = UUID.randomUUID();
+        new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
+            UUID.randomUUID().toString(), reportId.toString(), accepted);
+
+        var stored = new JdbcConfigurationHistoryReader().find(connection,
+            PROJECT.toString(), fixture.generationId().toString());
+
+        assertEquals(fixture.generated().history().fingerprint(), stored.generation().fingerprint());
+        assertEquals(fixture.generated().history().files(), stored.generation().files());
+        assertEquals(ConfigurationGenerationHistory.VerificationStatus.NOT_RUN,
+            stored.generation().verificationStatus());
+        assertEquals(reportId.toString(), stored.latestUserReport().id());
+        assertEquals(ConfigurationUserReport.Source.USER, stored.latestUserReport().source());
+        assertNull(new JdbcConfigurationHistoryReader().find(connection,
+            UUID.randomUUID().toString(), fixture.generationId().toString()));
+    }
+
+    @Test
+    void readsUnreportedGenerationAndRejectsChangedStoredFingerprint() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var reader = new JdbcConfigurationHistoryReader();
+
+        var stored = reader.find(connection, PROJECT.toString(), fixture.generationId().toString());
+        assertNotNull(stored);
+        assertNull(stored.latestUserReport());
+        assertEquals(fixture.generated().history().createdAt(), stored.generation().createdAt());
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_export SET fingerprint = '" + "e".repeat(64) + "'");
+        }
+        assertThrows(IllegalStateException.class,
+            () -> reader.find(connection, PROJECT.toString(), fixture.generationId().toString()));
     }
 
     private ExportFixture approvedGeneratedExport() throws Exception {
