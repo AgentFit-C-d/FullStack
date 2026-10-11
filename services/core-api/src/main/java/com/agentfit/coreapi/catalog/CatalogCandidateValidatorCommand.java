@@ -49,6 +49,9 @@ public final class CatalogCandidateValidatorCommand {
 
     private static List<String> readinessReasons(VerifiedCatalogBundle bundle, ParsedCatalog candidate) {
         List<String> reasons = new ArrayList<>();
+        if (candidate.release().tools().values().stream().anyMatch(tool -> tool.support().isEmpty())) {
+            reasons.add("SUPPORT_MISSING");
+        }
         if (candidate.release().tools().values().stream().flatMap(tool -> tool.support().stream())
             .anyMatch(row -> row.documentation() == Check.NOT_RUN || row.format() == Check.NOT_RUN
                 || row.standalone() == Check.NOT_RUN)) {

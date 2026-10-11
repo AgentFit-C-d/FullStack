@@ -37,6 +37,10 @@ final class SyntheticCatalogBundle {
         return write(directory, true, "literal config\n", false, false, "FAIL");
     }
 
+    static String writeWithoutSupport(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", false, false, "PASS", false, true);
+    }
+
     static String writeWithInstalledDependency(Path directory) throws Exception {
         return write(directory, true, "literal config\n", false, false, "PASS", true);
     }
@@ -57,6 +61,14 @@ final class SyntheticCatalogBundle {
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination,
                                 String standaloneCheck, boolean installedDependency) throws Exception {
+        return write(directory, includeTemplate, templateContent, includeFallback,
+            oversizedCombination, standaloneCheck, installedDependency, false);
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback, boolean oversizedCombination,
+                                String standaloneCheck, boolean installedDependency,
+                                boolean withoutSupport) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -91,6 +103,9 @@ final class SyntheticCatalogBundle {
                 + "\"format\":\"PASS\",\"standalone\":\"PASS\","
                 + "\"evidenceUrl\":\"https://example.org/review-fallback\","
                 + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");
+        if (withoutSupport) {
+            files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[]}");
+        }
         files.put("relations.json", "{\"schemaVersion\":1,\"dependencies\":["
             + (installedDependency ? "{\"toolKey\":\"example-tool\",\"targetKey\":\"runtime\"}" : "")
             + "],\"conflicts\":[],"
