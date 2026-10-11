@@ -445,22 +445,9 @@ class JdbcPreviewMetadataWriterTest {
     void historyReadLockPreventsConcurrentProjectDeletionUntilReaderFinishes() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
-        try (Statement statement = connection.createStatement();
-             ResultSet row = statement.executeQuery("SELECT current_schema()")) {
-            assertTrue(row.next());
-            committedSchema = row.getString(1);
-        }
-        connection.commit();
-        try (Statement statement = connection.createStatement()) {
-            statement.execute("SET search_path TO " + committedSchema);
-        }
-        try (Connection deleting = DriverManager.getConnection(
-            System.getenv("AGENTFIT_TEST_POSTGRES_URL"),
-            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_USER", "agentfit"),
-            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only"))) {
-            deleting.setAutoCommit(false);
+        commitSharedSchema();
+        try (Connection deleting = secondConnection()) {
             try (Statement statement = deleting.createStatement()) {
-                statement.execute("SET search_path TO " + committedSchema);
                 statement.execute("SET LOCAL lock_timeout = '300ms'");
             }
             assertNotNull(new JdbcConfigurationHistoryReader().find(connection,
@@ -471,11 +458,77 @@ class JdbcPreviewMetadataWriterTest {
 
             deleting.rollback();
             connection.rollback();
-            try (Statement statement = deleting.createStatement()) {
-                statement.execute("SET search_path TO " + committedSchema);
-            }
+            setSearchPath(deleting);
             assertTrue(new JdbcProjectBDataDeleter().delete(deleting, PROJECT.toString()) > 0);
             deleting.rollback();
+        }
+    }
+
+    @Test
+    void concurrentOlderUserReportCannotReplaceCommittedLatestReport() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        commitSharedSchema();
+        var writer = new JdbcConfigurationReportWriter();
+        Instant generatedAt = fixture.generated().history().createdAt();
+        UUID latestReportId = UUID.randomUUID();
+        var latest = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
+            Clock.fixed(generatedAt.plusSeconds(10), ZoneOffset.UTC));
+        var older = ConfigurationUserReport.accept(
+            new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
+                ConfigurationUserReport.ReasonCode.UNKNOWN),
+            Clock.fixed(generatedAt.plusSeconds(5), ZoneOffset.UTC));
+        writer.save(connection, fixture.generationId().toString(), UUID.randomUUID().toString(),
+            latestReportId.toString(), latest);
+
+        try (Connection competing = secondConnection()) {
+            try (Statement statement = competing.createStatement()) {
+                statement.execute("SET LOCAL lock_timeout = '300ms'");
+            }
+            SQLException locked = assertThrows(SQLException.class,
+                () -> writer.save(competing, fixture.generationId().toString(),
+                    UUID.randomUUID().toString(), UUID.randomUUID().toString(), older));
+            assertEquals("55P03", locked.getSQLState());
+
+            competing.rollback();
+            connection.commit();
+            setSearchPath(connection);
+            setSearchPath(competing);
+            assertThrows(IllegalArgumentException.class,
+                () -> writer.save(competing, fixture.generationId().toString(),
+                    UUID.randomUUID().toString(), UUID.randomUUID().toString(), older));
+            competing.rollback();
+            var stored = new JdbcConfigurationHistoryReader().find(connection,
+                PROJECT.toString(), fixture.generationId().toString());
+            assertEquals(latestReportId.toString(), stored.latestUserReport().id());
+            assertEquals(ConfigurationUserReport.ReportedState.APPLIED,
+                stored.latestUserReport().reportedState());
+        }
+    }
+
+    private void commitSharedSchema() throws Exception {
+        try (Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT current_schema()")) {
+            assertTrue(row.next());
+            committedSchema = row.getString(1);
+        }
+        connection.commit();
+        setSearchPath(connection);
+    }
+
+    private Connection secondConnection() throws Exception {
+        Connection other = DriverManager.getConnection(System.getenv("AGENTFIT_TEST_POSTGRES_URL"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_USER", "agentfit"),
+            System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only"));
+        other.setAutoCommit(false);
+        setSearchPath(other);
+        return other;
+    }
+
+    private void setSearchPath(Connection target) throws Exception {
+        try (Statement statement = target.createStatement()) {
+            statement.execute("SET search_path TO " + committedSchema);
         }
     }
 
