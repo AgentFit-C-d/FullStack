@@ -106,6 +106,7 @@ public final class JdbcRecommendationMetadataWriter {
         if (draft.status() == RecommendationDecision.Status.RECOMMENDED && draft.items().isEmpty()
             || draft.status() != RecommendationDecision.Status.RECOMMENDED && !draft.items().isEmpty()
             || draft.status() == RecommendationDecision.Status.NEEDS_INFORMATION && !hasQuestion
+            || draft.status() != RecommendationDecision.Status.NEEDS_INFORMATION && hasQuestion
             || (draft.status() == RecommendationDecision.Status.NO_ADDITIONS_NEEDED
                 || draft.status() == RecommendationDecision.Status.NO_COMPATIBLE_TOOLS) && !hasReason) {
             throw new IllegalArgumentException("recommendation children do not match outcome");

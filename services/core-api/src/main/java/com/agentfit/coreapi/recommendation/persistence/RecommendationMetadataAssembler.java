@@ -71,6 +71,18 @@ public final class RecommendationMetadataAssembler {
                 JdbcRecommendationMetadataWriter.NoticeType.REASON, null, null, code,
                 reasonMessage(code), List.of()));
         }
+        Set<String> questionCodes = new HashSet<>();
+        for (JdbcRecommendationMetadataWriter.Notice notice : completeNotices) {
+            if (notice != null && notice.type() == JdbcRecommendationMetadataWriter.NoticeType.QUESTION) {
+                questionCodes.add(notice.code());
+            }
+        }
+        if (new HashSet<>(decision.questionCodes()).size() != decision.questionCodes().size()
+            || !questionCodes.containsAll(decision.questionCodes())
+            || decision.status() != RecommendationDecision.Status.NEEDS_INFORMATION
+                && !decision.questionCodes().isEmpty()) {
+            throw new IllegalArgumentException("recommendation questions differ from decision");
+        }
         var draft = new JdbcRecommendationMetadataWriter.Draft(recommendationId, basis,
             decision.status(), evidenceLevel, createdAt, List.copyOf(capabilities),
             List.copyOf(items), List.copyOf(completeNotices));

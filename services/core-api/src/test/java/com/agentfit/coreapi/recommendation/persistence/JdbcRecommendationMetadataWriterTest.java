@@ -171,6 +171,21 @@ class JdbcRecommendationMetadataWriterTest {
     }
 
     @Test
+    void rejectsQuestionAttachedToACompletedRecommendation() throws Exception {
+        var original = recommended(UUID.randomUUID());
+        var question = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+            JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.target",
+            "environment_target", "confirm environment", List.of());
+        var invalid = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            original.capabilities(), original.items(), List.of(question));
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new JdbcRecommendationMetadataWriter().write(connection, invalid));
+    }
+
+    @Test
     void writesAndRestoresBGeneratedNoAdditionsReason() throws Exception {
         var basis = recommended(UUID.randomUUID()).basis();
         var claims = Arrays.stream(CapabilityKey.values()).map(key ->

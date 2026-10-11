@@ -72,11 +72,34 @@ class RecommendationMetadataAssemblerTest {
             JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
             JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.target",
             "environment_target", "개발 환경을 확인해 주세요", List.of());
+        var installedQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+            JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.installedComponents",
+            "installed_components", "현재 설치된 도구를 확인해 주세요", List.of());
         var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
             basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
-            Instant.now(), List.of(question), () -> UUID.randomUUID().toString());
+            Instant.now(), List.of(question, installedQuestion), () -> UUID.randomUUID().toString());
         assertTrue(draft.items().isEmpty());
-        assertEquals(List.of(question), draft.notices());
+        assertEquals(List.of(question, installedQuestion), draft.notices());
+    }
+
+    @Test
+    void refusesToDropARequiredInformationQuestionDuringStorageProjection() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
+            new CatalogRecommendationWorkflow.Request(claims(), List.of(),
+                Set.of("profile.features"), false, null, null));
+        assertEquals(List.of("environment_target", "installed_components"),
+            result.decision().questionCodes());
+        var incompleteQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+            JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+            JdbcRecommendationMetadataWriter.QuestionOwner.B, "environment.target",
+            "environment_target", "개발 환경을 확인해 주세요", List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> RecommendationMetadataAssembler.assemble(
+            UUID.randomUUID().toString(), basis(hash), result,
+            JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY, Instant.now(),
+            List.of(incompleteQuestion), () -> UUID.randomUUID().toString()));
     }
 
     @Test
