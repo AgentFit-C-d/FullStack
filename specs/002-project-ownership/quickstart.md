@@ -1,6 +1,6 @@
 # 검증 안내: 프로젝트 소유권과 접근 격리
 
-**Status**: 부분 구현 상태의 검증 안내다. AI Service HMAC verifier와 Core API 인증·프로젝트 기본 경계가 반영되어 있으며, 삭제 그래프·Core API AI client·PostgreSQL 통합 검증은 후속 구현 대상이다.
+**Status**: 구현·단위/MockMvc 검증이 반영된 검증 안내다. PostgreSQL 경쟁·삭제 그래프와 실제 GitHub/HTTPS 배포 smoke test는 전용 환경에서 실행한다.
 
 ## 1. 사전 조건
 
@@ -21,8 +21,9 @@
 
 현재 검증 기록:
 
-- `services/ai-service`: bundled Python으로 `pytest` 실행, 7 passed.
-- `services/core-api`: Maven 실행 파일이 현재 PATH에 없어 `mvn test` 미실행. Java 단위·MockMvc·PostgreSQL 통합 테스트의 성공 여부는 아직 판정하지 않았다.
+- `services/ai-service`: `pytest`는 프로젝트 dev dependency로 제공되며, 설치된 환경에서 실행한다. HMAC·계약 테스트가 포함된다.
+- `services/core-api`: JDK 21과 Maven으로 `mvn test` 실행, Java 단위·MockMvc 테스트 통과. PostgreSQL 전용 경쟁 테스트는 환경 미설정 시 NOT_RUN으로 기록한다.
+- 2026-10-12 실행 기록: Core API `mvn test` 통과, AI Service `pytest tests -q` 10개 통과, `compileall` 통과. PostgreSQL 전용 경쟁·삭제 그래프와 실제 OAuth/HTTPS smoke test는 전용 환경이 없어 NOT_RUN이다.
 - 정적 검증: `pom.xml` XML 파싱, YAML 파싱, `git diff --check` 통과.
 
 ## 3. 필수 검증 순서

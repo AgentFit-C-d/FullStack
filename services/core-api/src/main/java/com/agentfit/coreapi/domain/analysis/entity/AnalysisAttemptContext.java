@@ -13,6 +13,11 @@ public record AnalysisAttemptContext(String requestId, String projectId, long ge
     public boolean isAcceptable(Instant now) {
         return "PROCESSING".equals(state) && deadlineAt != null && now.isBefore(deadlineAt);
     }
+
+    public boolean matches(AiAnalysisClient.AnalysisResponse response) {
+        return response != null && requestId.equals(response.requestId())
+            && generation == response.generation() && contractVersion.equals(response.contractVersion());
+    }
 }
 
 

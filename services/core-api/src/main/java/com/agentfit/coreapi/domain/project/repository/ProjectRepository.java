@@ -19,6 +19,18 @@ public interface ProjectRepository {
 
     Optional<Project> findByIdAndOwnerId(String id, long ownerId);
 
+    default Optional<Project> findByIdForUpdate(String id) {
+        return Optional.empty();
+    }
+
+    default void updateVersion(String id, long version, java.time.Instant updatedAt) {
+        // In-memory repositories used by unit tests may not need persistence.
+    }
+
+    default void deleteProjectGraph(String id) {
+        deleteById(id);
+    }
+
     default void deleteById(String id) {
         throw new UnsupportedOperationException("deleteById is not implemented");
     }

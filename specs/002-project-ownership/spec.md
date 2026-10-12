@@ -187,7 +187,7 @@
 - A는 서버에서 인증 주체와 프로젝트 소유자를 연결하고 모든 보호 작업을 검증한다. Frontend는 로그인·오류·재확인 화면을 제공할 수 있지만 서버 소유권 검증을 대체할 수 없다.
 - 문서 분석, Profile 확정, Review, 개발자·환경 정보, B의 추천·설정은 이 기능에서 구현하지 않는다. 이 기능은 이후 해당 작업들이 사용할 소유권·프로젝트 격리 규칙을 정한다.
 - 실제 LLM 모델 처리 규칙은 별도 기능에서 구체화한다. 이번 기능의 `/internal/v1/analysis`는 HMAC 전송·검증과 `CONTRACT_TEST_DOUBLE` 결과만 제공하며, Core API는 결과 저장 보호 경계만 검증한다. 사용자 세션은 분석 접수 시 인증·소유권 확인에만 쓰고, 결과 저장은 A6·프로젝트 재검증으로 판단한다. 서버 재시작·작업자 중단으로 결과를 보장하지 못하면 A6 deadline에 따라 성공으로 처리하지 않고 실패로 종료한다.
-- ERD, 일부 삭제 그래프·Core API AI client·PostgreSQL 통합 검증은 후속 단계다. 현재 저장소에는 인증·프로젝트 기본 경계·AI Service HMAC contract test-double이 부분 구현되어 있으며, 전체 요구사항 완료 여부는 `tasks.md`의 체크 상태와 실제 테스트 결과로 판정한다.
+- 물리 삭제 그래프와 PostgreSQL 경쟁 검증은 전용 PostgreSQL 환경에서 실행하며, Core API AI client·결과 저장 재검증·AI Service HMAC contract test-double은 저장소에 구현되어 있다. 전체 요구사항 완료 여부는 `tasks.md` 체크 상태와 실제 테스트 결과로 판정한다.
 
 ## Source References and Open Issues
 

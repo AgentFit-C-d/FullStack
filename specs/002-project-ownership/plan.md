@@ -8,17 +8,17 @@
 
 이 기능은 Core API가 인증된 주체와 프로젝트를 안전하게 연결하고, 프로젝트와 모든 하위 리소스에 같은 소유권 경계를 강제하게 만든다. 비로그인·타인·없는 프로젝트 처리, 입력 위조 차단, 버전 충돌, 삭제와 지연 결과 차단을 함께 검증한다.
 
-이번 계획은 2026-10-07에 승인된 프로젝트·세션 API 계약을 기준으로 논리 데이터 모델, 구현 순서와 검증 경계를 정한다. 실제 기능 코드, 물리 ERD·DDL·DB migration, Spring Boot OAuth·세션 구현은 아직 생성하지 않았다.
+이번 계획은 2026-10-07에 승인된 프로젝트·세션 API 계약을 기준으로 논리 데이터 모델, 구현 순서와 검증 경계를 정한다. Core API의 소유권·세션 경계, 삭제·버전·Audit, AI 내부 HMAC 계약과 마이그레이션은 구현되었고, 실제 OAuth/HTTPS·PostgreSQL 운영 환경 검증은 별도 smoke 단계로 남겨 둔다.
 
 ## Technical Context
 
 **Language/Version**: Java 21
 
-**Primary Dependencies**: 현재 Spring Boot 3.3.5의 Web·Validation·Test만 존재한다. Spring Security OAuth2 Client, PostgreSQL 기반 Spring Session JDBC, Flyway는 승인된 인증 구조에 따라 최소 범위로 추가한다. 영속성·PostgreSQL 의존성은 기존 USER 확장과 프로젝트 저장 구조를 실제 구현할 때 현재 저장소의 방식을 확인해 최소 범위로 정한다.
+**Primary Dependencies**: Spring Boot 3.3.5 Web·Validation·Test와 Spring Security 기반 세션 경계를 사용한다. JDBC/Flyway 마이그레이션과 AI 내부 HMAC 계약 클라이언트·검증기를 포함하며, 실제 OAuth provider·PostgreSQL 운영 연결은 배포 환경에서 주입한다.
 
-**Storage**: PostgreSQL을 Core API만 읽고 쓴다. 테이블·인덱스·격리 수준·마이그레이션 도구 선택은 후속 데이터 설계 단계다.
+**Storage**: PostgreSQL을 Core API만 읽고 쓴다. 프로젝트 version/generation과 A6 분석 시도, Audit을 저장하며 삭제 그래프와 경쟁 갱신은 트랜잭션·행 잠금으로 경계를 둔다.
 
-**Testing**: JUnit 5와 MockMvc의 현재 웹 테스트 패턴을 유지한다. 구현 시 단위, 웹, 계약, PostgreSQL 기반 트랜잭션·경쟁 검증을 추가한다. 현재 작업 환경에서는 Maven 실행 파일을 찾지 못했으므로, 실행 전 Maven 설치 또는 경로 설정을 확인한다.
+**Testing**: JUnit 5·MockMvc 기반 Core API 테스트와 FastAPI pytest 계약·HMAC 테스트를 유지한다. 단위·웹·계약 테스트는 실행 완료했으며, PostgreSQL 경쟁·삭제 그래프와 실제 OAuth/HTTPS는 전용 환경에서 별도 검증한다.
 
 **Target Platform**: 정적 Frontend와 Core API를 같은 Origin으로 제공하고 `/api`로 프록시하는 웹 서비스 경계다. OAuth 시작·callback도 `/api` 아래에서 처리하며, Frontend는 UI·CSRF header·재로그인 안내를 담당한다. AI Service는 이 기능의 권한 판정·DB 접근에 참여하지 않는다.
 
@@ -61,7 +61,7 @@
 | VI. 계약 우선 | 통과 | 인증·프로젝트 URL·DTO·오류·CSRF 계약은 Core OpenAPI에, HMAC AI 호출 계약은 AI OpenAPI에 반영했다. 이후 구현은 두 계약과 fixture를 서버·테스트에 같은 변경으로 맞춘다. |
 | VII. 작은 변경·실패 테스트·독립 리뷰 | 통과 | 요구사항별 실패 테스트를 먼저 만들고, 기존 얇은 컨트롤러·record DTO·MockMvc 관례를 따른다. 구현 후 별도 리뷰에서 소유권·동시성·삭제·계약을 확인한다. |
 
-**Phase 1 재검토 결과**: 인증·프로젝트·AI 호출 API 계약은 OpenAPI에 반영됐고, USER 확장·Spring Session JDBC·PROJECT·AUDIT·ANALYSIS_ATTEMPT migration과 Spring Boot 인증 기본 경계, AI Service HMAC contract test-double이 부분 구현됐다. 삭제 그래프·Core API AI client·PostgreSQL 경쟁 테스트와 전체 계약 회귀는 후속 태스크로 남아 있다. 로그인 완료 화면 경로와 실제 LLM 업무 규칙은 별도 UI·AI 기능의 결정이다. 헌장 위반 없음.
+**구현 재검토 결과**: 인증·프로젝트·AI 호출 API 계약, USER 확장·Spring Session JDBC·PROJECT·AUDIT·ANALYSIS_ATTEMPT migration, Spring Boot 인증 경계, 삭제·버전·Audit·Core API AI client·FastAPI HMAC contract test-double이 구현됐다. PostgreSQL 경쟁·실제 OAuth/HTTPS 배포 smoke test와 실제 LLM 업무 규칙은 전용 환경 또는 별도 기능에서 검증한다. 헌장 위반 없음.
 
 ## Research Decisions
 

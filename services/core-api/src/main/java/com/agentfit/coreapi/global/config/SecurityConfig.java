@@ -84,7 +84,11 @@ public class SecurityConfig {
     private static void writeError(HttpServletResponse response, int status, String code) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
-        response.getWriter().write("{\"code\":\"" + code + "\"}");
+        String message = "CSRF_INVALID".equals(code)
+            ? "CSRF token is invalid" : "Authentication is required";
+        response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message
+            + "\",\"error\":{\"code\":\"" + code + "\",\"message\":\"" + message
+            + "\",\"requestId\":\"unknown\"}}");
     }
 
     private static final class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {

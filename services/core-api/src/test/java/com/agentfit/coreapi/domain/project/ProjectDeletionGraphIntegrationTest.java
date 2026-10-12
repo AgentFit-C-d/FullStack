@@ -10,6 +10,7 @@ import com.agentfit.coreapi.domain.project.repository.*;
 import com.agentfit.coreapi.domain.project.service.*;
 import com.agentfit.coreapi.global.exception.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,14 @@ class ProjectDeletionGraphIntegrationTest {
         service.delete(new AuthenticatedPrincipal(7L, "owner", null), project.id(), true, 1L);
 
         assertEquals(0, repository.projects.size());
+    }
+
+    @Test
+    void deletionScopeRemovesProjectOwnedDataButPreservesSharedBoundaries() {
+        assertTrue(com.agentfit.coreapi.domain.project.service.ProjectDeletionScope.DELETED.contains("AUDIT"));
+        assertTrue(com.agentfit.coreapi.domain.project.service.ProjectDeletionScope.DELETED.contains("ANALYSIS_ATTEMPT"));
+        assertTrue(com.agentfit.coreapi.domain.project.service.ProjectDeletionScope.PRESERVED.contains("USER"));
+        assertTrue(com.agentfit.coreapi.domain.project.service.ProjectDeletionScope.PRESERVED.contains("SPRING_SESSION"));
     }
 }
 

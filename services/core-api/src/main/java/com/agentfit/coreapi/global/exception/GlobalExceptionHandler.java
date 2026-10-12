@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> internal(Exception ex) {
-        return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, ex.getMessage());
+        return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, null);
     }
 
     private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, String message) {

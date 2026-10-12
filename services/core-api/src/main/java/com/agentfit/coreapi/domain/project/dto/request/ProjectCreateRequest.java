@@ -11,7 +11,9 @@ import com.agentfit.coreapi.domain.project.service.*;
 import com.agentfit.coreapi.global.exception.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 public record ProjectCreateRequest(@NotBlank @Size(max = 100) String name) {
 }
 

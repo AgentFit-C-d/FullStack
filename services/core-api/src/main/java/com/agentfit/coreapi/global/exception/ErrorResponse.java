@@ -9,6 +9,14 @@ public record ErrorResponse(String code, String message, Instant timestamp) {
             message == null || message.isBlank() ? code.defaultMessage() : message,
             Instant.now());
     }
+
+    /** Contract-compatible nested error view while retaining the flat MVP fields. */
+    public ErrorBody error() {
+        return new ErrorBody(code, message, "unknown");
+    }
+
+    public record ErrorBody(String code, String message, String requestId) {
+    }
 }
 
 

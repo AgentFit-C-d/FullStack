@@ -56,6 +56,24 @@ class ProjectDeletionWebMvcTest {
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
     }
+
+    @Test
+    void unconfirmedDeleteIsRejectedBeforeServiceCall() throws Exception {
+        mockMvc.perform(delete("/api/projects/p-1")
+                .contentType("application/json")
+                .content("{\"confirmation\":false,\"expectedVersion\":1}"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void missingExpectedVersionIsRejectedBeforeDeletion() throws Exception {
+        mockMvc.perform(delete("/api/projects/p-1")
+                .contentType("application/json")
+                .content("{\"confirmation\":true}"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
 }
 
 

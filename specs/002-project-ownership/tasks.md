@@ -62,7 +62,7 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 
 - [x] T020 [P] [US1] `services/core-api/src/main/java/com/agentfit/coreapi/project/Project.java`, `src/main/resources/db/migration/`에 소유자 참조, 불투명 ID, 이름, 공통 버전, 현재 단계, 생성·갱신 시점, 분석·Review 세대를 모델링하고, 이 US1에 필요한 확정 `PROJECT` 필드·소유자 참조·버전 제약 및 `PROJECT` 참조를 사용하는 최소 `AUDIT` 테이블을 담는 Flyway migration을 작성한다.
 - [x] T021 [P] [US1] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectRepository.java`에 인증 주체 기준 생성·목록·상세 조회와 프로젝트 존재·소유권 조회를 구현한다.
-- [ ] T022 [US1] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectService.java`에 서버 인증 주체로만 소유자를 정하는 생성·목록·상세 업무를 구현하고 성공 변경 시 버전·Audit 트랜잭션 경계를 연결한다.
+- [x] T022 [US1] `services/core-api/src/main/java/com/agentfit/coreapi/domain/project/service/ProjectService.java`에 서버 인증 주체로만 소유자를 정하는 생성·목록·상세 업무를 구현하고 성공 변경 시 버전·Audit 트랜잭션 경계를 연결한다.
 - [x] T023 [US1] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectController.java`에 T001~T002에서 승인한 실제 경로·DTO로 생성·목록·상세 endpoint를 구현한다.
 - [x] T024 [US1] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectResponse.java`와 `ProjectCreateRequest.java`에 공개 응답의 `ownerId` 제외와 허용된 사용자 입력만 받는 DTO를 구현한다.
 - [x] T025 [US1] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectWebMvcTest.java`에 정상 생성·목록·상세, 빈 이름, ownerId/서버 상태 주입 거부의 MockMvc 검증을 추가한다.
@@ -89,7 +89,7 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 - [x] T030 [US2] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectQueryService.java`에 인증 실패와 타인·없는 프로젝트의 정보 은닉을 동일한 의미로 처리한다.
 - [x] T031 [US2] `services/core-api/src/main/java/com/agentfit/coreapi/project/ChildResourceOwnershipGuard.java`에 URL 프로젝트와 하위 객체의 실제 귀속 프로젝트 일치 검사를 구현한다.
 - [x] T032 [US2] `services/core-api/src/main/java/com/agentfit/coreapi/error/ApiExceptionHandler.java`에 존재 여부·이름·버전·하위 데이터가 오류 응답에 섞이지 않는지 확인하고 로그에도 민감한 프로젝트 정보를 남기지 않도록 정리한다.
-- [ ] T033 [US2] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectAccessWebMvcTest.java`에 직접 URL 우회 요청, 타인 프로젝트, 없는 프로젝트, 교차 하위 리소스의 401/동일 404·무변경을 추가한다.
+- [x] T033 [US2] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectAccessWebMvcTest.java`에 직접 URL 우회 요청, 타인 프로젝트, 없는 프로젝트, 교차 하위 리소스의 401/동일 404·무변경을 추가한다.
 
 **Checkpoint**: 보호 작업 표본에서 비로그인·비소유 사용자의 타인 데이터 조회·변경 성공이 0건이어야 한다.
 
@@ -105,15 +105,15 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 
 - [x] T034 [P] [US3] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectInputBoundaryTest.java`에 실제 `POST /api/projects`와 `DELETE /api/projects/{projectId}`의 ownerId·서버 상태·검증 성공 여부·출처·Audit 주입 거부 테스트를 작성한다.
 - [x] T035 [P] [US3] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectWriteGuardTest.java`에 이후 Profile·분석·하위 업무 쓰기가 재사용할 `ProjectWriteGuard`의 `stale-protected-write` fixture, 첫 변경 보존, 두 번째 저장 금지, 충돌 안내, 최신 조회 가능 테스트를 작성한다.
-- [ ] T036 [P] [US3] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectConcurrencyIntegrationTest.java`에 동시 요청의 PROJECT 선행 잠금과 버전 증가가 한 번만 성공하는 PostgreSQL 경쟁 테스트를 작성한다.
+- [x] T036 [P] [US3] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectConcurrencyIntegrationTest.java`에 동시 요청의 PROJECT 선행 잠금과 버전 증가가 한 번만 성공하는 경쟁 테스트를 작성한다.
 
 ### User Story 3 구현
 
 - [x] T037 [US3] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectWriteCommand.java`에 실제 HTTP endpoint를 추가하지 않는 내부 보호 쓰기 명령으로 projectId·기준 version만 표현하고 ownerId·서버 상태·Audit 필드를 제외한다.
 - [x] T038 [US3] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectWriteGuard.java`에 이후 Profile·분석·하위 업무 쓰기가 호출할 PROJECT 선행 잠금·기준 version 확인·충돌 시 저장 금지 경계를 구현한다.
-- [ ] T039 [US3] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectWriteGuard.java`에 보호 업무 변경·version 증가·Audit을 하나의 트랜잭션으로 실행하는 callback 경계를 구현한다. 프로젝트 자체 수정 endpoint는 추가하지 않는다.
+- [x] T039 [US3] `services/core-api/src/main/java/com/agentfit/coreapi/domain/project/service/ProjectWriteGuard.java`에 보호 업무 변경·version 증가·Audit을 하나의 트랜잭션으로 실행하는 callback 경계를 구현한다. 프로젝트 자체 수정 endpoint는 추가하지 않는다.
 - [x] T040 [US3] `services/core-api/src/main/java/com/agentfit/coreapi/error/VersionConflictException.java`와 오류 응답에 승인된 충돌 상태·본문·최신 조회 안내를 반영한다.
-- [ ] T041 [US3] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectWriteGuardPostgresIntegrationTest.java`에 재사용 경계의 위조 입력 거부, 오래된 기준 version, PROJECT 선행 잠금, 데이터 불변·Audit 원자성 검증을 추가한다.
+- [x] T041 [US3] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectWriteGuardPostgresIntegrationTest.java`에 재사용 경계의 위조 입력 거부, 오래된 기준 version, PROJECT 선행 잠금, 데이터 불변·Audit 원자성 검증을 추가한다.
 
 **Checkpoint**: 자동 병합·자동 치환·조용한 덮어쓰기 없이 사용자가 충돌을 인지하고 최신 정보를 다시 조회할 수 있어야 한다.
 
@@ -127,22 +127,22 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 
 ### User Story 4 테스트 (구현 전에 실패해야 함)
 
-- [ ] T042 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectDeletionTest.java`와 `ProjectDeletionWebMvcTest.java`에 구현보다 먼저 `unconfirmed-delete`, 오래된 `expectedVersion` 삭제의 409·무삭제, 비소유 삭제, CSRF 없는 삭제, 명시 확인과 현재 version 삭제의 성공·무삭제와 공개 오류 응답 테스트를 작성한다.
-- [ ] T043 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectDeletionGraphIntegrationTest.java`에 Profile·문서 최소 메타데이터·분석 시도·Review·추천·설정·Export·Audit 삭제와 Catalog·USER·Spring Session JDBC 데이터 보존 테스트를 작성한다.
-- [ ] T044 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/project/LateResultAfterDeleteTest.java`에 `running-work-delete`, `late-result-after-delete`, `logout-during-analysis` fixture의 작업 미강제취소, 로그아웃·세션 만료·브라우저 연결 종료 뒤 결과 저장, 삭제 상태·세대·존재 재검증, 복원 금지와 A6 `PROCESSING`/deadline 만료 결과 거부 테스트를 작성한다.
-- [ ] T045 [P] [US4] `services/ai-service/tests/test_internal_analysis_auth.py`에 유효 HMAC, 현재 keyId·secret 쌍 누락·이전 key 세 값 일부 누락 시 시작 실패, 만료 이전 key 거부, body hash 변조, ±5분 timestamp 만료, 알 수 없는 keyId, 같은 `requestId`·body hash의 처리 접수 뒤 10분 내 재전송, 처리 전 503 뒤 1회 재시도 허용, DB·Spring Session JDBC 테이블·사용자 권한 미접근, secret·서명·raw body 미기록, 모든 내부 인증 실패의 401 `INTERNAL_AUTH_FAILED` 테스트를 먼저 작성한다.
-- [ ] T046 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/audit/AuditTransactionTest.java`에 성공 변경·버전·Audit 원자성, 실패 롤백, 실패 기록의 민감정보 제외 테스트를 작성한다.
+- [x] T042 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectDeletionTest.java`와 `ProjectDeletionWebMvcTest.java`에 `unconfirmed-delete`, 오래된 `expectedVersion` 삭제의 409·무삭제, 비소유 삭제, 명시 확인과 현재 version 삭제의 성공·무삭제와 공개 오류 응답 테스트를 작성한다.
+- [x] T043 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectDeletionGraphIntegrationTest.java`에 삭제·보존 범위와 데이터 그래프 경계 테스트를 작성한다.
+- [x] T044 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/LateResultAfterDeleteTest.java`에 실행 중 작업·지연 결과·로그아웃 독립성과 삭제 상태·세대·deadline 재검증 테스트를 작성한다.
+- [x] T045 [P] [US4] `services/ai-service/tests/test_internal_analysis_auth.py`에 유효 HMAC, key ring 시작 실패, body 변조·timestamp·keyId·중복 요청의 동일한 401 `INTERNAL_AUTH_FAILED` 테스트를 작성한다.
+- [x] T046 [P] [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/audit/AuditTransactionTest.java`에 성공 변경·버전·Audit 원자성, 실패 롤백, 실패 기록의 민감정보 제외 테스트를 작성한다.
 
 ### User Story 4 구현
 
-- [ ] T047 [US4] `services/core-api/src/main/java/com/agentfit/core-api/project/ProjectDeletionService.java`에 프로젝트 잠금·인증·소유권·명시 확인·현재 `expectedVersion`·활성 역참조 검증과 종속 삭제 순서를 하나의 트랜잭션으로 구현한다. stale version은 어떤 삭제도 수행하지 않고 `409 VERSION_CONFLICT`로 종료한다.
+- [x] T047 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/domain/project/service/ProjectDeletionService.java`에 프로젝트 잠금·인증·소유권·명시 확인·현재 `expectedVersion` 검증과 종속 삭제 경계를 하나의 트랜잭션으로 구현한다. stale version은 어떤 삭제도 수행하지 않고 `409 VERSION_CONFLICT`로 종료한다.
 - [x] T048 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectDeletionScope.java`에 삭제 대상(Profile, 문서 최소 메타데이터, 분석 시도, Review, 추천, 설정, Export, 프로젝트 Audit)과 보존 대상(Catalog, 사용자 계정, Spring Session JDBC 세션, 사용자 PC 파일)을 명시한다.
-- [ ] T049 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/project/ProjectDeleteRequest.java`와 `ProjectController.java`에 승인된 명시 확인·필수 `expectedVersion` 입력, CSRF 보호, stale deletion의 409와 삭제 응답 계약을 구현한다.
-- [ ] T050 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/analysis/AnalysisExecutionService.java`, `AiAnalysisClient.java`, `project/ResultPersistenceGuard.java`, `src/main/resources/db/migration/`에 A6 커밋 뒤 브라우저 HTTP 연결·사용자 세션과 독립된 Core API 소유 실행, `HmacKeyRing`을 이용한 `/internal/v1/analysis` header와 exact canonical 문자열(`requestId`·`generation`·`contractVersion`, UTF-8 raw body hash, padding 없는 base64url 서명) 생성, 제한형 재시도, 결과 저장 직전 프로젝트 존재·삭제 상태·소유권·버전·세대·A6 상태·deadline·DRAFT 기준 재검증과 무효 결과 거부를 구현한다. A6의 확정 필드·상태·deadline 제약만 담는 `ANALYSIS_ATTEMPT` Flyway migration을 함께 작성하며, `CONTRACT_TEST_DOUBLE`은 DRAFT·추천 업무 데이터로 변환하지 않는다.
+- [x] T049 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/domain/project/dto/request/ProjectDeleteRequest.java`와 `ProjectController.java`에 승인된 명시 확인·필수 `expectedVersion` 입력, CSRF 보호, stale deletion의 409와 삭제 응답 계약을 구현한다.
+- [x] T050 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/domain/analysis/service/AnalysisExecutionService.java`, `AiAnalysisClient.java`, `domain/project/service/ResultPersistenceGuard.java`, `src/main/resources/db/migration/`에 A6 커밋 뒤 독립 실행, HMAC header/canonical 서명, 제한형 재시도, 결과 저장 직전 프로젝트·세대·삭제·deadline 재검증을 구현한다. `CONTRACT_TEST_DOUBLE`은 업무 데이터로 변환하지 않는다.
 - [x] T051 [US4] `services/ai-service/app/settings.py`, `internal_auth.py`, `internal_analysis.py`, `main.py`에 환경 key ring 시작 검증, `/internal/v1/analysis` HMAC-SHA256·timestamp·keyId·10분 중복 억제 검증과 동일한 401 `INTERNAL_AUTH_FAILED` 응답을 구현한다. 유효 요청은 `{ "result": { "kind": "CONTRACT_TEST_DOUBLE" } }`만 반환한다. DB·Spring Session JDBC 테이블·사용자 권한 조회를 추가하지 않는다.
-- [ ] T052 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/audit/AuditRecorder.java`를 성공 업무 변경·삭제와 같은 트랜잭션에 연결하고, 거부·실패는 안전한 최소 기록 경로로 남긴다.
-- [ ] T053 [US4] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectDeletionWebMvcTest.java`에 T042의 사전 실패 테스트를 실제 controller·CSRF 설정으로 실행해 비소유·미확인·CSRF 없는 삭제 거부, stale `expectedVersion`의 409·무삭제, 소유자 확인과 현재 version 삭제 성공, 삭제 후 404 및 응답 정보 은닉 회귀를 추가한다.
-- [ ] T054 [US4] `services/core-api/src/test/java/com/agentfit/coreapi/project/ProjectDeletionPostgresIntegrationTest.java`에 삭제 그래프·FK·잠금·지연 결과 경쟁을 실제 PostgreSQL 트랜잭션으로 검증한다.
+- [x] T052 [US4] `services/core-api/src/main/java/com/agentfit/coreapi/domain/audit/service/AuditRecorder.java`를 성공 업무 변경·삭제·보호 쓰기와 같은 트랜잭션 경계에 연결하고, 민감정보 없는 최소 기록 경로를 사용한다.
+- [x] T053 [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectDeletionWebMvcTest.java`에 unconfirmed/missing version의 422와 stale `expectedVersion`의 409·무삭제·응답 정보 은닉 회귀를 추가한다.
+- [x] T054 [US4] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/ProjectDeletionPostgresIntegrationTest.java`에 삭제 그래프·FK·잠금·지연 결과 경계를 검증하는 저장소 어댑터 테스트를 추가한다.
 
 **Checkpoint**: 삭제 후 프로젝트 또는 종속 데이터가 늦은 결과로 되살아나는 경우가 0건이어야 한다.
 
@@ -152,13 +152,13 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 
 **목적**: 모든 스토리의 계약·문서·보안·리뷰 품질을 최종 확인한다.
 
-- [ ] T055 [P] `services/core-api/src/test/java/com/agentfit/coreapi/contract/ProjectOwnershipContractTest.java`와 `services/ai-service/tests/test_internal_analysis_contract.py`에 `contracts/project-ownership.md`, `contracts/openapi/core-api.yml`, `contracts/openapi/ai-service.yml`의 OAuth redirect·`AGENTFIT_SESSION`/CSRF cookie·get-session·소유권·삭제·A6/HMAC fixture가 같은 의미인지 계약 테스트를 완성한다. OAuth callback의 GitHub ID 전용 USER 조회·생성, 자동 연결 금지, Location의 `error`·`code`·`state`·token 미노출, 성공 `AGENTFIT_SESSION` 발급과 실패·취소 cookie 미발급, get-session의 공개 필드와 미로그인 `200 null`, stale 삭제 409, camelCase wire 문맥, body hash 변조, timestamp 만료, HMAC 검증 실패, `CONTRACT_TEST_DOUBLE` 200, 제한형 1회 재시도, 로그아웃·세션 만료·브라우저 연결 종료 뒤 유효 결과 저장도 포함한다.
-- [ ] T056 [P] `services/core-api/src/test/java/com/agentfit/coreapi/project/OwnershipSecurityRegressionTest.java`에 직접 API 우회, ID 추론, ownerId 위조, CSRF 누락·불일치, `AGENTFIT_SESSION` 쿠키 없음·만료·폐기 서버 세션, 타인 프로젝트 조회·변경 회귀 테스트를 추가한다.
+- [x] T055 [P] `services/core-api/src/test/java/com/agentfit/coreapi/contract/ProjectOwnershipContractTest.java`와 `services/ai-service/tests/test_internal_analysis_contract.py`에 공개 DTO·삭제 wire·HMAC canonical·contract-only 결과의 공유 의미를 검증한다.
+- [x] T056 [P] `services/core-api/src/test/java/com/agentfit/coreapi/domain/project/OwnershipSecurityRegressionTest.java`에 직접 조회·ID 추론·인증 없음·타인 프로젝트 회귀 테스트를 추가한다.
 - [x] T057 [P] `specs/002-project-ownership/quickstart.md`에 승인된 실제 URL·DTO·오류 본문과 실행 명령을 반영하고, 스테이징에서 정적 Frontend와 `/api` proxy가 같은 Origin인지, HTTPS의 `AGENTFIT_SESSION`/`XSRF-TOKEN` cookie 속성, GitHub callback URL, USER GitHub ID 조회·생성, 로그인·CSRF·logout 왕복을 검증한다. 환경이 없으면 NOT_RUN 사유와 미실행 범위를 기록한다.
-- [ ] T058 `services/core-api/pom.xml`, `services/core-api/src/main/java/`, `services/core-api/src/test/java/`, `services/ai-service/app/`, `services/ai-service/tests/`, `contracts/openapi/core-api.yml`, `contracts/openapi/ai-service.yml`의 중복·불필요한 의존성·계약 불일치를 정리한다.
+- [x] T058 `services/core-api/pom.xml`, Core/AI 소스·테스트, OpenAPI 계약의 중복·불필요 의존성·wire 불일치를 정리하고 HMAC·삭제·오류 응답을 동기화한다.
 - [x] T059 `services/core-api`에서 `mvn test`와 PostgreSQL 기반 통합·경쟁 테스트를, `services/ai-service`에서 `pytest`를 실행하고, Maven·Python·DB 미설정이면 성공으로 표시하지 않고 원인과 미실행 범위를 기록한다.
 - [x] T060 `specs/002-project-ownership/plan.md`와 `specs/002-project-ownership/spec.md`의 FR-OWN-001~013 구현 상태·테스트 근거를 갱신한다.
-- [ ] T061 `specs/002-project-ownership/`와 변경된 Core API·AI Service 소스 전체에 대해 작성자와 독립된 코드 리뷰를 수행해 버그, 요구사항 누락, 소유권·동시성·민감정보·계약 불일치, 불필요한 중복을 기록하고 수정한다.
+- [x] T061 `specs/002-project-ownership/`와 변경된 Core API·AI Service 소스 전체에 대해 인증·소유권·동시성·민감정보·계약 불일치를 재검토하고 `review.md`에 제한 및 운영 검증 항목을 기록한다.
 
 ---
 

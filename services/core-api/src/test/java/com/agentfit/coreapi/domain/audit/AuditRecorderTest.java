@@ -18,7 +18,7 @@ class AuditRecorderTest {
         AuditEvent event = recorder.sanitize(new AuditEvent(7L, 11L, "ANALYSIS", "SUCCEEDED", Instant.now(),
             "done", Map.of("secret", "hmac-secret", "signature", "raw-signature", "requestId", "r-1")));
 
-        assertTrue(event.actorId() == 7L && event.projectId() == 11L);
+        assertTrue(event.actorId() == 7L && event.projectId().equals("11"));
         assertTrue(event.metadata().containsKey("requestId"));
         assertFalse(event.metadata().containsKey("secret"));
         assertFalse(event.metadata().containsKey("signature"));

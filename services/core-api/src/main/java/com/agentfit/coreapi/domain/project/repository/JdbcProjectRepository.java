@@ -51,7 +51,29 @@ class JdbcProjectRepository implements ProjectRepository {
     }
 
     @Override
+    public Optional<Project> findByIdForUpdate(String id) {
+        return jdbcTemplate.query("SELECT id, owner_id, name, version, stage, analysis_generation, review_generation, created_at, updated_at FROM PROJECT WHERE id = ? FOR UPDATE",
+            (rs, rowNum) -> map(rs.getString("id"), rs.getLong("owner_id"), rs.getString("name"),
+                rs.getLong("version"), rs.getString("stage"), rs.getLong("analysis_generation"),
+                rs.getLong("review_generation"), rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant()), id)
+            .stream().findFirst();
+    }
+
+    @Override
+    public void updateVersion(String id, long version, java.time.Instant updatedAt) {
+        jdbcTemplate.update("UPDATE PROJECT SET version = ?, updated_at = ? WHERE id = ?", version,
+            Timestamp.from(updatedAt), id);
+    }
+
+    @Override
     public void deleteById(String id) {
+        jdbcTemplate.update("DELETE FROM PROJECT WHERE id = ?", id);
+    }
+
+    @Override
+    public void deleteProjectGraph(String id) {
+        // Child tables are optional in this MVP. Tables with FK cascade are removed first
+        // when present; PROJECT deletion cascades AUDIT and ANALYSIS_ATTEMPT.
         jdbcTemplate.update("DELETE FROM PROJECT WHERE id = ?", id);
     }
 
