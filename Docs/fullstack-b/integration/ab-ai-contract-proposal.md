@@ -6,7 +6,7 @@
 
 > 삭제 연결 주의: A의 현재 `ProjectDeletionService`는 Project를 직접 지운다. B의 `recommendation.project_id` FK가 추가되면 B 기록이 있는 Project는 PostgreSQL `23503`으로 실패한다. A는 소유권·버전 확인 후 **같은 트랜잭션**에서 `JdbcProjectBDataDeleter.delete(connection, projectId)`를 호출하고 나서 Project를 지워야 한다. B의 실제 A 호출 연결은 병합 전까지 미완료다.
 
-> 2026-10-13 병합 사전 점검: B의 공통 `core-api/README.md`를 A 브랜치 내용과 맞춘 뒤 `git merge-tree --write-tree --name-only HEAD origin/fullstackA`가 충돌 없이 종료됐다. 이는 **파일 수준 병합 가능성**만 확인한 결과이며 A 브랜치를 실제 병합하지 않았다. 임시 병합 트리의 Maven 컴파일은 A가 추가한 Spring Security·OAuth2·JDBC·Session·Flyway 의존성이 로컬 캐시에 없고 Maven Central DNS 접근이 실패해 실행되지 못했다. 실제 병합 뒤에는 새 의존성을 받아 `mvn verify`를 다시 실행하고, A의 인증·소유권·현재 basis·Audit 및 B 삭제 호출을 하나의 Spring 트랜잭션에 연결해야 한다.
+> 2026-10-13 병합 사전 점검: B의 공통 `core-api/README.md`를 A 브랜치 내용과 맞춘 뒤 `git merge-tree --write-tree --name-only HEAD origin/fullstackA`가 충돌 없이 종료됐다. 이는 **파일 수준 병합 가능성**만 확인한 결과이며 A 브랜치를 실제 병합하지 않았다. 임시 병합 트리에서 새 Maven 의존성을 받은 뒤 컴파일이 통과했다. B의 앱 컨텍스트 테스트를 A의 테스트용 설정을 읽는 웹 컨텍스트로 조정하고, 이 PC의 Java 24에 필요한 Byte Buddy 실험적 지원 옵션을 준 임시 병합본 `mvn clean verify`는 391개 테스트 중 실패·오류 0개, Windows 링크 테스트 1개 건너뜀으로 종료됐다. 이는 A 인증·소유권·현재 basis·Audit 및 B 삭제 호출의 실제 연결이나 운영 DB 마이그레이션 검증을 뜻하지 않는다. A의 V1 Flyway는 기존 `"USER"` 테이블을 전제로 하므로 A·B 통합 배포 전에 기본 사용자 테이블 생성 순서를 확정해야 한다.
 
 ## Client와 AI 모델의 구분
 

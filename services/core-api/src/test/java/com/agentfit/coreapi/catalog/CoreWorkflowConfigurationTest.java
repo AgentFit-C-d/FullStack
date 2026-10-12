@@ -12,8 +12,10 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -88,9 +90,11 @@ class CoreWorkflowConfigurationTest {
     @Test
     void actualApplicationActivatesRecommendationWhenAllTrustedPortsExist() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
-        new ApplicationContextRunner()
+        new WebApplicationContextRunner()
             .withUserConfiguration(CoreApiApplication.class)
-            .withPropertyValues("agentfit.catalog.directory=" + directory,
+            .withInitializer(new ConfigDataApplicationContextInitializer())
+            .withPropertyValues("spring.flyway.enabled=false",
+                "agentfit.catalog.directory=" + directory,
                 "agentfit.catalog.approved-hash=" + hash)
             .withBean(RecommendationCreationService.OwnerCheckedSnapshotReader.class,
                 () -> projectId -> null)
