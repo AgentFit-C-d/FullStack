@@ -70,6 +70,23 @@ class FinalizationWorkflowConfigurationTest {
             });
     }
 
+    @Test
+    void savedPreviewWarningActivatesOnlyWithOwnerCheckedReadAndClock() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var runner = configured(hash)
+            .withBean(Clock.class, Clock::systemUTC);
+
+        runner.run(context ->
+            assertFalse(context.containsBean("storedPreviewCoverageService")));
+        runner.withBean(StoredPreviewCoverageService.TrustedPreviewReader.class,
+                () -> (projectId, previewId) -> null)
+            .run(context -> {
+                assertNotNull(context.getBean(StoredPreviewCoverageService.class));
+                assertFalse(context.containsBean("approvalCreationService"));
+                assertFalse(context.containsBean("configurationDownloadService"));
+            });
+    }
+
     private ApplicationContextRunner configured(String hash) {
         return new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(CatalogSourceConfiguration.class,

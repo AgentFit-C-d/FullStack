@@ -8,6 +8,7 @@
 | 최신 추천 상세 읽기 | `recommendation/persistence/JdbcLatestRecommendationReader` → `catalog/RecommendationLatestDetailsService` → `catalog/CatalogRecommendationDetails`(CURRENT만) |
 | Catalog 후보·승인 경계 확인 | `catalog/discovery/` 후보 수집 → `catalog/CatalogBundleLoader` → `catalog/CatalogSemanticParser` → `catalog/ServerConfiguredCatalogReader` |
 | 설정 다운로드 흐름 이해 | `catalog/PreviewCreationService` → `catalog/CatalogPreviewAssembler` → `catalog/ApprovalCreationService` → `catalog/ConfigurationDownloadService` → `configuration/persistence/` |
+| 부분 선택 경고 재조회 | `configuration/persistence/JdbcConfigurationContextReader` → `catalog/StoredPreviewCoverageService` → `catalog/StoredPreviewCoverage` |
 
 이 연결 순서는 **B 내부 포트** 기준이다. A의 인증·현재 스냅샷·Audit와 AI HTTP 응답이 실제로 연결됐다는 뜻은 아니다.
 

@@ -3,6 +3,7 @@ package com.agentfit.autoconfigure;
 import com.agentfit.coreapi.catalog.ApprovalCreationService;
 import com.agentfit.coreapi.catalog.ConfigurationDownloadService;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import com.agentfit.coreapi.catalog.StoredPreviewCoverageService;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -39,5 +40,14 @@ public class FinalizationWorkflowConfiguration {
         ServerIssuedIds ids, Clock clock, ConfigurationDownloadService.HistoryStore historyStore) {
         return new ConfigurationDownloadService(downloads, catalogs,
             ids::generationId, clock, historyStore);
+    }
+
+    @Bean
+    @ConditionalOnBean({StoredPreviewCoverageService.TrustedPreviewReader.class,
+        RecommendationCreationService.ApprovedCatalogReader.class, Clock.class})
+    StoredPreviewCoverageService storedPreviewCoverageService(
+        StoredPreviewCoverageService.TrustedPreviewReader previews,
+        RecommendationCreationService.ApprovedCatalogReader catalogs, Clock clock) {
+        return new StoredPreviewCoverageService(previews, catalogs, clock);
     }
 }
