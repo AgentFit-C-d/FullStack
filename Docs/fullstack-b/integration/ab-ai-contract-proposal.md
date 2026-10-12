@@ -4,6 +4,8 @@
 
 > 2026-10-13 확인: 원격 `fullstackA` 커밋 `dc06f8b`에는 인증 사용자 `BIGINT`, `PROJECT.id VARCHAR(36)`, 프로젝트 소유권 가드, Audit 및 분석 호출 경계가 있다. B는 확인된 Project/사용자 ID 타입에 맞춰 DDL·JDBC를 조정했다. 해당 브랜치에는 확정 Profile·Developer·Environment의 실제 저장/버전 스냅샷과 B 호출 어댑터가 아직 없어 아래 B05/B06 계약은 계속 제안 상태다. A 브랜치를 이 작업 브랜치에 병합하지 않았다.
 
+> 삭제 연결 주의: A의 현재 `ProjectDeletionService`는 Project를 직접 지운다. B의 `recommendation.project_id` FK가 추가되면 B 기록이 있는 Project는 PostgreSQL `23503`으로 실패한다. A는 소유권·버전 확인 후 **같은 트랜잭션**에서 `JdbcProjectBDataDeleter.delete(connection, projectId)`를 호출하고 나서 Project를 지워야 한다. B의 실제 A 호출 연결은 병합 전까지 미완료다.
+
 ## Client와 AI 모델의 구분
 
 이 문서의 **Client**는 AgentFit이 Skill·MCP·정책·설정 파일을 추천하고 생성해 줄 대상 AI 개발 도구다. `D:/capstone/Docs/PRD.md`와 역할별 PRD는 첫 대상을 **Claude Code 중심**으로 명시한다. **Upstage Solar**는 팀 대화에서 언급된 문서 분석·Capability 추론용 LLM 모델/Provider다. 원 기획 Markdown에는 Solar라는 제품명이 명시돼 있지 않으므로, 이 문장은 모델 채택이 확정됐다는 뜻이 아니다. Solar를 사용하더라도 Claude Code용 Catalog·설정 검증이 Solar용으로 바뀌지는 않는다. B의 추천·호환성 판정은 AI 모델명에 의존하지 않고, A가 확인한 OS·Client·버전과 승인 Catalog를 사용한다.

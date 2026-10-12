@@ -531,6 +531,27 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void directAProjectDeleteRequiresBRowsRemovedInSameTransaction() throws Exception {
+        var fixture = approvedGeneratedExport();
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var beforeDirectDelete = connection.setSavepoint();
+        try (Statement statement = connection.createStatement()) {
+            SQLException blocked = assertThrows(SQLException.class,
+                () -> statement.executeUpdate("DELETE FROM project WHERE id = '" + PROJECT + "'"));
+            assertEquals("23503", blocked.getSQLState());
+        }
+        connection.rollback(beforeDirectDelete);
+
+        assertEquals(7, new JdbcProjectBDataDeleter().delete(connection, PROJECT.toString()));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, statement.executeUpdate("DELETE FROM project WHERE id = '" + PROJECT + "'"));
+            assertEquals(0, count(statement, "project"));
+            assertEquals(0, count(statement, "recommendation"));
+            assertEquals(0, count(statement, "config_export"));
+        }
+    }
+
+    @Test
     void projectDeletionKeepsOtherProjectsRecommendation() throws Exception {
         UUID otherProject = UUID.randomUUID();
         UUID otherRecommendation = UUID.randomUUID();
