@@ -54,6 +54,7 @@ B의 `CapabilityAnalyzer` 포트는 A의 전체 소유권 확인 스냅샷을 �
 - 추천 상태는 `RECOMMENDED`, `NO_ADDITIONS_NEEDED`, `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS` 중 하나다. 결과마다 근거 basis와 Catalog release/hash를 함께 묶는다. AI의 설명은 B의 지원·권한 판정을 대체하지 않는다.
 - 추천·선택·Preview·승인은 각각 별도 상태다. `RECOMMENDED`인 **현재** 저장 추천의 도구만 Preview 후보가 된다. 정책 선택은 ZIP 다운로드 승인이나 실제 Client 적용을 뜻하지 않는다.
 - Preview에는 현재 basis, 선택·정책, 파일 경로·내용 해시·fingerprint·만료와 필요한 안내를 포함한다. 기존 파일 내용·Diff는 비교 중에만 사용하고 DB·로그·캐시에 남기지 않는다.
+- 사용자가 추천의 일부 도구만 선택해도 그 선택 자체가 유효하면 Preview를 생성한다. B는 **해당 추천 ID의 B2 `REQUIRED` Capability**와 선택 도구 및 현재 환경에서 정확히 검증된 기존 설치 도구를 대조해 미충족 Capability 키를 Preview 결과에 반환한다. A/Frontend는 이 경고를 Preview 및 최종 확인 화면에 계속 표시한다. 경고가 있어도 사용자의 명시적 확인 후 승인·다운로드를 허용하되, 모든 필수 기능이 충족됐다고 표시하지 않는다. 필수 의존성 누락·충돌·미검증 조합·필수 권한 거부는 여전히 Preview 자체를 차단한다. 경고는 B5–B9에 새 영속 필드로 복제하지 않으며, 새로고침 후에는 새 Preview를 생성해야 한다.
 - 승인 요청에는 PreviewInput이 없으므로 A가 저장된 READY Preview의 소유권·현재 basis·지문·만료를 검사해 승인한다. 기존 파일 원문이나 최종 content는 승인 시 재요청하거나 저장하지 않는다. 브라우저는 현재 화면 메모리의 입력을 export 때 다시 제출하고, B는 승인 Catalog에서 파일을 재생성해 저장 지문과 비교한다. 새로고침 후 원문이 없다면 새 Preview부터 시작한다.
 - 승인된 ZIP은 같은 입력으로 재생성해 fingerprint 및 압축 해제 후 파일 bytes를 확인한다. 성공 시 생성 이력에는 ID, basis, fingerprint, 경로·동작·해시만 남긴다. 서버의 `GENERATED`는 브라우저 수신·PC 설치·인증·동작 검증을 의미하지 않는다. 사용자 `APPLIED`/`FAILED` 진술도 검증 결과로 승격하지 않는다.
 - 공개 경로·오류 코드·요청 한도는 [추천 API 초안](../../../../Docs/api/02-recommendations.draft.md)과 [설정 API 초안](../../../../Docs/api/03-configuration.draft.md)에 제안돼 있으나, 두 문서 모두 미확정이다. A의 공통 인증·오류 규칙과 맞춘 뒤 OpenAPI/계약 테스트로 고정한다.
