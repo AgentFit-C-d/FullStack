@@ -3,6 +3,7 @@ package com.agentfit.coreapi.recommendation.persistence;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.catalog.CatalogRecommendationWorkflow;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
+import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
@@ -14,6 +15,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -271,6 +273,48 @@ class JdbcRecommendationMetadataWriterTest {
         assertNull(reader.byId(connection, UUID.randomUUID().toString(), earlier.id()));
         assertNull(reader.byIdMetadata(connection, UUID.randomUUID().toString(), earlier.id()));
         assertNull(reader.byId(connection, PROJECT.toString(), UUID.randomUUID().toString()));
+    }
+
+    @Test
+    void buildsPreviewContextFromExactStoredB2InsteadOfLatestRecommendation() throws Exception {
+        var base = recommended(UUID.randomUUID());
+        var capabilities = base.capabilities().stream().map(capability ->
+            new JdbcRecommendationMetadataWriter.Capability(capability.key(),
+                capability.key().equals("cap_document_reference")
+                    ? JdbcRecommendationMetadataWriter.Necessity.REQUIRED
+                    : JdbcRecommendationMetadataWriter.Necessity.OPTIONAL,
+                capability.reason(), capability.inputRefs())).toList();
+        var earlier = new JdbcRecommendationMetadataWriter.Draft(base.id(), base.basis(),
+            base.status(), base.evidenceLevel(), base.createdAt(), capabilities,
+            base.items(), base.notices());
+        var later = new JdbcRecommendationMetadataWriter.Draft(UUID.randomUUID().toString(),
+            base.basis(), RecommendationDecision.Status.NO_ADDITIONS_NEEDED,
+            base.evidenceLevel(), base.createdAt().plusSeconds(1), capabilities,
+            List.of(), List.of(noAdditionsReason()));
+        var writer = new JdbcRecommendationMetadataWriter();
+        writer.write(connection, earlier);
+        writer.write(connection, later);
+        var target = new EnvironmentTarget("WINDOWS", "claude-code", "2.1.270");
+        var reader = new JdbcPreviewRecommendationContextReader();
+
+        var context = reader.byId(connection, PROJECT.toString(), earlier.id(),
+            earlier.basis(), target, Map.of("installed-tool", "1.0"));
+
+        assertEquals(earlier.id(), context.recommendation().recommendationId());
+        assertEquals(List.of("tool-a"), context.recommendation().toolKeys());
+        assertEquals(earlier.basis(), context.requiredCapabilities().basis());
+        assertEquals(Set.of("cap_document_reference"), context.requiredCapabilities().keys());
+        assertEquals(target, context.currentTarget());
+        assertEquals(Map.of("installed-tool", "1.0"), context.installedToolVersions());
+        assertThrows(IllegalArgumentException.class, () -> reader.byId(connection,
+            PROJECT.toString(), later.id(), earlier.basis(), target, Map.of()));
+        String foreignProject = UUID.randomUUID().toString();
+        var foreignBasis = new PreviewBasis(foreignProject, 1, PROFILE.toString(), 1,
+            EVENT.toString(), 0, 0, 1, "test-release", "a".repeat(64));
+        assertNull(reader.byId(connection, foreignProject, earlier.id(),
+            foreignBasis, target, Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> reader.byId(connection,
+            foreignProject, earlier.id(), earlier.basis(), target, Map.of()));
     }
 
     @Test
