@@ -4,7 +4,7 @@
 
 ## Client와 AI 모델의 구분
 
-이 문서의 **Client**는 AgentFit이 Skill·MCP·정책·설정 파일을 추천하고 생성해 줄 대상 AI 개발 도구다. 원 기획서의 첫 대상은 **Claude Code**다. **Upstage Solar**는 팀이 언급한 문서 분석·Capability 추론용 LLM 모델/Provider이며, Catalog의 Client나 설치 대상 도구가 아니다. Solar를 사용하더라도 Claude Code용 Catalog·설정 검증이 Solar용으로 바뀌지는 않는다. B의 추천·호환성 판정은 AI 모델명에 의존하지 않고, A가 확인한 OS·Client·버전과 승인 Catalog를 사용한다.
+이 문서의 **Client**는 AgentFit이 Skill·MCP·정책·설정 파일을 추천하고 생성해 줄 대상 AI 개발 도구다. `D:/capstone/Docs/PRD.md`와 역할별 PRD는 첫 대상을 **Claude Code 중심**으로 명시한다. **Upstage Solar**는 팀 대화에서 언급된 문서 분석·Capability 추론용 LLM 모델/Provider다. 원 기획 Markdown에는 Solar라는 제품명이 명시돼 있지 않으므로, 이 문장은 모델 채택이 확정됐다는 뜻이 아니다. Solar를 사용하더라도 Claude Code용 Catalog·설정 검증이 Solar용으로 바뀌지는 않는다. B의 추천·호환성 판정은 AI 모델명에 의존하지 않고, A가 확인한 OS·Client·버전과 승인 Catalog를 사용한다.
 
 현재 레포에서 Solar 호출이나 모델 버전·응답 계약이 구현·확정된 것은 아니다. AI 담당자가 Provider와 모델을 정해 FastAPI에서 호출하고, B는 합의된 Capability 응답만 검증해 받는다. 모델 변경은 AI 응답 계약·품질을 다시 확인할 사안이며, Client 변경은 Catalog 지원표·템플릿·권한 매핑을 별도로 재검증할 사안이다.
 
