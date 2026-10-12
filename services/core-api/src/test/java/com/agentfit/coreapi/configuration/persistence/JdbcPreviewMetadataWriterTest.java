@@ -493,6 +493,42 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void projectDeletionBlocksLateRecommendationInsertUntilParentIsDeleted() throws Exception {
+        commitSharedSchema();
+        assertEquals(2, new JdbcProjectBDataDeleter().delete(connection, PROJECT.toString()));
+
+        try (Connection lateWriter = secondConnection()) {
+            try (Statement statement = lateWriter.createStatement()) {
+                statement.execute("SET LOCAL lock_timeout = '300ms'");
+            }
+            SQLException blocked = assertThrows(SQLException.class,
+                () -> insertLateRecommendation(lateWriter));
+            assertEquals("55P03", blocked.getSQLState());
+            lateWriter.rollback();
+
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM project WHERE id = '" + PROJECT + "'");
+            }
+            connection.commit();
+            setSearchPath(connection);
+            setSearchPath(lateWriter);
+            SQLException deleted = assertThrows(SQLException.class,
+                () -> insertLateRecommendation(lateWriter));
+            assertEquals("23503", deleted.getSQLState());
+            lateWriter.rollback();
+        }
+    }
+
+    private void insertLateRecommendation(Connection target) throws SQLException {
+        try (Statement statement = target.createStatement()) {
+            statement.executeUpdate("INSERT INTO recommendation VALUES ('" + UUID.randomUUID()
+                + "', '" + PROJECT + "', '" + PROFILE + "', 1, '" + EVENT
+                + "', 1, 0, 0, 1, 'test-release', '" + "a".repeat(64)
+                + "', 'NO_ADDITIONS_NEEDED', 'PLAN_ONLY', now())");
+        }
+    }
+
+    @Test
     void readsStoredGenerationAndLatestUserReportWithoutConfigurationBytes() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());

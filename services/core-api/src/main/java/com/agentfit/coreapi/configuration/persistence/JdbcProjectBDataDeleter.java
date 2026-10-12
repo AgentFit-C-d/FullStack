@@ -32,6 +32,13 @@ public final class JdbcProjectBDataDeleter {
             throw new IllegalArgumentException("B data deletion requires a caller-owned transaction");
         }
         UUID project = uuid(projectId);
+        try (PreparedStatement lock = transaction.prepareStatement(
+            "SELECT id FROM project WHERE id = ? FOR UPDATE")) {
+            lock.setObject(1, project);
+            try (var row = lock.executeQuery()) {
+                if (!row.next()) return 0;
+            }
+        }
         int deleted = 0;
         for (String sql : DELETE_IN_ORDER) {
             try (PreparedStatement statement = transaction.prepareStatement(sql)) {
