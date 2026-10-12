@@ -2,6 +2,12 @@
 
 > 상태: **제안 / 미합의**. 2026-10-06 현재 A·AI의 실제 연동 계약·구현은 이 레포에서 확인되지 않았다. 아래 필드와 흐름은 B의 구현 경계를 연결하기 위한 검토안이며, 공개 API나 AI 응답 형식을 확정했다는 뜻이 아니다. **1차 실제 Catalog는 Claude Code부터, Codex는 후속**이라는 범위를 사용자와 확인했다. 정확한 버전·OS·지원 기능은 검증 전까지 활성화하지 않는다.
 
+## Client와 AI 모델의 구분
+
+이 문서의 **Client**는 AgentFit이 Skill·MCP·정책·설정 파일을 추천하고 생성해 줄 대상 AI 개발 도구다. 원 기획서의 첫 대상은 **Claude Code**다. **Upstage Solar**는 팀이 언급한 문서 분석·Capability 추론용 LLM 모델/Provider이며, Catalog의 Client나 설치 대상 도구가 아니다. Solar를 사용하더라도 Claude Code용 Catalog·설정 검증이 Solar용으로 바뀌지는 않는다. B의 추천·호환성 판정은 AI 모델명에 의존하지 않고, A가 확인한 OS·Client·버전과 승인 Catalog를 사용한다.
+
+현재 레포에서 Solar 호출이나 모델 버전·응답 계약이 구현·확정된 것은 아니다. AI 담당자가 Provider와 모델을 정해 FastAPI에서 호출하고, B는 합의된 Capability 응답만 검증해 받는다. 모델 변경은 AI 응답 계약·품질을 다시 확인할 사안이며, Client 변경은 Catalog 지원표·템플릿·권한 매핑을 별도로 재검증할 사안이다.
+
 ## 소유권과 호출 순서
 
 1. A는 인증 사용자와 프로젝트 소유권을 확인하고 현재 확정된 Profile, Developer, Environment 및 버전·확인 이벤트를 하나의 일관된 스냅샷으로 읽는다. 미확정 Profile과 다른 프로젝트 데이터는 B 입력에서 제외한다.
