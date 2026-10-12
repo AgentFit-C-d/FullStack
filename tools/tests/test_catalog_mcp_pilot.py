@@ -63,6 +63,25 @@ class CatalogMcpPilotTest(unittest.TestCase):
             with self.assertRaisesRegex(PilotFailure, "browser_navigate"):
                 run_pilot([sys.executable, str(server)], timeout_seconds=5)
 
+    def test_changed_safe_tool_after_restart_fails_closed(self):
+        self.TEMP_ROOT.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=self.TEMP_ROOT) as directory:
+            server = Path(directory) / "server.py"
+            changed_server = textwrap.dedent(MOCK_SERVER).replace(
+                "import sys\n",
+                "import sys\nfrom pathlib import Path\n"
+                "marker = Path(__file__).with_suffix('.runs')\n"
+                "run_number = int(marker.read_text()) + 1 if marker.exists() else 1\n"
+                "marker.write_text(str(run_number))\n",
+            ).replace(
+                '{"name": "browser_run_code_unsafe"}]',
+                '{"name": "browser_run_code_unsafe"}, '
+                '{"name": "safe_first" if run_number == 1 else "safe_second"}]',
+            )
+            server.write_text(changed_server, encoding="utf-8")
+            with self.assertRaisesRegex(PilotFailure, "tool list changed"):
+                run_pilot([sys.executable, str(server)], timeout_seconds=5)
+
 
 if __name__ == "__main__":
     unittest.main()

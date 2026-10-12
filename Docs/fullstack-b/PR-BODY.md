@@ -17,7 +17,7 @@
 ## 검증
 
 - Java 21 타깃, 로컬 Docker PostgreSQL 연결에서 `services/core-api`의 `mvn clean verify`: **315개, 실패·오류 0개, Windows 심볼릭 링크 제한으로 1개 건너뜀**. PostgreSQL 테스트에는 `AGENTFIT_TEST_POSTGRES_URL=jdbc:postgresql://127.0.0.1:5433/agentfit`를 사용했습니다.
-- `python -m unittest discover -s tools/tests -p 'test_*.py'`: **5개 통과**.
+- `python -m unittest discover -s tools/tests -p 'test_*.py'`: **6개 통과**. 로컬 MCP 파일럿은 재시작 전후 전체 도구 목록이 달라지면 실패합니다.
 - `git diff --check`와 `git merge-tree --write-tree origin/develop HEAD`: 변경 형식 검사 통과, 현재 `develop`과 병합 충돌 없음.
 
 ## 아직 이 PR의 완료 범위가 아닌 것

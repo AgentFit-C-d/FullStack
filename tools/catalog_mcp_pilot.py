@@ -6,6 +6,7 @@ install packages, change Claude Code settings, or open a remote page.
 """
 
 import argparse
+import hashlib
 import json
 import queue
 import re
@@ -103,7 +104,9 @@ def _one_run(command, timeout_seconds):
         if not any('heading "AgentFit Pilot"' in item for item in observed):
             raise PilotFailure("browser_navigate: local heading missing")
         return {"server": info["name"], "version": info.get("version"),
-                "toolCount": len(tools), "unsafeTools": sorted(name for name in names if name and "unsafe" in name)}
+                "toolCount": len(tools), "unsafeTools": sorted(name for name in names if name and "unsafe" in name),
+                "toolListHash": hashlib.sha256(json.dumps(tools, sort_keys=True,
+                    ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()}
     finally:
         process.kill()
         process.communicate(timeout=timeout_seconds)
@@ -117,6 +120,7 @@ def run_pilot(command, timeout_seconds=30):
     second = _one_run(command, timeout_seconds)
     if first != second:
         raise PilotFailure("MCP identity or tool list changed after restart")
+    first.pop("toolListHash")
     return {"status": "LOCAL_PILOT_ONLY", "runs": 2, **first}
 
 

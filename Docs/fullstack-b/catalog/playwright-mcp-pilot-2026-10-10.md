@@ -38,6 +38,8 @@ Claude Code `2.1.270`에서도 사용자·프로젝트 MCP 설정을 수정하�
 
 `tools/catalog_mcp_pilot.py`를 추가했다. 고정 패키지를 **호출자가 격리 설치**한 뒤 `python tools/catalog_mcp_pilot.py -- node <격리 폴더>/node_modules/@playwright/mcp/cli.js --browser msedge --headless --isolated`로 실행한다. 검사기는 사용자 Claude Code 설정을 변경하지 않고, 두 개의 새 MCP 서버 프로세스에서 각각 `initialize` → `tools/list` → 로컬 `data:` 페이지 탐색을 실행한다. 생성된 스냅샷은 각 프로세스의 임시 작업 디렉터리에서 읽고 제거한다. 패키지 설치와 네트워크 접속은 검사기 범위 밖이다.
 
+2026-10-12 검사기를 보완해 두 프로세스의 전체 `tools/list` 응답(이름·설명·입력 스키마 포함)을 비교한다. 이전에는 도구 개수와 `unsafe` 도구명만 같으면 일반 도구 목록이 바뀌어도 통과했다. 회귀 시험은 동일 개수의 일반 도구가 재시작 후 바뀐 경우를 실패로 확인한다. 이 보완은 검사기 자체의 판정 정확도이며 실제 Playwright MCP 후보를 새로 실행하거나 Catalog를 승인한 결과는 아니다.
+
 이 PC에서 `@playwright/mcp@0.0.83`을 격리 설치하고 일반 실행 환경에서 검사한 결과 두 번 모두 성공했다. 반환값은 `status=LOCAL_PILOT_ONLY`, `runs=2`, `server=Playwright`, `toolCount=25`, `version=1.64.0-alpha-1790635538000`이고, 목록에 `browser_run_code_unsafe`가 있었다. 제한된 샌드박스에서는 Edge 임시 프로필 접근 때문에 실패했으며, 격리 폴더·생성 스냅샷은 검사 후 삭제했다. 이 자동 검사는 **직접 MCP 클라이언트의 로컬 페이지·재시작 시험**만 반복한다. Claude Code 연결, 실제 업무 사이트, 권한 집행, 구성 파일·조합·복구 및 독립 승인 결과를 대신하지 않는다. 따라서 후보 `support-matrix.json`은 계속 `NOT_RUN`이다.
 
 1. 팀이 이 도구와 정확한 npm 버전, Windows/Claude Code 버전을 1차 검증 대상으로 채택한다.
