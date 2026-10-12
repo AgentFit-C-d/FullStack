@@ -10,6 +10,7 @@ import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Map;
+import java.util.List;
 
 /** B-only export path. A must provide owner-checked stored records and persist returned history. */
 public final class CatalogApprovedConfigurationWorkflow {
@@ -38,6 +39,23 @@ public final class CatalogApprovedConfigurationWorkflow {
         PreviewFingerprintInput regenerated = CatalogPreviewAssembler.prepare(releaseDirectory,
             approvedCatalogHash, storedRecommendation, currentBasis, currentTarget, request,
             trustedInstalledVersions);
+        return ApprovedConfigurationGenerator.generate(preview, approval, currentBasis,
+            requestedApprovalId, requestedPreviewId, submittedFingerprint,
+            regenerated, generationId, serverClock);
+    }
+
+    static ApprovedConfigurationGenerator.Generated generate(
+        Path releaseDirectory, String approvedCatalogHash,
+        StoredRecommendationState storedRecommendation, PreviewBasis currentBasis,
+        EnvironmentTarget currentTarget, CatalogPreviewRequest request,
+        StoredPreviewState preview, StoredApprovalState approval,
+        String requestedApprovalId, String requestedPreviewId,
+        String submittedFingerprint, String generationId, Clock serverClock,
+        Map<String, String> trustedInstalledVersions,
+        List<PreviewCreationService.StoredItemEvidence> storedItems) {
+        PreviewFingerprintInput regenerated = CatalogPreviewAssembler.prepareVerified(releaseDirectory,
+            approvedCatalogHash, storedRecommendation, currentBasis, currentTarget, request,
+            trustedInstalledVersions, storedItems);
         return ApprovedConfigurationGenerator.generate(preview, approval, currentBasis,
             requestedApprovalId, requestedPreviewId, submittedFingerprint,
             regenerated, generationId, serverClock);

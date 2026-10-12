@@ -59,10 +59,36 @@ public final class CatalogPreviewAssembler {
                                                   List<PreviewCreationService.StoredItemEvidence> storedItems) {
         Prepared prepared = prepareDetailed(releaseDirectory, approvedCatalogHash,
             storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions);
-        var decision = new RecommendationDecision(storedRecommendation.status(),
-            storedRecommendation.toolKeys(), List.of(), List.of());
-        var details = CatalogRecommendationDetails.project(prepared.catalog(), decision,
-            requiredCapabilityKeys, currentTarget);
+        requireStoredEvidence(prepared.catalog(), storedRecommendation, currentTarget,
+            requiredCapabilityKeys, storedItems);
+        var coverage = PreviewCapabilityCoverage.evaluate(prepared.catalog().release(), currentTarget,
+            requiredCapabilityKeys, request.selectedToolKeys(), trustedInstalledVersions);
+        return new Assembled(PreviewFingerprint.compute(prepared.input()), coverage);
+    }
+
+    static PreviewFingerprintInput prepareVerified(Path releaseDirectory, String approvedCatalogHash,
+        StoredRecommendationState storedRecommendation, PreviewBasis currentBasis,
+        EnvironmentTarget currentTarget, CatalogPreviewRequest request,
+        Map<String, String> trustedInstalledVersions,
+        List<PreviewCreationService.StoredItemEvidence> storedItems) {
+        Prepared prepared = prepareDetailed(releaseDirectory, approvedCatalogHash,
+            storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions);
+        requireStoredEvidence(prepared.catalog(), storedRecommendation, currentTarget,
+            Set.of(), storedItems);
+        return prepared.input();
+    }
+
+    private static void requireStoredEvidence(ParsedCatalog catalog,
+        StoredRecommendationState recommendation, EnvironmentTarget target,
+        Set<String> requiredCapabilityKeys,
+        List<PreviewCreationService.StoredItemEvidence> storedItems) {
+        if (storedItems == null) {
+            throw new InvalidAssemblyException("stored recommendation evidence missing");
+        }
+        var decision = new RecommendationDecision(recommendation.status(),
+            recommendation.toolKeys(), List.of(), List.of());
+        var details = CatalogRecommendationDetails.project(catalog, decision,
+            requiredCapabilityKeys, target);
         if (details.size() != storedItems.size()) {
             throw new InvalidAssemblyException("stored recommendation differs from approved Catalog");
         }
@@ -75,9 +101,6 @@ public final class CatalogPreviewAssembler {
                 throw new InvalidAssemblyException("stored recommendation differs from approved Catalog");
             }
         }
-        var coverage = PreviewCapabilityCoverage.evaluate(prepared.catalog().release(), currentTarget,
-            requiredCapabilityKeys, request.selectedToolKeys(), trustedInstalledVersions);
-        return new Assembled(PreviewFingerprint.compute(prepared.input()), coverage);
     }
 
     static PreviewFingerprintInput prepare(Path releaseDirectory, String approvedCatalogHash,

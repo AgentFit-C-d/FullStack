@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 
 /** ZIP bytes leave B only after A atomically saves content-free generation history. */
@@ -29,16 +30,17 @@ public final class ConfigurationDownloadService {
     public record TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
                                  StoredRecommendationState recommendation,
                                  StoredPreviewState preview, StoredApprovalState approval,
-                                 Map<String, String> installedToolVersions) {
-        public TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
-                              StoredRecommendationState recommendation,
-                              StoredPreviewState preview, StoredApprovalState approval) {
-            this(currentBasis, currentTarget, recommendation, preview, approval, Map.of());
-        }
-
+                                 Map<String, String> installedToolVersions,
+                                 List<PreviewCreationService.StoredItemEvidence> storedItems) {
         public TrustedContext {
             installedToolVersions = Collections.unmodifiableMap(
                 new HashMap<>(Objects.requireNonNull(installedToolVersions)));
+            storedItems = List.copyOf(Objects.requireNonNull(storedItems));
+            if (recommendation == null || storedItems.size() != recommendation.toolKeys().size()
+                || !storedItems.stream().map(PreviewCreationService.StoredItemEvidence::toolKey)
+                    .toList().equals(recommendation.toolKeys())) {
+                throw new IllegalArgumentException("stored download evidence belongs to another recommendation");
+            }
         }
     }
 
@@ -76,7 +78,8 @@ public final class ConfigurationDownloadService {
             catalog.directory(), catalog.approvedHash(), context.recommendation(),
             context.currentBasis(), context.currentTarget(), request, context.preview(),
             context.approval(), requestedApprovalId, requestedPreviewId, submittedFingerprint,
-            serverGenerationIds.get(), serverClock, context.installedToolVersions());
+            serverGenerationIds.get(), serverClock, context.installedToolVersions(),
+            context.storedItems());
         String savedId = historyStore.saveIfCurrent(context, generated.history());
         if (!generated.history().id().equals(savedId)) {
             throw new IllegalStateException("generation history was not saved correctly");

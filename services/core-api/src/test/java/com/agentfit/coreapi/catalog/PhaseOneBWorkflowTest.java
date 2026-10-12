@@ -102,7 +102,9 @@ class PhaseOneBWorkflowTest {
         var downloadService = new ConfigurationDownloadService(
             (projectId, approvalId) -> new ConfigurationDownloadService.TrustedContext(
                 created.basis(), TARGET, recommendation.get(), storedPreview.get(),
-                storedApproval.get()),
+                storedApproval.get(), Map.of(),
+                List.of(new PreviewCreationService.StoredItemEvidence(
+                    "example-tool", "1.0", "support-1", true))),
             () -> catalog, () -> "generation-1", CLOCK,
             (context, history) -> { storedHistory.set(history); return history.id(); });
         var download = downloadService.download("project-1", approval.approvalId(),

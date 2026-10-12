@@ -1,11 +1,13 @@
 package com.agentfit.coreapi.configuration.persistence;
 
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
+import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprint;
 import com.agentfit.coreapi.recommendation.persistence.JdbcLatestRecommendationReader;
+import com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
@@ -20,7 +22,10 @@ import java.util.UUID;
 /** Reads B's saved download inputs in A's authenticated, project-locked transaction. */
 public final class JdbcConfigurationContextReader {
     public record Snapshot(StoredRecommendationState recommendation,
-                           StoredPreviewState preview, StoredApprovalState approval) {}
+                           StoredPreviewState preview, StoredApprovalState approval,
+                           List<PreviewCreationService.StoredItemEvidence> storedItems) {
+        public Snapshot { storedItems = List.copyOf(storedItems); }
+    }
 
     private final JdbcStoredPreviewReader previewReader = new JdbcStoredPreviewReader();
     private final JdbcLatestRecommendationReader recommendationReader =
@@ -46,8 +51,16 @@ public final class JdbcConfigurationContextReader {
         if (recommendation == null || !recommendation.basis().equals(stored.preview().basis())) {
             throw new IllegalStateException("Preview recommendation basis does not match");
         }
+        List<JdbcRecommendationMetadataWriter.Item> items = recommendationReader.byIdItems(
+            transaction, projectId, stored.recommendationId());
+        if (!recommendation.toolKeys().equals(items.stream()
+            .map(JdbcRecommendationMetadataWriter.Item::toolKey).toList())) {
+            throw new IllegalStateException("Preview recommendation items changed during read");
+        }
         requireIntactMetadata(transaction, stored, recommendation);
-        return new Snapshot(recommendation, stored.preview(), stored.approval());
+        return new Snapshot(recommendation, stored.preview(), stored.approval(),
+            items.stream().map(item -> new PreviewCreationService.StoredItemEvidence(
+                item.toolKey(), item.toolVersion(), item.supportKey(), item.required())).toList());
     }
 
     private static void requireIntactMetadata(Connection transaction,

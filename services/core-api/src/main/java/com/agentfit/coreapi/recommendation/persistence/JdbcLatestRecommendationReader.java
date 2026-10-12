@@ -65,6 +65,13 @@ public final class JdbcLatestRecommendationReader {
         return read(transaction, projectId, uuid(recommendationId));
     }
 
+    /** Reads B3 rows only after the same project-scoped recommendation is found. */
+    public List<JdbcRecommendationMetadataWriter.Item> byIdItems(Connection transaction,
+        String projectId, String recommendationId) throws SQLException {
+        StoredRecommendationState stored = byId(transaction, projectId, recommendationId);
+        return stored == null ? null : items(transaction, uuid(stored.recommendationId()));
+    }
+
     private static StoredRecommendationState read(Connection transaction, String projectId,
                                                    UUID recommendationId) throws SQLException {
         Objects.requireNonNull(transaction);

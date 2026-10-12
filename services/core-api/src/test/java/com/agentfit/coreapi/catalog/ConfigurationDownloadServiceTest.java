@@ -60,6 +60,29 @@ class ConfigurationDownloadServiceTest {
     }
 
     @Test
+    void rejectsChangedStoredRecommendationEvidenceBeforeHistoryOrZip() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        var original = context(hash, request);
+        for (var changed : List.of(
+            new PreviewCreationService.StoredItemEvidence("example-tool", "2.0", "support-1", true),
+            new PreviewCreationService.StoredItemEvidence("example-tool", "1.0", "other-support", true),
+            new PreviewCreationService.StoredItemEvidence("example-tool", "1.0", "support-1", false))) {
+            var context = new ConfigurationDownloadService.TrustedContext(
+                original.currentBasis(), original.currentTarget(), original.recommendation(),
+                original.preview(), original.approval(), original.installedToolVersions(),
+                List.of(changed));
+            var service = new ConfigurationDownloadService((projectId, approvalId) -> context,
+                () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+                () -> "generation-1", CLOCK,
+                (trusted, history) -> fail("drifted recommendation must not save history"));
+            assertThrows(IllegalArgumentException.class,
+                () -> service.download("project-1", "approval-1", "preview-1",
+                    original.preview().fingerprint(), request));
+        }
+    }
+
+    @Test
     void historySaveConflictPreventsDownloadSuccess() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var request = request(hash);
@@ -82,7 +105,8 @@ class ConfigurationDownloadServiceTest {
         var foreignBasis = new PreviewBasis("other-project", 1, "profile-1", 1,
             "event-1", 0, 0, 1, "synthetic-recommendation", hash);
         var foreign = new ConfigurationDownloadService.TrustedContext(foreignBasis,
-            context.currentTarget(), context.recommendation(), context.preview(), context.approval());
+            context.currentTarget(), context.recommendation(), context.preview(), context.approval(),
+            context.installedToolVersions(), context.storedItems());
         AtomicInteger catalogReads = new AtomicInteger();
         var service = new ConfigurationDownloadService(
             (projectId, approvalId) -> foreign,
@@ -132,7 +156,7 @@ class ConfigurationDownloadServiceTest {
         var approval = new StoredApprovalState("approval-1", "preview-1", fingerprint,
             NOW.minusSeconds(60), NOW.plusSeconds(600));
         return new ConfigurationDownloadService.TrustedContext(request.basis(), request.target(),
-            rec, preview, approval);
+            rec, preview, approval, Map.of(), evidence());
     }
 
     private ConfigurationDownloadService.TrustedContext contextWithInstalled(String hash,
@@ -154,7 +178,12 @@ class ConfigurationDownloadServiceTest {
         var rec = new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
             List.of("example-tool"));
         return new ConfigurationDownloadService.TrustedContext(request.basis(), request.target(),
-            rec, preview, approval, Map.of("runtime", version));
+            rec, preview, approval, Map.of("runtime", version), evidence());
+    }
+
+    private static List<PreviewCreationService.StoredItemEvidence> evidence() {
+        return List.of(new PreviewCreationService.StoredItemEvidence(
+            "example-tool", "1.0", "support-1", true));
     }
 
     private static CatalogPreviewRequest request(String hash) {

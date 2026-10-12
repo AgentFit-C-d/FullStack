@@ -322,6 +322,8 @@ class JdbcPreviewMetadataWriterTest {
         var context = reader.byApprovalId(connection, PROJECT.toString(), approvalId);
         assertEquals(RECOMMENDATION.toString(), context.recommendation().recommendationId());
         assertEquals(List.of("tool-a"), context.recommendation().toolKeys());
+        assertEquals("1.0", context.storedItems().getFirst().toolVersion());
+        assertEquals("support-a", context.storedItems().getFirst().supportKey());
         assertEquals(context.recommendation().basis(), context.preview().basis());
         assertEquals(approvalId, context.approval().approvalId());
         assertEquals(context, reader.byPreviewId(connection, PROJECT.toString(),
