@@ -23,4 +23,6 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.CatalogCandidateV
 
 후보 검증 명령은 `CANDIDATE_SCHEMA_VALID` 뒤에 `RELEASE_NOT_READY reasons=...`도 출력한다. `SUPPORT_MISSING`은 지원 행 자체가 없는 도구가 있음을, `SUPPORT_NOT_RUN`은 지원 행의 검사가 남았음을, `SUPPORT_FAILED`는 지원 검사 실패가 기록됐음을 뜻한다. `PERMISSION_REVIEW_REQUIRED`는 매핑이 없는 도구에 대해 실제로 설정할 권한이 없는지 검토해야 한다는 뜻이다. `OUTPUT_REVIEW_REQUIRED`는 정적 출력 인덱스가 없음을, `COMBINATION_REVIEW_REQUIRED`는 여러 도구가 있으나 검증된 조합이 전혀 없음을 알린다. 이는 검토 항목을 찾기 위한 보수적인 신호이며, 모든 도구에 권한 매핑이나 모든 도구 쌍의 조합이 필요하다는 판정은 아니다. 독립 승인 여부는 명령이 확인할 수 없으므로 항상 `INDEPENDENT_APPROVAL_REQUIRED`가 표시된다. 따라서 이 명령은 `RELEASE_READY`를 출력하지 않는다.
 
+검토가 남은 도구마다 `TOOL_REVIEW_REQUIRED toolKey=... reasons=...`도 도구 키 순서로 출력한다. 지원 행 누락·미실행·실패, 권한 매핑 검토, 정적 출력 인덱스 누락을 도구별로 찾기 위한 안내다. 이 줄이 없는 도구도 정확한 Client 동작·조합·독립 승인이 완료됐다는 뜻은 아니다. 현재 Playwright MCP 후보는 세 지원 검사가 `NOT_RUN`이고 권한 매핑·출력 인덱스가 없어 해당 도구에 세 가지 검토 이유가 표시된다.
+
 테스트: `python -m unittest discover -s tools/tests -p 'test_*.py' -v`. 알려진 해시 벡터는 Java `CatalogBundleLoaderTest`의 값과 교차 확인한다. Java 후보 명령은 `CatalogCandidateValidatorCommandTest`에서 정상·무결성 실패·해시는 유효하지만 의미 스키마가 잘못된 입력·누락/과대 출력·조합 출력 초과를 확인한다.

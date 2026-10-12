@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.catalog;
 
 import com.agentfit.coreapi.catalog.model.ToolSupport.Check;
+import com.agentfit.coreapi.catalog.model.CatalogTool;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,6 +42,14 @@ public final class CatalogCandidateValidatorCommand {
                 candidate.release().releaseId(), candidate.catalogHash(), candidate.release().tools().size());
             out.printf("RELEASE_NOT_READY reasons=%s%n",
                 String.join(",", readinessReasons(bundle, candidate)));
+            for (String key : candidate.release().tools().keySet().stream().sorted().toList()) {
+                List<String> reasons = toolReviewReasons(bundle, candidate,
+                    candidate.release().tools().get(key));
+                if (!reasons.isEmpty()) {
+                    out.printf("TOOL_REVIEW_REQUIRED toolKey=%s reasons=%s%n",
+                        key, String.join(",", reasons));
+                }
+            }
             return 0;
         } catch (CatalogBundleLoader.CatalogUnavailableException | IllegalArgumentException exception) {
             err.println("CANDIDATE_INVALID: " + exception.getMessage());
@@ -75,6 +84,28 @@ public final class CatalogCandidateValidatorCommand {
             reasons.add("COMBINATION_REVIEW_REQUIRED");
         }
         reasons.add("INDEPENDENT_APPROVAL_REQUIRED");
+        return reasons;
+    }
+
+    private static List<String> toolReviewReasons(VerifiedCatalogBundle bundle,
+                                                  ParsedCatalog candidate, CatalogTool tool) {
+        List<String> reasons = new ArrayList<>();
+        if (tool.support().isEmpty()) reasons.add("SUPPORT_MISSING");
+        if (tool.support().stream().anyMatch(row -> row.documentation() == Check.NOT_RUN
+            || row.format() == Check.NOT_RUN || row.standalone() == Check.NOT_RUN)) {
+            reasons.add("SUPPORT_NOT_RUN");
+        }
+        if (tool.support().stream().anyMatch(row -> row.documentation() == Check.FAIL
+            || row.format() == Check.FAIL || row.standalone() == Check.FAIL)) {
+            reasons.add("SUPPORT_FAILED");
+        }
+        if (candidate.permissionMappings().stream().noneMatch(mapping ->
+            mapping.toolKey().equals(tool.key()))) {
+            reasons.add("PERMISSION_REVIEW_REQUIRED");
+        }
+        if (!bundle.files().containsKey("templates/index.json")) {
+            reasons.add("OUTPUT_REVIEW_REQUIRED");
+        }
         return reasons;
     }
 }
