@@ -78,6 +78,7 @@ The repository has no `.specify/` prerequisite script or feature `tasks.md` yet,
 - [x] B08j Strictly validate skills.sh's optional boolean `isDuplicate` flag; a malformed flag fails collection instead of becoming an empty candidate success. Live OIDC access and human Catalog approval remain open.
 - [x] B08k Reject review decisions whose candidate ID is absent from the staged snapshot, rather than silently discarding mismatched review records. Decision persistence and admin UI remain open.
 - [x] B08l Report missing support checks, permission mapping review, and static output index per tool in the candidate validator so a 15–20 tool draft can be triaged without mistaking schema validity for release approval. Real Client verification and independent approval remain open.
+- [x] B08m Stage a separate, unapproved Playwright MCP candidate with a static application/verification/rollback guide draft and manifest. The Java candidate validator confirms its file hashes and output shape; exact Client support checks, permission mapping, product-ready configuration, and independent approval remain open.
 
 ## Phase 3 — permission and configuration
 
