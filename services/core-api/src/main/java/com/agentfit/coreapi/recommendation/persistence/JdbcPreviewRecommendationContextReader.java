@@ -30,6 +30,7 @@ public final class JdbcPreviewRecommendationContextReader {
         JdbcRecommendationMetadataWriter.Draft stored = recommendations.byIdMetadata(
             transaction, projectId, recommendationId);
         if (stored == null) return null;
+        JdbcRecommendationMetadataWriter.requireValid(stored);
         if (stored.status() != RecommendationDecision.Status.RECOMMENDED) {
             throw new IllegalArgumentException("stored recommendation is not Preview eligible");
         }
@@ -44,6 +45,8 @@ public final class JdbcPreviewRecommendationContextReader {
         var capabilities = new PreviewCreationService.RequiredCapabilities(stored.id(),
             stored.basis(), required);
         return new PreviewCreationService.TrustedContext(currentBasis, currentTarget,
-            recommendation, trustedInstalledVersions, capabilities);
+            recommendation, trustedInstalledVersions, capabilities,
+            stored.items().stream().map(item -> new PreviewCreationService.StoredItemEvidence(
+                item.toolKey(), item.toolVersion(), item.supportKey(), item.required())).toList());
     }
 }

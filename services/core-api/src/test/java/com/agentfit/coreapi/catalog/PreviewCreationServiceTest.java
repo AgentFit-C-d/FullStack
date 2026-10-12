@@ -60,6 +60,26 @@ class PreviewCreationServiceTest {
     }
 
     @Test
+    void rejectsStoredItemVersionOrSupportDriftBeforeSavingPreview() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        for (var drift : List.of(
+            new PreviewCreationService.StoredItemEvidence("example-tool", "2.0", "support-1", true),
+            new PreviewCreationService.StoredItemEvidence("example-tool", "1.0", "other-support", true),
+            new PreviewCreationService.StoredItemEvidence("example-tool", "1.0", "support-1", false))) {
+            var trusted = context(request);
+            var context = new PreviewCreationService.TrustedContext(trusted.currentBasis(),
+                trusted.currentTarget(), trusted.recommendation(), trusted.installedToolVersions(),
+                trusted.requiredCapabilities(), List.of(drift));
+            var service = new PreviewCreationService((projectId, recommendationId) -> context,
+                () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+                (ignored, draft) -> fail("drifted recommendation must not produce Preview"));
+            assertThrows(IllegalArgumentException.class,
+                () -> service.create("project-1", request));
+        }
+    }
+
+    @Test
     void savesPartialChoiceAndReturnsUnmetRequiredCapability() throws Exception {
         String hash = SyntheticCatalogBundle.writeWithDistinctFallbackCapability(directory);
         var request = request(hash);
@@ -69,7 +89,9 @@ class PreviewCreationServiceTest {
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 request.basis(), request.target(), offered, Map.of(),
                 new PreviewCreationService.RequiredCapabilities(offered.recommendationId(),
-                    offered.basis(), Set.of("cap_document_reference", "cap_browser_verification"))),
+                    offered.basis(), Set.of("cap_document_reference", "cap_browser_verification")),
+                List.of(evidence("example-tool", "support-1"),
+                    evidence("fallback-tool", "support-2"))),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
             (trusted, draft) -> {
                 assertEquals(List.of("example-tool"), draft.selectedToolKeys());
@@ -91,7 +113,7 @@ class PreviewCreationServiceTest {
         var foreign = new PreviewCreationService.TrustedContext(
             new PreviewBasis("other-project", 1, "profile-1", 1, "event-1", 0, 0, 1,
                 "synthetic-recommendation", hash), request.target(), context(request).recommendation(),
-            Map.of(), required(context(request).recommendation()));
+            Map.of(), required(context(request).recommendation()), context(request).storedItems());
         AtomicInteger catalogReads = new AtomicInteger();
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> foreign,
@@ -111,13 +133,13 @@ class PreviewCreationServiceTest {
         assertThrows(IllegalArgumentException.class, () -> new PreviewCreationService.TrustedContext(
             request.basis(), request.target(), recommendation, Map.of(),
             new PreviewCreationService.RequiredCapabilities("other-rec", request.basis(),
-                Set.of("cap_document_reference"))));
+                Set.of("cap_document_reference")), context(request).storedItems()));
         var otherBasis = new PreviewBasis("project-1", 2, "profile-1", 1, "event-1", 0, 0, 1,
             "synthetic-recommendation", hash);
         assertThrows(IllegalArgumentException.class, () -> new PreviewCreationService.TrustedContext(
             request.basis(), request.target(), recommendation, Map.of(),
             new PreviewCreationService.RequiredCapabilities("rec-1", otherBasis,
-                Set.of("cap_document_reference"))));
+                Set.of("cap_document_reference")), context(request).storedItems()));
     }
 
     @Test
@@ -154,7 +176,8 @@ class PreviewCreationServiceTest {
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 request.basis(), request.target(), context(request).recommendation(),
-                Map.of("runtime", "1.0"), required(context(request).recommendation())),
+                Map.of("runtime", "1.0"), required(context(request).recommendation()),
+                context(request).storedItems()),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
             (trusted, draft) -> new StoredPreviewState("preview-1", draft.basis(),
                 draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
@@ -169,7 +192,12 @@ class PreviewCreationServiceTest {
         var recommendation = new StoredRecommendationState("rec-1", request.basis(),
             Status.RECOMMENDED, List.of("example-tool"));
         return new PreviewCreationService.TrustedContext(request.basis(), request.target(),
-            recommendation, Map.of(), required(recommendation));
+            recommendation, Map.of(), required(recommendation),
+            List.of(evidence("example-tool", "support-1")));
+    }
+
+    private static PreviewCreationService.StoredItemEvidence evidence(String tool, String support) {
+        return new PreviewCreationService.StoredItemEvidence(tool, "1.0", support, true);
     }
 
     private static PreviewCreationService.RequiredCapabilities required(

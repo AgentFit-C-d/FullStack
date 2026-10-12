@@ -45,18 +45,27 @@ public final class PreviewCreationService {
         }
     }
 
+    /** B3 version and exact support row restored from the same recommendation as B2. */
+    public record StoredItemEvidence(String toolKey, String toolVersion,
+                                     String supportKey, boolean required) {}
+
     public record TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
                                  StoredRecommendationState recommendation,
                                  Map<String, String> installedToolVersions,
-                                 RequiredCapabilities requiredCapabilities) {
+                                 RequiredCapabilities requiredCapabilities,
+                                 List<StoredItemEvidence> storedItems) {
         public TrustedContext {
             installedToolVersions = Collections.unmodifiableMap(
                 new HashMap<>(Objects.requireNonNull(installedToolVersions)));
             Objects.requireNonNull(requiredCapabilities);
+            storedItems = List.copyOf(Objects.requireNonNull(storedItems));
             if (recommendation == null
                 || !requiredCapabilities.recommendationId().equals(recommendation.recommendationId())
-                || !requiredCapabilities.basis().equals(recommendation.basis())) {
-                throw new IllegalArgumentException("required capabilities belong to another recommendation");
+                || !requiredCapabilities.basis().equals(recommendation.basis())
+                || storedItems.size() != recommendation.toolKeys().size()
+                || !storedItems.stream().map(StoredItemEvidence::toolKey).toList()
+                    .equals(recommendation.toolKeys())) {
+                throw new IllegalArgumentException("stored Preview facts belong to another recommendation");
             }
         }
     }
@@ -109,7 +118,8 @@ public final class PreviewCreationService {
         CatalogPreviewAssembler.Assembled assembled = CatalogPreviewAssembler.assembleWithCoverage(
             catalog.directory(), catalog.approvedHash(), context.recommendation(),
             context.currentBasis(), context.currentTarget(), request,
-            context.installedToolVersions(), context.requiredCapabilities().keys());
+            context.installedToolVersions(), context.requiredCapabilities().keys(),
+            context.storedItems());
         PreviewFingerprintResult preview = assembled.preview();
         Draft draft = new Draft(context.currentBasis(), request.recommendationId(),
             request.selectedToolKeys(), request.permissionSelections(), request.existingState(),

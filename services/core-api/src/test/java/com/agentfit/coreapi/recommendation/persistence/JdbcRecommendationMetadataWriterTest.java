@@ -302,6 +302,10 @@ class JdbcRecommendationMetadataWriterTest {
 
         assertEquals(earlier.id(), context.recommendation().recommendationId());
         assertEquals(List.of("tool-a"), context.recommendation().toolKeys());
+        assertEquals(earlier.items().getFirst().toolVersion(),
+            context.storedItems().getFirst().toolVersion());
+        assertEquals(earlier.items().getFirst().supportKey(),
+            context.storedItems().getFirst().supportKey());
         assertEquals(earlier.basis(), context.requiredCapabilities().basis());
         assertEquals(Set.of("cap_document_reference"), context.requiredCapabilities().keys());
         assertEquals(target, context.currentTarget());

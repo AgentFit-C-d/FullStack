@@ -6,6 +6,7 @@ import com.agentfit.coreapi.configuration.preview.PreviewFingerprintInput;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.selection.ConfigurationSelectionValidator;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
@@ -54,9 +55,26 @@ public final class CatalogPreviewAssembler {
                                                   EnvironmentTarget currentTarget,
                                                   CatalogPreviewRequest request,
                                                   Map<String, String> trustedInstalledVersions,
-                                                  Set<String> requiredCapabilityKeys) {
+                                                  Set<String> requiredCapabilityKeys,
+                                                  List<PreviewCreationService.StoredItemEvidence> storedItems) {
         Prepared prepared = prepareDetailed(releaseDirectory, approvedCatalogHash,
             storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions);
+        var decision = new RecommendationDecision(storedRecommendation.status(),
+            storedRecommendation.toolKeys(), List.of(), List.of());
+        var details = CatalogRecommendationDetails.project(prepared.catalog(), decision,
+            requiredCapabilityKeys, currentTarget);
+        if (details.size() != storedItems.size()) {
+            throw new InvalidAssemblyException("stored recommendation differs from approved Catalog");
+        }
+        for (int index = 0; index < details.size(); index++) {
+            var detail = details.get(index);
+            var saved = storedItems.get(index);
+            if (!detail.toolKey().equals(saved.toolKey()) || !saved.required()
+                || !detail.catalogVersion().equals(saved.toolVersion())
+                || !detail.supportKey().equals(saved.supportKey())) {
+                throw new InvalidAssemblyException("stored recommendation differs from approved Catalog");
+            }
+        }
         var coverage = PreviewCapabilityCoverage.evaluate(prepared.catalog().release(), currentTarget,
             requiredCapabilityKeys, request.selectedToolKeys(), trustedInstalledVersions);
         return new Assembled(PreviewFingerprint.compute(prepared.input()), coverage);
