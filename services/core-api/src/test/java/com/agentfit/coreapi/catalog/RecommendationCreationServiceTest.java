@@ -23,8 +23,11 @@ class RecommendationCreationServiceTest {
         AtomicInteger saved = new AtomicInteger();
         var service = new RecommendationCreationService(
             projectId -> snapshot(projectId),
-            snapshot -> {
-                assertEquals("[\"document search\"]", snapshot.aiSourceValues().get("profile.features"));
+            aiInput -> {
+                assertEquals(Set.of("aiSourceValues"), java.util.Arrays.stream(
+                    aiInput.getClass().getRecordComponents()).map(java.lang.reflect.RecordComponent::getName)
+                    .collect(java.util.stream.Collectors.toSet()));
+                assertEquals("[\"document search\"]", aiInput.aiSourceValues().get("profile.features"));
                 return assessment();
             },
             () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),

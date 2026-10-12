@@ -21,12 +21,15 @@ public final class RecommendationCreationService {
         OwnerCheckedSnapshot load(String projectId);
     }
 
-    /**
-     * The AI adapter receives only A-approved, string-serialized source values in the snapshot.
-     * It handles HTTP/wire failures; B validates its candidate in the workflow.
-     */
+    /** The AI adapter receives only A-approved source values, not the owner-checked snapshot. */
     public interface CapabilityAnalyzer {
-        CapabilityAssessment analyze(OwnerCheckedSnapshot snapshot);
+        CapabilityAssessment analyze(AiInput input);
+    }
+
+    public record AiInput(Map<String, String> aiSourceValues) {
+        public AiInput {
+            aiSourceValues = Map.copyOf(Objects.requireNonNull(aiSourceValues));
+        }
     }
 
     /** Source of an independently approved Catalog hash, never a request parameter. */
@@ -141,7 +144,8 @@ public final class RecommendationCreationService {
             throw new SnapshotChangedException();
         }
         ApprovedCatalog catalog = Objects.requireNonNull(catalogs.current());
-        CapabilityAssessment assessment = Objects.requireNonNull(analyzer.analyze(snapshot));
+        CapabilityAssessment assessment = Objects.requireNonNull(
+            analyzer.analyze(new AiInput(snapshot.aiSourceValues())));
         var result = CatalogRecommendationWorkflow.evaluate(catalog.directory(), catalog.approvedHash(),
             new CatalogRecommendationWorkflow.Request(assessment.claims(), assessment.questions(),
                 snapshot.allowedSourceFields(), snapshot.hasRelevantPendingConflict(),
