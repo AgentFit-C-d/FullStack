@@ -43,7 +43,7 @@ class JdbcRecommendationMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA " + schema);
             statement.execute("SET LOCAL search_path TO " + schema);
-            statement.execute("CREATE TABLE project (id UUID PRIMARY KEY)");
+            statement.execute("CREATE TABLE project (id VARCHAR(36) PRIMARY KEY)");
             statement.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY)");
             statement.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY)");
             try (var stream = getClass().getResourceAsStream("/db/postgresql/b-schema.sql")) {

@@ -6,7 +6,7 @@
 
 CREATE TABLE recommendation (
     id UUID PRIMARY KEY,
-    project_id UUID NOT NULL REFERENCES project(id),
+    project_id VARCHAR(36) NOT NULL REFERENCES project(id),
     confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id),
     confirmed_profile_version BIGINT NOT NULL CHECK (confirmed_profile_version >= 1),
     confirmation_event_id UUID NOT NULL REFERENCES profile_confirmation_event(id),
@@ -88,7 +88,7 @@ CREATE TABLE config_preview (
     created_at TIMESTAMPTZ NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     approval_id UUID UNIQUE,
-    approved_by UUID,
+    approved_by BIGINT,
     approved_at TIMESTAMPTZ,
     approval_expires_at TIMESTAMPTZ,
     CONSTRAINT config_preview_expiry CHECK (created_at < expires_at),
@@ -146,7 +146,7 @@ CREATE TABLE config_export (
     latest_report_id UUID UNIQUE,
     reported_state VARCHAR(20),
     reason_code VARCHAR(50),
-    reported_by UUID,
+    reported_by BIGINT,
     reported_at TIMESTAMPTZ,
     CONSTRAINT config_export_report_shape CHECK (
         (latest_report_id IS NULL AND reported_state IS NULL

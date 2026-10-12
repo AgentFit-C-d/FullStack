@@ -6,6 +6,8 @@ Source: [AgentFit A·B Phase 1 development baseline](../../AgentFit_AB_1차통�
 
 The baseline has 25 tables: A1–A15, B1–B9, and common C1 `audit_event`. The B script creates only the nine B tables. A owns `project`, `project_profile`, `profile_confirmation_event`, authentication/user tables, the common Audit transaction, and their migration order. Do not create placeholder A tables in the production migration. Apply the B script after A's three referenced tables exist. Once A's branch is merged, assign the script a migration version in the shared migration chain and wire the Spring datasource; it is intentionally not auto-run on the current B branch.
 
+On 2026-10-13, A's remote `fullstackA` commit `dc06f8b` defines `PROJECT.id` as `VARCHAR(36)` and the authenticated user ID as `BIGINT`. B's `recommendation.project_id` and JDBC project bindings now match that Project type; `approved_by` and `reported_by` are `BIGINT` and their writers accept positive `long` actor IDs. PostgreSQL tests use a `VARCHAR(36)` Project parent and the schema smoke test succeeds. This is a compatibility adjustment to the observed A branch, not a merged A/B transaction test. A's future `project_profile` and `profile_confirmation_event` ID types, the shared Audit/migration order, and the user-table FK policy still need confirmation before applying the B script as a production migration.
+
 The Catalog remains an immutable verified file release. Its `catalog_release`, `catalog_hash`, `tool_key`, `support_key`, and `mapping_key` are **not** database foreign keys. B must recheck them against the exact approved release before storing or using a recommendation or Preview.
 
 | Baseline | PostgreSQL table | Parent / purpose |
@@ -22,7 +24,7 @@ The Catalog remains an immutable verified file release. Its `catalog_release`, `
 
 ## What the DDL enforces
 
-UUID primary keys, parent foreign keys, required values, nonnegative basis versions, fixed status/policy enums, lowercase 64-character SHA-256 hashes, unique recommendation tools and Preview paths, question/reason shape, approval timestamp bundle, Preview file action/hash shape, and report state/reason shape. The script has no `ON DELETE CASCADE`: page 35 requires an authenticated, project-locked deletion transaction in a specific child-first order. `approved_by` and `reported_by` become physical user foreign keys only when A's authentication table name is known.
+UUID primary keys for B records, an A-compatible `VARCHAR(36)` project foreign key, required values, nonnegative basis versions, fixed status/policy enums, lowercase 64-character SHA-256 hashes, unique recommendation tools and Preview paths, question/reason shape, approval timestamp bundle, Preview file action/hash shape, and report state/reason shape. The script has no `ON DELETE CASCADE`: page 35 requires an authenticated, project-locked deletion transaction in a specific child-first order. `approved_by` and `reported_by` remain without physical user foreign keys until A's base user-table migration and deletion policy are confirmed; their `BIGINT` type already matches A's authenticated user ID.
 
 ## What the Spring transaction must enforce
 

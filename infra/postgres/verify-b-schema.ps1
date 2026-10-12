@@ -18,7 +18,7 @@ $before = @'
 BEGIN;
 CREATE SCHEMA b_schema_check;
 SET LOCAL search_path TO b_schema_check;
-CREATE TABLE project (id UUID PRIMARY KEY);
+CREATE TABLE project (id VARCHAR(36) PRIMARY KEY);
 CREATE TABLE project_profile (id UUID PRIMARY KEY);
 CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY);
 '@
@@ -123,7 +123,7 @@ BEGIN
 
     BEGIN
         UPDATE config_export SET latest_report_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-            reported_state = 'FAILED', reported_by = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+            reported_state = 'FAILED', reported_by = 42,
             reported_at = now() WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         RAISE EXCEPTION 'Failed report without reason was accepted';
     EXCEPTION WHEN check_violation THEN NULL;
@@ -131,7 +131,7 @@ BEGIN
 
     BEGIN
         UPDATE config_export SET latest_report_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-            reported_state = NULL, reported_by = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+            reported_state = NULL, reported_by = 42,
             reported_at = now() WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         RAISE EXCEPTION 'Report without state was accepted';
     EXCEPTION WHEN check_violation THEN NULL;

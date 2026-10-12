@@ -44,7 +44,7 @@ public final class JdbcStoredPreviewReader {
             + (byApproval ? "cp.approval_id = ? " : "cp.id = ? ")
             + "FOR SHARE OF cp, r";
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
-            query.setObject(1, project);
+            query.setString(1, project.toString());
             query.setObject(2, id);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
@@ -52,7 +52,7 @@ public final class JdbcStoredPreviewReader {
                     throw new IllegalStateException("Preview recommendation is not RECOMMENDED");
                 }
                 PreviewBasis basis = new PreviewBasis(
-                    row.getObject("project_id", UUID.class).toString(), row.getLong("project_version"),
+                    row.getString("project_id"), row.getLong("project_version"),
                     row.getObject("confirmed_profile_id", UUID.class).toString(),
                     row.getLong("confirmed_profile_version"),
                     row.getObject("confirmation_event_id", UUID.class).toString(),

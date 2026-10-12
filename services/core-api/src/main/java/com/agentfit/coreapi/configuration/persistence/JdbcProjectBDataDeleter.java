@@ -34,7 +34,7 @@ public final class JdbcProjectBDataDeleter {
         UUID project = uuid(projectId);
         try (PreparedStatement lock = transaction.prepareStatement(
             "SELECT id FROM project WHERE id = ? FOR UPDATE")) {
-            lock.setObject(1, project);
+            lock.setString(1, project.toString());
             try (var row = lock.executeQuery()) {
                 if (!row.next()) return 0;
             }
@@ -42,7 +42,7 @@ public final class JdbcProjectBDataDeleter {
         int deleted = 0;
         for (String sql : DELETE_IN_ORDER) {
             try (PreparedStatement statement = transaction.prepareStatement(sql)) {
-                statement.setObject(1, project);
+                statement.setString(1, project.toString());
                 deleted += statement.executeUpdate();
             }
         }

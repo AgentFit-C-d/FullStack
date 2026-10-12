@@ -135,7 +135,7 @@ public final class JdbcRecommendationMetadataWriter {
                 + "catalog_hash, status, evidence_level, created_at) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             insert.setObject(1, id);
-            insert.setObject(2, uuid(basis.projectId()));
+            insert.setString(2, uuid(basis.projectId()).toString());
             insert.setObject(3, uuid(basis.confirmedProfileId()));
             insert.setLong(4, basis.confirmedProfileVersion());
             insert.setObject(5, uuid(basis.confirmationEventId()));

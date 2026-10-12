@@ -53,7 +53,7 @@ public final class JdbcConfigurationHistoryReader {
         List<Cursor> rows = new ArrayList<>();
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             int position = 1;
-            query.setObject(position++, project);
+            query.setString(position++, project.toString());
             if (after != null) {
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
@@ -97,7 +97,7 @@ public final class JdbcConfigurationHistoryReader {
             + "WHERE e.id = ? AND r.project_id = ? FOR SHARE OF e, cp, r";
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             query.setObject(1, export);
-            query.setObject(2, project);
+            query.setString(2, project.toString());
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
                 UUID approvalId = row.getObject("approval_id", UUID.class);
@@ -110,7 +110,7 @@ public final class JdbcConfigurationHistoryReader {
                 }
                 UUID previewId = row.getObject("preview_id", UUID.class);
                 PreviewBasis basis = new PreviewBasis(
-                    row.getObject("project_id", UUID.class).toString(), row.getLong("project_version"),
+                    row.getString("project_id"), row.getLong("project_version"),
                     row.getObject("confirmed_profile_id", UUID.class).toString(),
                     row.getLong("confirmed_profile_version"),
                     row.getObject("confirmation_event_id", UUID.class).toString(),

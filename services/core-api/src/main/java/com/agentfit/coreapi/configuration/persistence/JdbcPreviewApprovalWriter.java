@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** Fills B5's approval bundle once, inside A's authenticated project transaction. */
 public final class JdbcPreviewApprovalWriter {
-    public StoredApprovalState approve(Connection transaction, String actorId,
+    public StoredApprovalState approve(Connection transaction, long actorId,
                                        StoredPreviewState preview,
                                        StoredApprovalState issued) throws SQLException {
         Objects.requireNonNull(transaction);
@@ -23,7 +23,7 @@ public final class JdbcPreviewApprovalWriter {
         }
         UUID previewId = uuid(preview.previewId());
         UUID approvalId = uuid(issued.approvalId());
-        UUID actor = uuid(actorId);
+        if (actorId <= 0) throw new IllegalArgumentException("invalid authenticated actor ID");
         if (!preview.previewId().equals(issued.previewId())
             || !preview.fingerprint().equals(issued.fingerprint())
             || issued.approvedAt() == null || issued.expiresAt() == null
@@ -64,7 +64,7 @@ public final class JdbcPreviewApprovalWriter {
                 + "approved_at = ?, approval_expires_at = ? "
                 + "WHERE id = ? AND approval_id IS NULL")) {
             update.setObject(1, approvalId);
-            update.setObject(2, actor);
+            update.setLong(2, actorId);
             update.setTimestamp(3, Timestamp.from(issued.approvedAt()));
             update.setTimestamp(4, Timestamp.from(issued.expiresAt()));
             update.setObject(5, previewId);

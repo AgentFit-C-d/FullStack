@@ -87,13 +87,13 @@ public final class JdbcLatestRecommendationReader {
                 ? "ORDER BY created_at DESC, id DESC LIMIT 1 FOR SHARE"
                 : "AND id = ? FOR SHARE");
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
-            query.setObject(1, project);
+            query.setString(1, project.toString());
             if (recommendationId != null) query.setObject(2, recommendationId);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
                 UUID id = row.getObject("id", UUID.class);
                 PreviewBasis basis = new PreviewBasis(
-                    row.getObject("project_id", UUID.class).toString(), row.getLong("project_version"),
+                    row.getString("project_id"), row.getLong("project_version"),
                     row.getObject("confirmed_profile_id", UUID.class).toString(),
                     row.getLong("confirmed_profile_version"),
                     row.getObject("confirmation_event_id", UUID.class).toString(),
