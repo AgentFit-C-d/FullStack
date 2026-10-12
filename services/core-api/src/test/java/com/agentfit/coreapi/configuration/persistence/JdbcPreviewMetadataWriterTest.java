@@ -189,6 +189,31 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void partialSelectionRemainsUsableThroughApprovalExportAndHistory() throws Exception {
+        UUID otherItem = UUID.randomUUID();
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("INSERT INTO recommendation_item VALUES ('" + otherItem + "', '"
+                + RECOMMENDATION + "', 'tool-b', '1.0', 'support-b', true, 'reason', 'AI')");
+        }
+
+        var fixture = approvedGeneratedExport();
+        var context = new JdbcConfigurationContextReader().byPreviewId(connection,
+            PROJECT.toString(), fixture.previewId().toString());
+        assertEquals(List.of("tool-a", "tool-b"), context.recommendation().toolKeys());
+        assertNotNull(context.approval());
+
+        new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
+        var history = new JdbcConfigurationHistoryReader().find(connection,
+            PROJECT.toString(), fixture.generationId().toString());
+        assertEquals(fixture.generated().history().fingerprint(),
+            history.generation().fingerprint());
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "config_selection"));
+            assertEquals(1, count(statement, "config_export"));
+        }
+    }
+
+    @Test
     void rejectsToolOutsideStoredRecommendationEvenWithValidFingerprint() throws Exception {
         var input = new PreviewFingerprintInput(basis(), RECOMMENDATION.toString(),
             List.of("outside-tool"), List.of(), "static-v1",
