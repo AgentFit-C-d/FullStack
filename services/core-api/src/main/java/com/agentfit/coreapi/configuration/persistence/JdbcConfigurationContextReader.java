@@ -16,15 +16,22 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** Reads B's saved download inputs in A's authenticated, project-locked transaction. */
 public final class JdbcConfigurationContextReader {
     public record Snapshot(StoredRecommendationState recommendation,
                            StoredPreviewState preview, StoredApprovalState approval,
-                           List<PreviewCreationService.StoredItemEvidence> storedItems) {
-        public Snapshot { storedItems = List.copyOf(storedItems); }
+                           List<PreviewCreationService.StoredItemEvidence> storedItems,
+                           Set<String> requiredCapabilityKeys, List<String> selectedToolKeys) {
+        public Snapshot {
+            storedItems = List.copyOf(storedItems);
+            requiredCapabilityKeys = Set.copyOf(requiredCapabilityKeys);
+            selectedToolKeys = List.copyOf(selectedToolKeys);
+        }
     }
 
     private final JdbcStoredPreviewReader previewReader = new JdbcStoredPreviewReader();
@@ -57,15 +64,32 @@ public final class JdbcConfigurationContextReader {
             .map(JdbcRecommendationMetadataWriter.Item::toolKey).toList())) {
             throw new IllegalStateException("Preview recommendation items changed during read");
         }
-        requireIntactMetadata(transaction, stored, recommendation);
+        List<String> selected = requireIntactMetadata(transaction, stored, recommendation);
+        Set<String> required = requiredCapabilities(transaction,
+            stored.recommendationId());
         return new Snapshot(recommendation, stored.preview(), stored.approval(),
             items.stream().map(item -> new PreviewCreationService.StoredItemEvidence(
-                item.toolKey(), item.toolVersion(), item.supportKey(), item.required())).toList());
+                item.toolKey(), item.toolVersion(), item.supportKey(), item.required())).toList(),
+            required, selected);
     }
 
-    private static void requireIntactMetadata(Connection transaction,
-                                               JdbcStoredPreviewReader.Snapshot stored,
-                                               StoredRecommendationState recommendation)
+    private static Set<String> requiredCapabilities(Connection transaction, String recommendationId)
+        throws SQLException {
+        Set<String> required = new HashSet<>();
+        try (PreparedStatement query = transaction.prepareStatement(
+            "SELECT capability_key FROM recommendation_capability "
+                + "WHERE recommendation_id = ? AND necessity = 'REQUIRED' FOR SHARE")) {
+            query.setObject(1, UUID.fromString(recommendationId));
+            try (ResultSet rows = query.executeQuery()) {
+                while (rows.next()) required.add(rows.getString(1));
+            }
+        }
+        return Set.copyOf(required);
+    }
+
+    private static List<String> requireIntactMetadata(Connection transaction,
+                                                       JdbcStoredPreviewReader.Snapshot stored,
+                                                       StoredRecommendationState recommendation)
         throws SQLException {
         UUID previewId = UUID.fromString(stored.preview().previewId());
         String generatorVersion;
@@ -139,5 +163,7 @@ public final class JdbcConfigurationContextReader {
         } catch (IllegalArgumentException exception) {
             throw new IllegalStateException("stored Preview metadata is invalid", exception);
         }
+        selected.sort(String::compareTo);
+        return List.copyOf(selected);
     }
 }

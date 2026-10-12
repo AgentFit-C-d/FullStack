@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -194,12 +195,19 @@ class JdbcPreviewMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             statement.execute("INSERT INTO recommendation_item VALUES ('" + otherItem + "', '"
                 + RECOMMENDATION + "', 'tool-b', '1.0', 'support-b', true, 'reason', 'AI')");
+            statement.execute("INSERT INTO recommendation_capability VALUES ('" + RECOMMENDATION
+                + "', 'cap_document_reference', 'REQUIRED', 'reason', ARRAY['profile'])");
+            statement.execute("INSERT INTO recommendation_capability VALUES ('" + RECOMMENDATION
+                + "', 'cap_browser_verification', 'REQUIRED', 'reason', ARRAY['profile'])");
         }
 
         var fixture = approvedGeneratedExport();
         var context = new JdbcConfigurationContextReader().byPreviewId(connection,
             PROJECT.toString(), fixture.previewId().toString());
         assertEquals(List.of("tool-a", "tool-b"), context.recommendation().toolKeys());
+        assertEquals(List.of("tool-a"), context.selectedToolKeys());
+        assertEquals(Set.of("cap_document_reference", "cap_browser_verification"),
+            context.requiredCapabilityKeys());
         assertNotNull(context.approval());
 
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
