@@ -1,6 +1,30 @@
 spring:
   application:
     name: agentfit-core-api
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID:change-me}
+            client-secret: ${GITHUB_CLIENT_SECRET:change-me}
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
+            scope:
+              - user:email
+  session:
+    timeout: 7d
+    jdbc:
+      initialize-schema: never
 
 server:
   port: 8080
+
+agentfit:
+  auth:
+    cookie-secure: ${AGENTFIT_COOKIE_SECURE:true}
+  hmac:
+    current-key-id: ${AGENTFIT_HMAC_CURRENT_KEY_ID:}
+    current-secret: ${AGENTFIT_HMAC_CURRENT_SECRET:}
+    previous-key-id: ${AGENTFIT_HMAC_PREVIOUS_KEY_ID:}
+    previous-secret: ${AGENTFIT_HMAC_PREVIOUS_SECRET:}
+    previous-valid-until: ${AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL:}

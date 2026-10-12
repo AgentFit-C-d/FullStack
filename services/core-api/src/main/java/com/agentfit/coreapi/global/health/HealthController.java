@@ -1,4 +1,4 @@
-package com.agentfit.coreapi;
+package com.agentfit.coreapi.global.health;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,3 +10,6 @@ class HealthController {
         return new HealthResponse("core-api", "ok");
     }
 }
+
+
+

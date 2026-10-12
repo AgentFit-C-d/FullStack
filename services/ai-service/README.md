@@ -4,9 +4,14 @@ FastAPI service for AgentFit AI workflows.
 
 ## Responsibilities
 
-- Receive AI requests from `core-api`.
-- Normalize AI provider responses into structured JSON.
+- Receive only HMAC-verified `POST /internal/v1/analysis` requests from `core-api`.
+- This feature returns only the contract test-double response `{ "result": { "kind": "CONTRACT_TEST_DOUBLE" } }`; real provider prompt/input/output semantics are a later feature.
 - Keep provider-specific details out of the core domain service.
+- Do not access the Core API PostgreSQL database, browser session, or user/project ownership data.
+
+## HMAC configuration
+
+Both services require `AGENTFIT_HMAC_CURRENT_KEY_ID` and `AGENTFIT_HMAC_CURRENT_SECRET` together. Optional rollover configuration must provide all three of `AGENTFIT_HMAC_PREVIOUS_KEY_ID`, `AGENTFIT_HMAC_PREVIOUS_SECRET`, and `AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL`; an expired previous key is rejected. Do not place secrets, signatures, or raw request bodies in logs, Audit, or databases.
 
 ## Run
 
