@@ -26,3 +26,14 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.CatalogCandidateV
 검토가 남은 도구마다 `TOOL_REVIEW_REQUIRED toolKey=... reasons=...`도 도구 키 순서로 출력한다. 지원 행 누락·미실행·실패, 권한 매핑 검토, 정적 출력 인덱스 누락을 도구별로 찾기 위한 안내다. 이 줄이 없는 도구도 정확한 Client 동작·조합·독립 승인이 완료됐다는 뜻은 아니다. 현재 Playwright MCP 후보는 세 지원 검사가 `NOT_RUN`이고 권한 매핑·출력 인덱스가 없어 해당 도구에 세 가지 검토 이유가 표시된다.
 
 테스트: `python -m unittest discover -s tools/tests -p 'test_*.py' -v`. 알려진 해시 벡터는 Java `CatalogBundleLoaderTest`의 값과 교차 확인한다. Java 후보 명령은 `CatalogCandidateValidatorCommandTest`에서 정상·무결성 실패·해시는 유효하지만 의미 스키마가 잘못된 입력·누락/과대 출력·조합 출력 초과를 확인한다.
+
+## 두 후보의 재검토 범위 비교
+
+기존 후보와 수정 후보가 있을 때 아래 로컬 명령은 두 매니페스트의 해시 및 의미 스키마를 검증한 뒤 다시 검토할 도구·조합을 출력한다. 도구 버전·지원 행·권한 매핑/근거·관계 변경은 해당 도구를 표시한다. 정적 템플릿/가이드 또는 전역 Capability 선언이 바뀌면 영향을 좁게 증명할 수 없으므로 모든 도구를 보수적으로 표시한다. 해당 도구를 포함한 검증 조합도 다시 표시한다.
+
+```powershell
+cd services/core-api
+mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.CatalogRevisionImpactCommand' '-Dspring-boot.run.arguments=<기존-후보-절대경로> <수정-후보-절대경로>' spring-boot:run
+```
+
+`TOOL_REVIEW_REQUIRED`와 `COMBINATION_REVIEW_REQUIRED`는 변경 영향 조사 목록이다. `CATALOG_NOT_APPROVED`가 항상 출력되며, 이 명령은 지원 상태를 `PASS`로 바꾸거나 릴리스를 활성화하지 않는다. 2026-10-12에 원본 Playwright MCP 후보와 안내 초안 후보를 비교했을 때 정적 안내 파일 추가로 `playwright-mcp` 재검토가 보고됐다.
