@@ -68,7 +68,8 @@ class PreviewCreationServiceTest {
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 request.basis(), request.target(), offered, Map.of(),
-                Set.of("cap_document_reference", "cap_browser_verification")),
+                new PreviewCreationService.RequiredCapabilities(offered.recommendationId(),
+                    offered.basis(), Set.of("cap_document_reference", "cap_browser_verification"))),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
             (trusted, draft) -> {
                 assertEquals(List.of("example-tool"), draft.selectedToolKeys());
@@ -90,7 +91,7 @@ class PreviewCreationServiceTest {
         var foreign = new PreviewCreationService.TrustedContext(
             new PreviewBasis("other-project", 1, "profile-1", 1, "event-1", 0, 0, 1,
                 "synthetic-recommendation", hash), request.target(), context(request).recommendation(),
-            Map.of(), Set.of("cap_document_reference"));
+            Map.of(), required(context(request).recommendation()));
         AtomicInteger catalogReads = new AtomicInteger();
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> foreign,
@@ -99,6 +100,24 @@ class PreviewCreationServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.create("project-1", request));
         assertEquals(0, catalogReads.get());
+    }
+
+    @Test
+    void rejectsCapabilitiesFromAnotherRecommendationOrBasis() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        var recommendation = context(request).recommendation();
+
+        assertThrows(IllegalArgumentException.class, () -> new PreviewCreationService.TrustedContext(
+            request.basis(), request.target(), recommendation, Map.of(),
+            new PreviewCreationService.RequiredCapabilities("other-rec", request.basis(),
+                Set.of("cap_document_reference"))));
+        var otherBasis = new PreviewBasis("project-1", 2, "profile-1", 1, "event-1", 0, 0, 1,
+            "synthetic-recommendation", hash);
+        assertThrows(IllegalArgumentException.class, () -> new PreviewCreationService.TrustedContext(
+            request.basis(), request.target(), recommendation, Map.of(),
+            new PreviewCreationService.RequiredCapabilities("rec-1", otherBasis,
+                Set.of("cap_document_reference"))));
     }
 
     @Test
@@ -135,7 +154,7 @@ class PreviewCreationServiceTest {
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 request.basis(), request.target(), context(request).recommendation(),
-                Map.of("runtime", "1.0"), Set.of("cap_document_reference")),
+                Map.of("runtime", "1.0"), required(context(request).recommendation())),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
             (trusted, draft) -> new StoredPreviewState("preview-1", draft.basis(),
                 draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
@@ -147,9 +166,16 @@ class PreviewCreationServiceTest {
     }
 
     private static PreviewCreationService.TrustedContext context(CatalogPreviewRequest request) {
+        var recommendation = new StoredRecommendationState("rec-1", request.basis(),
+            Status.RECOMMENDED, List.of("example-tool"));
         return new PreviewCreationService.TrustedContext(request.basis(), request.target(),
-            new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
-                List.of("example-tool")), Map.of(), Set.of("cap_document_reference"));
+            recommendation, Map.of(), required(recommendation));
+    }
+
+    private static PreviewCreationService.RequiredCapabilities required(
+        StoredRecommendationState recommendation) {
+        return new PreviewCreationService.RequiredCapabilities(recommendation.recommendationId(),
+            recommendation.basis(), Set.of("cap_document_reference"));
     }
 
     private static CatalogPreviewRequest request(String hash) {

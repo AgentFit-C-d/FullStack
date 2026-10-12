@@ -31,17 +31,32 @@ public final class PreviewCreationService {
         StoredPreviewState saveIfUnchanged(TrustedContext context, Draft draft);
     }
 
+    /** B2 claims must be restored from the same stored recommendation used for Preview. */
+    public record RequiredCapabilities(String recommendationId, PreviewBasis basis,
+                                       Set<String> keys) {
+        public RequiredCapabilities {
+            if (recommendationId == null || recommendationId.isBlank() || basis == null) {
+                throw new IllegalArgumentException("required capability source missing");
+            }
+            keys = Set.copyOf(Objects.requireNonNull(keys));
+            if (keys.isEmpty() || !CapabilityKey.keys().containsAll(keys)) {
+                throw new IllegalArgumentException("invalid required capabilities");
+            }
+        }
+    }
+
     public record TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
                                  StoredRecommendationState recommendation,
                                  Map<String, String> installedToolVersions,
-                                 Set<String> requiredCapabilityKeys) {
+                                 RequiredCapabilities requiredCapabilities) {
         public TrustedContext {
             installedToolVersions = Collections.unmodifiableMap(
                 new HashMap<>(Objects.requireNonNull(installedToolVersions)));
-            requiredCapabilityKeys = Set.copyOf(Objects.requireNonNull(requiredCapabilityKeys));
-            if (requiredCapabilityKeys.isEmpty()
-                || !CapabilityKey.keys().containsAll(requiredCapabilityKeys)) {
-                throw new IllegalArgumentException("confirmed required capabilities required");
+            Objects.requireNonNull(requiredCapabilities);
+            if (recommendation == null
+                || !requiredCapabilities.recommendationId().equals(recommendation.recommendationId())
+                || !requiredCapabilities.basis().equals(recommendation.basis())) {
+                throw new IllegalArgumentException("required capabilities belong to another recommendation");
             }
         }
     }
@@ -94,7 +109,7 @@ public final class PreviewCreationService {
         CatalogPreviewAssembler.Assembled assembled = CatalogPreviewAssembler.assembleWithCoverage(
             catalog.directory(), catalog.approvedHash(), context.recommendation(),
             context.currentBasis(), context.currentTarget(), request,
-            context.installedToolVersions(), context.requiredCapabilityKeys());
+            context.installedToolVersions(), context.requiredCapabilities().keys());
         PreviewFingerprintResult preview = assembled.preview();
         Draft draft = new Draft(context.currentBasis(), request.recommendationId(),
             request.selectedToolKeys(), request.permissionSelections(), request.existingState(),

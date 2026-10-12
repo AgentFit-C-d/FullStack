@@ -75,7 +75,8 @@ class PhaseOneBWorkflowTest {
         var previewService = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 created.basis(), TARGET, recommendation.get(), Map.of(),
-                Set.of("cap_document_reference")),
+                new PreviewCreationService.RequiredCapabilities(created.recommendationId(),
+                    created.basis(), Set.of("cap_document_reference"))),
             () -> catalog,
             (context, draft) -> {
                 var saved = new StoredPreviewState("preview-1", draft.basis(),
