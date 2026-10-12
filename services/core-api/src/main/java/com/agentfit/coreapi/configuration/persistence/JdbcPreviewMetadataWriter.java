@@ -104,20 +104,18 @@ public final class JdbcPreviewMetadataWriter {
             throw new IllegalArgumentException("duplicate or null selected tool");
         }
         Map<String, UUID> matches = new HashMap<>();
-        Set<String> required = new HashSet<>();
         try (PreparedStatement query = connection.prepareStatement(
-            "SELECT id, tool_key, required FROM recommendation_item WHERE recommendation_id = ?")) {
+            "SELECT id, tool_key FROM recommendation_item WHERE recommendation_id = ?")) {
             query.setObject(1, recommendationId);
             try (ResultSet rows = query.executeQuery()) {
                 while (rows.next()) {
                     String key = rows.getString("tool_key");
-                    if (rows.getBoolean("required")) required.add(key);
                     if (unique.contains(key)) matches.put(key, rows.getObject("id", UUID.class));
                 }
             }
         }
-        if (matches.size() != unique.size() || !unique.containsAll(required)) {
-            throw new IllegalArgumentException("Preview selection is outside recommendation or omits required tool");
+        if (matches.size() != unique.size()) {
+            throw new IllegalArgumentException("Preview selection is outside recommendation");
         }
         return matches;
     }

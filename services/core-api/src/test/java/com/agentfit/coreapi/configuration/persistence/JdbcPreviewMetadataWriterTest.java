@@ -164,21 +164,47 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
-    void rejectsSelectionThatOmitsRequiredRecommendationItem() throws Exception {
-        UUID optionalItem = UUID.randomUUID();
+    void storesValidPartialSelectionWhenAnotherRecommendedItemIsRequired() throws Exception {
+        UUID otherItem = UUID.randomUUID();
         try (Statement statement = connection.createStatement()) {
-            statement.execute("INSERT INTO recommendation_item VALUES ('" + optionalItem + "', '"
-                + RECOMMENDATION + "', 'tool-b', '1.0', 'support-b', false, 'reason', 'AI')");
+            statement.execute("INSERT INTO recommendation_item VALUES ('" + otherItem + "', '"
+                + RECOMMENDATION + "', 'tool-b', '1.0', 'support-b', true, 'reason', 'AI')");
         }
-        var original = draft(basis());
-        var onlyOptional = new PreviewCreationService.Draft(original.basis(),
-            original.recommendationId(), List.of("tool-b"), List.of(),
-            original.existingState(), original.fileMetadata(), original.generatorVersion(),
-            original.selectionDigest(), original.contentDigest(), original.fingerprint());
+        var saved = new JdbcPreviewMetadataWriter().write(connection,
+            UUID.randomUUID().toString(), calculatedDraft(),
+            Instant.parse("2026-10-11T05:00:00Z"), Instant.parse("2026-10-11T05:10:00Z"));
 
-        assertThrows(IllegalArgumentException.class,
-            () -> new JdbcPreviewMetadataWriter().write(connection, UUID.randomUUID().toString(),
-                onlyOptional, Instant.now(), Instant.now().plusSeconds(600)));
+        try (Statement statement = connection.createStatement()) {
+            assertEquals(1, count(statement, "config_preview"));
+            assertEquals(1, count(statement, "config_selection"));
+            try (ResultSet row = statement.executeQuery(
+                "SELECT ri.tool_key FROM config_selection cs JOIN recommendation_item ri "
+                    + "ON ri.id = cs.recommendation_item_id WHERE cs.preview_id = '"
+                    + saved.previewId() + "'")) {
+                assertTrue(row.next());
+                assertEquals("tool-a", row.getString(1));
+                assertFalse(row.next());
+            }
+        }
+    }
+
+    @Test
+    void rejectsToolOutsideStoredRecommendationEvenWithValidFingerprint() throws Exception {
+        var input = new PreviewFingerprintInput(basis(), RECOMMENDATION.toString(),
+            List.of("outside-tool"), List.of(), "static-v1",
+            List.of(new PreviewInputFile("main", "config/main.txt", "safe config\n")),
+            ExistingState.UNKNOWN, List.of());
+        var computed = PreviewFingerprint.compute(input);
+        var draft = new PreviewCreationService.Draft(basis(), RECOMMENDATION.toString(),
+            input.selectedToolIds(), input.policies(), input.existingState(),
+            computed.files().stream().map(file -> new PreviewCreationService.FileMetadata(
+                file.targetKey(), file.relativePath(), file.action(), file.beforeHash(),
+                file.afterHash())).toList(), input.generatorVersion(), computed.selectionDigest(),
+            computed.contentDigest(), computed.fingerprint());
+
+        assertThrows(IllegalArgumentException.class, () -> new JdbcPreviewMetadataWriter().write(
+            connection, UUID.randomUUID().toString(), draft,
+            Instant.parse("2026-10-11T05:00:00Z"), Instant.parse("2026-10-11T05:10:00Z")));
         try (Statement statement = connection.createStatement()) {
             assertEquals(0, count(statement, "config_preview"));
         }
