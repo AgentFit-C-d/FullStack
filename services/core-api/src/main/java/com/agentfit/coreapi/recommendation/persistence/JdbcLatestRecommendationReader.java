@@ -21,7 +21,19 @@ public final class JdbcLatestRecommendationReader {
     /** Restores B1-B4 fields needed by the latest recommendation response, without AI reruns. */
     public JdbcRecommendationMetadataWriter.Draft latestMetadata(Connection transaction,
                                                                  String projectId) throws SQLException {
-        StoredRecommendationState stored = latest(transaction, projectId);
+        return metadata(transaction, latest(transaction, projectId));
+    }
+
+    /** Restores the exact project-owned recommendation and its B2 required Capability claims. */
+    public JdbcRecommendationMetadataWriter.Draft byIdMetadata(Connection transaction,
+                                                               String projectId,
+                                                               String recommendationId) throws SQLException {
+        return metadata(transaction, byId(transaction, projectId, recommendationId));
+    }
+
+    private static JdbcRecommendationMetadataWriter.Draft metadata(Connection transaction,
+                                                                   StoredRecommendationState stored)
+        throws SQLException {
         if (stored == null) return null;
         UUID id = uuid(stored.recommendationId());
         JdbcRecommendationMetadataWriter.EvidenceLevel evidence;

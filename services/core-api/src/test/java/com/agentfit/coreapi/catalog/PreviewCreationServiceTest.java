@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -53,7 +54,33 @@ class PreviewCreationServiceTest {
         assertEquals("preview-1", created.saved().previewId());
         assertEquals("literal config\n", created.preview().files().getFirst().content());
         assertEquals(created.preview().fingerprint(), created.saved().fingerprint());
+        assertTrue(created.coverage().complete());
+        assertEquals(List.of(), created.coverage().unmetCapabilityKeys());
         assertEquals(1, saves.get());
+    }
+
+    @Test
+    void savesPartialChoiceAndReturnsUnmetRequiredCapability() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithDistinctFallbackCapability(directory);
+        var request = request(hash);
+        var offered = new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
+            List.of("example-tool", "fallback-tool"));
+        var service = new PreviewCreationService(
+            (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
+                request.basis(), request.target(), offered, Map.of(),
+                Set.of("cap_document_reference", "cap_browser_verification")),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            (trusted, draft) -> {
+                assertEquals(List.of("example-tool"), draft.selectedToolKeys());
+                return new StoredPreviewState("preview-1", draft.basis(),
+                    draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
+                    Instant.parse("2026-10-10T12:00:00Z"));
+            });
+
+        var created = service.create("project-1", request);
+
+        assertEquals(List.of("cap_browser_verification"), created.coverage().unmetCapabilityKeys());
+        assertFalse(created.coverage().complete());
     }
 
     @Test
@@ -62,7 +89,8 @@ class PreviewCreationServiceTest {
         var request = request(hash);
         var foreign = new PreviewCreationService.TrustedContext(
             new PreviewBasis("other-project", 1, "profile-1", 1, "event-1", 0, 0, 1,
-                "synthetic-recommendation", hash), request.target(), context(request).recommendation());
+                "synthetic-recommendation", hash), request.target(), context(request).recommendation(),
+            Map.of(), Set.of("cap_document_reference"));
         AtomicInteger catalogReads = new AtomicInteger();
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> foreign,
@@ -107,7 +135,7 @@ class PreviewCreationServiceTest {
         var service = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
                 request.basis(), request.target(), context(request).recommendation(),
-                Map.of("runtime", "1.0")),
+                Map.of("runtime", "1.0"), Set.of("cap_document_reference")),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
             (trusted, draft) -> new StoredPreviewState("preview-1", draft.basis(),
                 draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
@@ -121,7 +149,7 @@ class PreviewCreationServiceTest {
     private static PreviewCreationService.TrustedContext context(CatalogPreviewRequest request) {
         return new PreviewCreationService.TrustedContext(request.basis(), request.target(),
             new StoredRecommendationState("rec-1", request.basis(), Status.RECOMMENDED,
-                List.of("example-tool")));
+                List.of("example-tool")), Map.of(), Set.of("cap_document_reference"));
     }
 
     private static CatalogPreviewRequest request(String hash) {

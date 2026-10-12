@@ -24,6 +24,11 @@ import java.util.Set;
 public final class CatalogPreviewAssembler {
     private CatalogPreviewAssembler() {}
 
+    public record Assembled(PreviewFingerprintResult preview,
+                            PreviewCapabilityCoverage.Result coverage) {}
+
+    private record Prepared(PreviewFingerprintInput input, ParsedCatalog catalog) {}
+
     public static PreviewFingerprintResult assemble(Path releaseDirectory, String approvedCatalogHash,
                                                      StoredRecommendationState storedRecommendation,
                                                      PreviewBasis currentBasis,
@@ -43,6 +48,20 @@ public final class CatalogPreviewAssembler {
             storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions));
     }
 
+    public static Assembled assembleWithCoverage(Path releaseDirectory, String approvedCatalogHash,
+                                                  StoredRecommendationState storedRecommendation,
+                                                  PreviewBasis currentBasis,
+                                                  EnvironmentTarget currentTarget,
+                                                  CatalogPreviewRequest request,
+                                                  Map<String, String> trustedInstalledVersions,
+                                                  Set<String> requiredCapabilityKeys) {
+        Prepared prepared = prepareDetailed(releaseDirectory, approvedCatalogHash,
+            storedRecommendation, currentBasis, currentTarget, request, trustedInstalledVersions);
+        var coverage = PreviewCapabilityCoverage.evaluate(prepared.catalog().release(), currentTarget,
+            requiredCapabilityKeys, request.selectedToolKeys(), trustedInstalledVersions);
+        return new Assembled(PreviewFingerprint.compute(prepared.input()), coverage);
+    }
+
     static PreviewFingerprintInput prepare(Path releaseDirectory, String approvedCatalogHash,
                                            StoredRecommendationState storedRecommendation,
                                            PreviewBasis currentBasis,
@@ -58,6 +77,16 @@ public final class CatalogPreviewAssembler {
                                            EnvironmentTarget currentTarget,
                                            CatalogPreviewRequest request,
                                            Map<String, String> trustedInstalledVersions) {
+        return prepareDetailed(releaseDirectory, approvedCatalogHash, storedRecommendation,
+            currentBasis, currentTarget, request, trustedInstalledVersions).input();
+    }
+
+    private static Prepared prepareDetailed(Path releaseDirectory, String approvedCatalogHash,
+                                            StoredRecommendationState storedRecommendation,
+                                            PreviewBasis currentBasis,
+                                            EnvironmentTarget currentTarget,
+                                            CatalogPreviewRequest request,
+                                            Map<String, String> trustedInstalledVersions) {
         if (request == null || request.basis() == null || request.selectedToolKeys() == null
             || request.selectedToolKeys().isEmpty()
             || request.selectedToolKeys().stream().anyMatch(key -> key == null || key.isBlank())
@@ -100,9 +129,10 @@ public final class CatalogPreviewAssembler {
         List<PreviewInputFile> generated = CatalogStaticTemplateRenderer.render(bundle,
             approvedCatalogHash, selected);
         PreviewAssemblyLimits.validateGenerated(generated);
-        return new PreviewFingerprintInput(request.basis(),
+        var input = new PreviewFingerprintInput(request.basis(),
             request.recommendationId(), request.selectedToolKeys(), validatedPolicies,
             request.generatorVersion(), generated, request.existingState(), request.providedFiles());
+        return new Prepared(input, parsed);
     }
 
     public static final class InvalidAssemblyException extends IllegalArgumentException {

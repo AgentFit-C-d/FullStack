@@ -50,6 +50,11 @@ final class SyntheticCatalogBundle {
         return write(directory, true, "literal config\n", false, false, "PASS", true);
     }
 
+    static String writeWithDistinctFallbackCapability(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", true, false,
+            "PASS", false, false, true);
+    }
+
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination) throws Exception {
         return write(directory, includeTemplate, templateContent, includeFallback,
@@ -74,6 +79,14 @@ final class SyntheticCatalogBundle {
                                 boolean includeFallback, boolean oversizedCombination,
                                 String standaloneCheck, boolean installedDependency,
                                 boolean withoutSupport) throws Exception {
+        return write(directory, includeTemplate, templateContent, includeFallback,
+            oversizedCombination, standaloneCheck, installedDependency, withoutSupport, false);
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback, boolean oversizedCombination,
+                                String standaloneCheck, boolean installedDependency,
+                                boolean withoutSupport, boolean fallbackCoversBrowser) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -89,7 +102,8 @@ final class SyntheticCatalogBundle {
                 + "\"capabilityKeys\":[],\"includedComponentKeys\":[\"runtime-component\"]}" : "")
             + (includeFallback ? ", {\"key\":\"fallback-tool\",\"version\":\"1.0\","
                 + "\"name\":\"Fallback Tool\",\"kind\":\"SKILL\",\"sourceUrl\":\"https://example.org/fallback-tool\","
-                + "\"capabilityKeys\":[\"cap_document_reference\"],"
+                + "\"capabilityKeys\":[\"" + (fallbackCoversBrowser
+                    ? "cap_browser_verification" : "cap_document_reference") + "\"],"
                 + "\"includedComponentKeys\":[\"fallback-component\"]}" : "") + "]}");
         files.put("support-matrix.json", "{\"schemaVersion\":1,\"items\":[{\"key\":\"support-1\","
             + "\"toolKey\":\"example-tool\",\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","

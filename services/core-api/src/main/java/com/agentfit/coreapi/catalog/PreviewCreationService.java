@@ -6,6 +6,7 @@ import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
 import com.agentfit.coreapi.configuration.preview.PreviewFingerprintResult;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import com.agentfit.coreapi.recommendation.selection.StoredRecommendationState;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * B's Preview creation boundary. Existing files and generated content stay transient;
@@ -31,15 +33,16 @@ public final class PreviewCreationService {
 
     public record TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
                                  StoredRecommendationState recommendation,
-                                 Map<String, String> installedToolVersions) {
-        public TrustedContext(PreviewBasis currentBasis, EnvironmentTarget currentTarget,
-                              StoredRecommendationState recommendation) {
-            this(currentBasis, currentTarget, recommendation, Map.of());
-        }
-
+                                 Map<String, String> installedToolVersions,
+                                 Set<String> requiredCapabilityKeys) {
         public TrustedContext {
             installedToolVersions = Collections.unmodifiableMap(
                 new HashMap<>(Objects.requireNonNull(installedToolVersions)));
+            requiredCapabilityKeys = Set.copyOf(Objects.requireNonNull(requiredCapabilityKeys));
+            if (requiredCapabilityKeys.isEmpty()
+                || !CapabilityKey.keys().containsAll(requiredCapabilityKeys)) {
+                throw new IllegalArgumentException("confirmed required capabilities required");
+            }
         }
     }
 
@@ -61,7 +64,8 @@ public final class PreviewCreationService {
     public record FileMetadata(String targetKey, String relativePath, PreviewFile.Action action,
                                String beforeHash, String afterHash) {}
 
-    public record Created(StoredPreviewState saved, PreviewFingerprintResult preview) {}
+    public record Created(StoredPreviewState saved, PreviewFingerprintResult preview,
+                          PreviewCapabilityCoverage.Result coverage) {}
 
     private final TrustedContextReader contexts;
     private final RecommendationCreationService.ApprovedCatalogReader catalogs;
@@ -87,10 +91,11 @@ public final class PreviewCreationService {
             throw new IllegalArgumentException("Preview context belongs to another project");
         }
         var catalog = Objects.requireNonNull(catalogs.current());
-        PreviewFingerprintResult preview = CatalogPreviewAssembler.assemble(
+        CatalogPreviewAssembler.Assembled assembled = CatalogPreviewAssembler.assembleWithCoverage(
             catalog.directory(), catalog.approvedHash(), context.recommendation(),
             context.currentBasis(), context.currentTarget(), request,
-            context.installedToolVersions());
+            context.installedToolVersions(), context.requiredCapabilityKeys());
+        PreviewFingerprintResult preview = assembled.preview();
         Draft draft = new Draft(context.currentBasis(), request.recommendationId(),
             request.selectedToolKeys(), request.permissionSelections(), request.existingState(),
             preview.files().stream().map(file -> new FileMetadata(file.targetKey(),
@@ -105,6 +110,6 @@ public final class PreviewCreationService {
             || !saved.createdAt().isBefore(saved.expiresAt())) {
             throw new IllegalStateException("Preview metadata was not saved correctly");
         }
-        return new Created(saved, preview);
+        return new Created(saved, preview, assembled.coverage());
     }
 }

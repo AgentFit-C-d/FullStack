@@ -74,7 +74,8 @@ class PhaseOneBWorkflowTest {
         AtomicReference<StoredPreviewState> storedPreview = new AtomicReference<>();
         var previewService = new PreviewCreationService(
             (projectId, recommendationId) -> new PreviewCreationService.TrustedContext(
-                created.basis(), TARGET, recommendation.get()),
+                created.basis(), TARGET, recommendation.get(), Map.of(),
+                Set.of("cap_document_reference")),
             () -> catalog,
             (context, draft) -> {
                 var saved = new StoredPreviewState("preview-1", draft.basis(),

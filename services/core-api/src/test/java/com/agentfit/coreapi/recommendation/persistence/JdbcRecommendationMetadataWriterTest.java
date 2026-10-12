@@ -265,8 +265,11 @@ class JdbcRecommendationMetadataWriterTest {
         assertEquals(earlier.id(), stored.recommendationId());
         assertEquals(earlier.basis(), stored.basis());
         assertEquals(List.of("tool-a"), stored.toolKeys());
+        var metadata = reader.byIdMetadata(connection, PROJECT.toString(), earlier.id());
+        assertEquals(Set.copyOf(earlier.capabilities()), Set.copyOf(metadata.capabilities()));
         assertEquals(later.id(), reader.latest(connection, PROJECT.toString()).recommendationId());
         assertNull(reader.byId(connection, UUID.randomUUID().toString(), earlier.id()));
+        assertNull(reader.byIdMetadata(connection, UUID.randomUUID().toString(), earlier.id()));
         assertNull(reader.byId(connection, PROJECT.toString(), UUID.randomUUID().toString()));
     }
 
