@@ -40,7 +40,9 @@ Claude Code `2.1.270`에서도 사용자·프로젝트 MCP 설정을 수정하�
 
 2026-10-12 검사기를 보완해 두 프로세스의 전체 `tools/list` 응답(이름·설명·입력 스키마 포함)을 비교한다. 이전에는 도구 개수와 `unsafe` 도구명만 같으면 일반 도구 목록이 바뀌어도 통과했다. 회귀 시험은 동일 개수의 일반 도구가 재시작 후 바뀐 경우를 실패로 확인한다. 이 보완은 검사기 자체의 판정 정확도이며 실제 Playwright MCP 후보를 새로 실행하거나 Catalog를 승인한 결과는 아니다.
 
-이 PC에서 `@playwright/mcp@0.0.83`을 격리 설치하고 일반 실행 환경에서 검사한 결과 두 번 모두 성공했다. 반환값은 `status=LOCAL_PILOT_ONLY`, `runs=2`, `server=Playwright`, `toolCount=25`, `version=1.64.0-alpha-1790635538000`이고, 목록에 `browser_run_code_unsafe`가 있었다. 제한된 샌드박스에서는 Edge 임시 프로필 접근 때문에 실패했으며, 격리 폴더·생성 스냅샷은 검사 후 삭제했다. 이 자동 검사는 **직접 MCP 클라이언트의 로컬 페이지·재시작 시험**만 반복한다. Claude Code 연결, 실제 업무 사이트, 권한 집행, 구성 파일·조합·복구 및 독립 승인 결과를 대신하지 않는다. 따라서 후보 `support-matrix.json`은 계속 `NOT_RUN`이다.
+2026-10-12에는 Claude Code Client 연결도 다시 확인했다. 별도 임시 폴더에 `@playwright/mcp@0.0.83`을 `--ignore-scripts`로 설치하고, 임시 JSON의 `mcpServers.agentfit_pilot`에 해당 폴더의 CLI 절대 경로와 `--browser msedge --headless --isolated` 인자를 지정했다. Claude Code `2.1.270`을 `--mcp-config <임시 JSON> --strict-mcp-config --allowedTools mcp__agentfit_pilot__browser_navigate --disallowedTools mcp__agentfit_pilot__browser_snapshot --tools '' --no-session-persistence`로 실행했다. 비용 상한 USD 0.10과 로컬 `data:` URL만 여는 프롬프트를 지정했고, 호출 결과에는 `AgentFit Pilot` 제목이 반환됐다. 임시 작업 폴더의 Playwright 접근성 스냅샷에도 `heading "AgentFit Pilot"`이 있었다. 호출 비용은 약 USD 0.078이었다. 제한된 샌드박스의 첫 호출은 결과 없이 지연돼 중단했고, 네트워크 허용 환경의 재실행에서 성공했다. 사용자·프로젝트 MCP 설정은 변경하지 않았다. `claude mcp list`는 이 임시 `--mcp-config` 서버를 나열하지 않았으므로 그 명령의 출력은 연결 검증 증거로 사용하지 않았다. 이 시험은 로컬 페이지 탐색 1건만 입증하며 권한 거부 동작을 이번에 재검증한 것은 아니다.
+
+이 PC에서 `@playwright/mcp@0.0.83`을 격리 설치하고 일반 실행 환경에서 Python 검사기를 실행한 결과 두 번 모두 성공했다. 반환값은 `status=LOCAL_PILOT_ONLY`, `runs=2`, `server=Playwright`, `toolCount=25`, `version=1.64.0-alpha-1790635538000`이고, 목록에 `browser_run_code_unsafe`가 있었다. 제한된 샌드박스에서는 Edge 임시 프로필 접근 때문에 실패했으며, 격리 폴더·생성 스냅샷은 검사 후 삭제했다. **Python 검사기 자체는 직접 MCP 클라이언트의 로컬 페이지·재시작 시험**만 반복한다. 위의 별도 Claude Code 시험도 실제 업무 사이트, 권한 집행, 구성 파일·조합·복구 및 독립 승인 결과를 대신하지 않는다. 따라서 후보 `support-matrix.json`은 계속 `NOT_RUN`이다.
 
 1. 팀이 이 도구와 정확한 npm 버전, Windows/Claude Code 버전을 1차 검증 대상으로 채택한다.
 2. 설치된 패키지의 출처·배포물 해시·알파 의존성 허용 여부를 검토한다.
