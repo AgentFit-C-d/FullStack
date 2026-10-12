@@ -37,6 +37,11 @@ final class SyntheticCatalogBundle {
         return write(directory, true, "literal config\n", false, false, "FAIL");
     }
 
+    static String writeWithUnreviewedSupportAndOutput(Path directory, String templateContent)
+        throws Exception {
+        return write(directory, true, templateContent, false, false, "NOT_RUN");
+    }
+
     static String writeWithoutSupport(Path directory) throws Exception {
         return write(directory, true, "literal config\n", false, false, "PASS", false, true);
     }

@@ -59,6 +59,16 @@ class CatalogCandidateValidatorCommandTest {
     }
 
     @Test
+    void rejectsOversizedSubmittedOutputBeforeSupportIsApproved() throws Exception {
+        SyntheticCatalogBundle.writeWithUnreviewedSupportAndOutput(directory,
+            "x".repeat(100_001));
+        var result = run(directory);
+        assertEquals(1, result.exitCode());
+        assertTrue(result.stderr().contains("CANDIDATE_INVALID"));
+        assertTrue(result.stdout().isEmpty());
+    }
+
+    @Test
     void reportsMissingSupportReviewAsReleaseBlocker() throws Exception {
         SyntheticCatalogBundle.writeWithoutSupport(directory);
         var result = run(directory);

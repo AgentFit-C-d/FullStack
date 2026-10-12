@@ -23,8 +23,9 @@ public final class CatalogCandidateValidatorCommand {
         try {
             VerifiedCatalogBundle bundle = CatalogBundleLoader.load(Path.of(args[0]));
             ParsedCatalog candidate = CatalogSemanticParser.parse(bundle);
+            boolean hasOutputIndex = bundle.files().containsKey("templates/index.json");
             for (var tool : candidate.release().tools().values()) {
-                if (tool.support().stream().noneMatch(row ->
+                if (!hasOutputIndex && tool.support().stream().noneMatch(row ->
                     row.documentation() == Check.PASS && row.format() == Check.PASS
                         && row.standalone() == Check.PASS)) {
                     continue;
