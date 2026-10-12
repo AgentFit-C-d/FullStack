@@ -105,6 +105,21 @@ class RecommendationLatestDetailsServiceTest {
             () -> service.latest(draft.basis().projectId()));
     }
 
+    @Test
+    void rejectsIncompleteStoredMetadataBeforeReturningLatestResult() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var original = storedRecommendation(hash);
+        var incomplete = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            original.capabilities().subList(0, original.capabilities().size() - 1),
+            original.items(), original.notices());
+        var service = service(original.basis(), incomplete, () ->
+            new RecommendationCreationService.ApprovedCatalog(directory, hash));
+
+        assertThrows(IllegalArgumentException.class,
+            () -> service.latest(original.basis().projectId()));
+    }
+
     private RecommendationLatestDetailsService service(PreviewBasis current,
         JdbcRecommendationMetadataWriter.Draft stored,
         RecommendationCreationService.ApprovedCatalogReader catalog) {

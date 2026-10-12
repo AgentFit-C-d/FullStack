@@ -44,6 +44,11 @@ public final class JdbcRecommendationMetadataWriter {
         insertNotices(transaction, id, draft.notices());
     }
 
+    /** Validates restored B1-B4 metadata before it crosses a read boundary. */
+    public static void requireValid(Draft draft) {
+        validate(draft);
+    }
+
     static void validate(Draft draft) {
         if (draft == null || draft.basis() == null || draft.status() == null
             || draft.evidenceLevel() == null || draft.createdAt() == null

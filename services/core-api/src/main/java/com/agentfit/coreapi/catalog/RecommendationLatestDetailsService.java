@@ -67,6 +67,7 @@ public final class RecommendationLatestDetailsService {
         RecommendationReadModel.latest(null, current.basis());
         var stored = metadataReader.latest(projectId);
         if (stored == null) return null;
+        JdbcRecommendationMetadataWriter.requireValid(stored);
         List<String> keys = stored.items().stream().map(JdbcRecommendationMetadataWriter.Item::toolKey).toList();
         var summary = RecommendationReadModel.latest(new StoredRecommendationState(
             stored.id(), stored.basis(), stored.status(), keys), current.basis());
