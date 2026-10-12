@@ -13,11 +13,21 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api)에서 Skill을 검색�
 
 `SkillsShReviewQueue.classify`는 후보 스냅샷과 별도 검토 결정 목록을 받아 `PENDING`, `SHORTLISTED`, `REJECTED`, `CHANGED`를 계산한다. 결정에는 후보 ID와 검토 당시 해시·이름·검토자·시각을 묶는다. 해시나 이름이 바뀌면 과거 SHORTLISTED/REJECTED 판단은 `CHANGED`가 된다. 관측 시각만 바뀐 경우에는 기존 판단을 유지한다. SHORTLISTED는 Catalog 검증 완료나 사용자 추천 가능을 의미하지 않는다. 검토 결정의 DB 저장·관리자 화면은 A 계약 전까지 없다.
 
+## 로컬 후보 갱신 명령
+
+`SkillsShCandidateRefreshCommand`는 기존 수집기와 스냅샷 갱신기를 연결하는 **관리자 로컬 실행 진입점**이다. `services/core-api`에서 실행하며, 연동된 Vercel 프로젝트가 발급한 유효한 `VERCEL_OIDC_TOKEN`을 프로세스 환경에서 제공해야 한다. 토큰을 명령 인자나 저장 파일에 넣지 않는다.
+
+```powershell
+mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsShCandidateRefreshCommand' '-Dspring-boot.run.arguments=react 20 ../../catalog-candidates/skills-sh-candidates.json' spring-boot:run
+```
+
+성공 시 변경·신규 후보 수와 `CATALOG_NOT_APPROVED`를 출력한다. 인증·API·스냅샷 오류면 실패하고 이전 파일을 유지한다. 이 명령은 제품 Catalog를 생성·승인하거나 추천에 연결하지 않는다. 실제 OIDC 토큰을 이용한 실서버 호출은 아직 검증하지 않았다.
+
 ## 아직 필요한 연결
 
 - 2026-10-10 [skills.sh 공식 API 문서](https://www.skills.sh/docs/api)를 재확인했다. 검색·상세 경로, `Authorization: Bearer` 형식, 검색 `data`와 상세 `id`/`source`/`hash`는 현재 수집 코드의 가정과 맞는다. 상세 `hash`는 스냅샷이 없으면 `null`일 수 있으므로 현재 코드는 해당 후보를 거부한다. 이 확인은 문서 계약 점검이며 실서버 호출 성공이나 Catalog 검증은 아니다.
 - 공식 인증 방식은 **Vercel 프로젝트 OIDC 토큰**이다. 배포 대상이 아직 정해지지 않아 Spring Boot 서버에서 이 토큰을 안전하게 발급·전달·갱신할 방법은 미확정이다. 일반 사용자 로그인 토큰이나 임의의 고정 API 키로 대체하지 않는다. 이 작업에서는 실서버 호출을 하지 않았다.
-- 관리자가 실행할 보호된 수집 진입점, 검토 대기 UI/승인 기록, 검증된 Catalog 릴리스 생성 절차는 미구현이다. 현 코드는 호출 가능한 서버 내부 컴포넌트와 파일 스테이징까지다.
+- 로컬 관리용 갱신 명령은 추가됐지만, 서버의 보호된 수집 API·배치, 검토 대기 UI/승인 기록, 검증된 Catalog 릴리스 생성 절차는 미구현이다.
 - API 응답에는 AgentFit의 OS·Client 버전 호환성, 권한, 의존성·충돌 검증 결과가 없다. 해시 변경은 재검토 신호이지 품질·보안 검증이 아니다.
 
 ## 검증
