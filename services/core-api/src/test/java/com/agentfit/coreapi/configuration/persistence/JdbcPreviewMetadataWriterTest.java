@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Opt-in real PostgreSQL test: no A tables or test data survive the rollback. */
 @EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
 class JdbcPreviewMetadataWriterTest {
-    private static final UUID PROJECT = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final String PROJECT = "project-1";
     private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final UUID RECOMMENDATION = UUID.fromString("44444444-4444-4444-4444-444444444444");

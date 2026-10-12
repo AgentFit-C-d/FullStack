@@ -3,6 +3,7 @@ package com.agentfit.coreapi.configuration.persistence;
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.persistence.ProjectDbId;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -31,7 +32,7 @@ public final class JdbcStoredPreviewReader {
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("Preview read requires a caller-owned transaction");
         }
-        UUID project = uuid(projectId);
+        String project = ProjectDbId.require(projectId);
         UUID id = uuid(requestedId);
         String sql = "SELECT cp.id AS preview_id, cp.recommendation_id, cp.fingerprint, "
             + "cp.created_at, cp.expires_at, cp.approval_id, cp.approved_at, "
@@ -44,7 +45,7 @@ public final class JdbcStoredPreviewReader {
             + (byApproval ? "cp.approval_id = ? " : "cp.id = ? ")
             + "FOR SHARE OF cp, r";
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
-            query.setString(1, project.toString());
+            query.setString(1, project);
             query.setObject(2, id);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;

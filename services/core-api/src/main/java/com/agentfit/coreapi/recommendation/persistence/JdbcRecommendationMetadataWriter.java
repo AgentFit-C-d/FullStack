@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.recommendation.persistence;
 
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.persistence.ProjectDbId;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import java.sql.Connection;
@@ -57,7 +58,7 @@ public final class JdbcRecommendationMetadataWriter {
         }
         PreviewBasis basis = draft.basis();
         uuid(draft.id());
-        uuid(basis.projectId());
+        ProjectDbId.require(basis.projectId());
         uuid(basis.confirmedProfileId());
         uuid(basis.confirmationEventId());
         if (basis.projectVersion() <= 0 || basis.confirmedProfileVersion() <= 0
@@ -135,7 +136,7 @@ public final class JdbcRecommendationMetadataWriter {
                 + "catalog_hash, status, evidence_level, created_at) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             insert.setObject(1, id);
-            insert.setString(2, uuid(basis.projectId()).toString());
+            insert.setString(2, ProjectDbId.require(basis.projectId()));
             insert.setObject(3, uuid(basis.confirmedProfileId()));
             insert.setLong(4, basis.confirmedProfileVersion());
             insert.setObject(5, uuid(basis.confirmationEventId()));

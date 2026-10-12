@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** B1-B4 are created in A's transaction; temporary A parent tables are rolled back. */
 @EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
 class JdbcRecommendationMetadataWriterTest {
-    private static final UUID PROJECT = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final String PROJECT = "project-1";
     private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private Connection connection;

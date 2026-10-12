@@ -5,6 +5,7 @@ import com.agentfit.coreapi.configuration.history.ConfigurationHistoryReadModel;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewFile;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
+import com.agentfit.coreapi.persistence.ProjectDbId;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -42,7 +43,7 @@ public final class JdbcConfigurationHistoryReader {
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("history page limit must be between 1 and 100");
         }
-        UUID project = uuid(projectId);
+        String project = ProjectDbId.require(projectId);
         String sql = "SELECT e.id, e.generated_at FROM config_export e "
             + "JOIN config_preview cp ON cp.id = e.preview_id "
             + "JOIN recommendation r ON r.id = cp.recommendation_id "
@@ -53,7 +54,7 @@ public final class JdbcConfigurationHistoryReader {
         List<Cursor> rows = new ArrayList<>();
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             int position = 1;
-            query.setString(position++, project.toString());
+            query.setString(position++, project);
             if (after != null) {
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
@@ -83,7 +84,7 @@ public final class JdbcConfigurationHistoryReader {
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("history read requires a caller-owned transaction");
         }
-        UUID project = uuid(projectId);
+        String project = ProjectDbId.require(projectId);
         UUID export = uuid(generationId);
         String sql = "SELECT e.id AS export_id, e.fingerprint AS export_fingerprint, e.generated_at, "
             + "e.latest_report_id, e.reported_state, e.reason_code, e.reported_at, "
@@ -97,7 +98,7 @@ public final class JdbcConfigurationHistoryReader {
             + "WHERE e.id = ? AND r.project_id = ? FOR SHARE OF e, cp, r";
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             query.setObject(1, export);
-            query.setString(2, project.toString());
+            query.setString(2, project);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
                 UUID approvalId = row.getObject("approval_id", UUID.class);
