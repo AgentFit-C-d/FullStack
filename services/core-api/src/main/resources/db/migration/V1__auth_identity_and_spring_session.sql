@@ -1,4 +1,12 @@
 -- Existing USER rows are preserved; GitHub identity is linked only by immutable numeric id.
+-- Fresh AgentFit databases need the minimal existing-user table before the additive
+-- GitHub identity columns below are applied. Existing deployments are untouched.
+CREATE TABLE IF NOT EXISTS "USER" (
+    id BIGSERIAL NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    CONSTRAINT USER_PK PRIMARY KEY (id)
+);
+
 ALTER TABLE "USER" ADD COLUMN IF NOT EXISTS github_user_id BIGINT;
 ALTER TABLE "USER" ADD COLUMN IF NOT EXISTS github_login VARCHAR(255);
 
