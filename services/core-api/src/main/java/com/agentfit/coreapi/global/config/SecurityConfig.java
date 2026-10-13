@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -16,8 +17,13 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHttpSession;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
+import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 import org.springframework.session.web.http.CookieSerializer;
+import org.springframework.session.web.http.CookieHttpSessionIdResolver;
 import org.springframework.session.web.http.DefaultCookieSerializer;
+import org.springframework.session.web.http.HttpSessionIdResolver;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,7 +35,8 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
-            GitHubOAuth2UserService githubOAuth2UserService) throws Exception {
+            GitHubOAuth2UserService githubOAuth2UserService,
+            SessionRegistry sessionRegistry) throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieName("XSRF-TOKEN");
         csrfRepository.setCookiePath("/");
@@ -45,6 +52,10 @@ public class SecurityConfig {
                     "/api/auth/csrf", "/api/auth/get-session").permitAll()
                 .requestMatchers("/api/auth/logout").authenticated()
                 .anyRequest().authenticated())
+            .sessionManagement(session -> session
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(false)
+                .sessionRegistry(sessionRegistry))
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(new JsonAuthenticationEntryPoint())
                 .accessDeniedHandler((request, response, denied) -> writeError(response, 403, "CSRF_INVALID")))
@@ -65,16 +76,30 @@ public class SecurityConfig {
     }
 
     @Bean
-    CookieSerializer sessionCookieSerializer(
+    SessionRegistry sessionRegistry(
+            FindByIndexNameSessionRepository<? extends Session> sessionRepository) {
+        return new SpringSessionBackedSessionRegistry<>(sessionRepository);
+    }
+
+    @Bean(name = "cookieSerializer")
+    CookieSerializer cookieSerializer(
             @Value("${agentfit.auth.cookie-secure:true}") boolean secureCookie) {
         DefaultCookieSerializer serializer = new DefaultCookieSerializer();
         serializer.setCookieName("AGENTFIT_SESSION");
-        serializer.setCookiePath("/api");
+        // The session must be sent both to the frontend routes (e.g. /) and to /api.
+        serializer.setCookiePath("/");
         serializer.setUseHttpOnlyCookie(true);
         serializer.setUseSecureCookie(secureCookie);
         serializer.setSameSite("Lax");
         serializer.setCookieMaxAge(7 * 24 * 60 * 60);
         return serializer;
+    }
+
+    @Bean
+    HttpSessionIdResolver httpSessionIdResolver(CookieSerializer cookieSerializer) {
+        CookieHttpSessionIdResolver resolver = new CookieHttpSessionIdResolver();
+        resolver.setCookieSerializer(cookieSerializer);
+        return resolver;
     }
 
     private AuthenticationSuccessHandler redirectHandler(String location) {

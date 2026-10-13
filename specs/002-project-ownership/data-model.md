@@ -17,7 +17,7 @@
 인증 논리 객체는 Spring Boot OAuth2 로그인과 서버 세션 책임에 따라 분리한다.
 
 - **USER**: 서비스 사용자와 프로젝트 소유권의 기준이 되는 기존 사용자 정보다. GitHub 단일 provider를 위해 `github_user_id BIGINT NULL`과 `github_login VARCHAR(255) NULL`을 직접 둔다. null이 아닌 `github_user_id`만 유일하며 `github_login`은 표시·로그용이고 유일 제약이나 사용자 식별에 사용하지 않는다. OAuth callback은 `github_user_id`로만 기존 USER를 찾고, 일치하지 않으면 두 GitHub 필드를 채운 새 USER를 만든다. 이메일·이름·`github_login`으로 기존 USER를 자동 연결하지 않는다.
-- **Spring Session JDBC 세션**: Spring Session이 관리하는 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 기본 테이블이다. `PRINCIPAL_NAME`은 AgentFit 내부 userId이며, Core API는 이 세션을 조회해 인증 주체를 얻는다. 브라우저는 host-only·`Path=/api`·`HttpOnly`·운영 환경 `Secure`·`SameSite=Lax`·`Max-Age=7일`인 `AGENTFIT_SESSION` 쿠키를 보유하며, 마지막 인증 요청 후 7일 비활성·쿠키 만료·로그아웃 중 먼저 발생한 때 세션을 폐기한다. `GET /api/auth/csrf`가 제공하는 `XSRF-TOKEN`은 이 세션에 저장하는 사용자 식별자가 아니며, 상태 변경 요청의 별도 검증 값이다. 별도 AgentFit `SESSION` 테이블은 만들지 않는다.
+- **Spring Session JDBC 세션**: Spring Session이 관리하는 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 기본 테이블이다. `PRINCIPAL_NAME`은 AgentFit 내부 userId이며, Core API는 이 세션을 조회해 인증 주체를 얻는다. 브라우저는 host-only·`Path=/`·`HttpOnly`·운영 환경 `Secure`·`SameSite=Lax`·`Max-Age=7일`인 `AGENTFIT_SESSION` 쿠키를 보유하며, `/` 로그인 성공 redirect와 `/api` 요청 모두에 전달한다. Spring Security는 사용자당 활성 서버 세션을 하나로 제한하고 새 로그인 시 이전 세션을 만료한다. 마지막 인증 요청 후 7일 비활성·쿠키 만료·로그아웃 중 먼저 발생한 때 세션을 폐기한다. `GET /api/auth/csrf`가 제공하는 `XSRF-TOKEN`은 이 세션에 저장하는 사용자 식별자가 아니며, 상태 변경 요청의 별도 검증 값이다. 별도 AgentFit `SESSION` 테이블은 만들지 않는다.
 - **VERIFICATION**: 후속 인증 기능이 필요할 때만 별도 명세로 검토하는 검증용 객체다. 현재 GitHub 로그인 MVP에는 만들지 않는다.
 
 ## 2. 프로젝트

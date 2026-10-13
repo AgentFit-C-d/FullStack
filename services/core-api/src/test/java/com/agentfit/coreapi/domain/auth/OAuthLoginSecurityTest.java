@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,6 +52,15 @@ class OAuthLoginSecurityTest {
         mockMvc.perform(post("/api/auth/logout"))
             .andExpect(status().isForbidden());
     }
+
+    @Test
+    void usesSpringSessionRegistryForSingleSessionPolicy() {
+        org.junit.jupiter.api.Assertions.assertInstanceOf(
+            SpringSessionBackedSessionRegistry.class, sessionRegistry);
+    }
+
+    @Autowired
+    private SessionRegistry sessionRegistry;
 }
 
 

@@ -45,9 +45,6 @@ class ProjectWebMvcTest {
     private ProjectService projectService;
 
     @MockBean
-    private ProjectDeletionService deletionService;
-
-    @MockBean
     private SessionPrincipalResolver principalResolver;
 
     @Test

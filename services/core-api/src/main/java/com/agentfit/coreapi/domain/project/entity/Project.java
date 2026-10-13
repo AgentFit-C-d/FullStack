@@ -12,9 +12,15 @@ import com.agentfit.coreapi.global.exception.*;
 import java.time.Instant;
 
 public record Project(String id, long ownerId, String name, long version, String stage,
-        long analysisGeneration, long reviewGeneration, Instant createdAt, Instant updatedAt) {
+        long analysisGeneration, long reviewGeneration, Instant createdAt, Instant updatedAt,
+        String developerRole, Long currentInputRevision) {
     public Project(String id, long ownerId, String name, long version, Instant createdAt, Instant updatedAt) {
-        this(id, ownerId, name, version, "CREATED", 0L, 0L, createdAt, updatedAt);
+        this(id, ownerId, name, version, "CREATED", 0L, 0L, createdAt, updatedAt, "BACKEND", null);
+    }
+
+    public Project(String id, long ownerId, String name, long version, String stage,
+            long analysisGeneration, long reviewGeneration, Instant createdAt, Instant updatedAt) {
+        this(id, ownerId, name, version, stage, analysisGeneration, reviewGeneration, createdAt, updatedAt, "BACKEND", null);
     }
 }
 

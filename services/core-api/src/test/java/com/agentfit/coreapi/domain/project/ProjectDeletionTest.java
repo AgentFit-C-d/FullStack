@@ -16,6 +16,10 @@ import org.junit.jupiter.api.Test;
 import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
 import com.agentfit.coreapi.domain.project.exception.ProjectNotFoundException;
 import com.agentfit.coreapi.global.exception.VersionConflictException;
+import com.agentfit.coreapi.domain.analysis.repository.AnalysisAttemptRepository;
+import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttempt;
+import java.time.Instant;
+import java.util.Optional;
 
 class ProjectDeletionTest {
     @Test
@@ -23,7 +27,7 @@ class ProjectDeletionTest {
         ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
         Project project = new ProjectService(repository)
             .create(new AuthenticatedPrincipal(7L, "owner", null), "demo");
-        ProjectDeletionService service = new ProjectDeletionService(new ProjectOwnershipGuard(repository), repository);
+        ProjectService service = new ProjectService(repository);
 
         assertThrows(VersionConflictException.class, () -> service.delete(
             new AuthenticatedPrincipal(7L, "owner", null), project.id(), true, 99L));
@@ -37,12 +41,25 @@ class ProjectDeletionTest {
         ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
         Project project = new ProjectService(repository)
             .create(new AuthenticatedPrincipal(7L, "owner", null), "demo");
-        ProjectDeletionService service = new ProjectDeletionService(new ProjectOwnershipGuard(repository), repository);
+        ProjectService service = new ProjectService(repository);
 
         assertThrows(IllegalArgumentException.class, () -> service.delete(
             new AuthenticatedPrincipal(7L, "owner", null), project.id(), false, 1L));
         assertThrows(ProjectNotFoundException.class, () -> service.delete(
             new AuthenticatedPrincipal(8L, "other", null), project.id(), true, 1L));
+    }
+
+    @Test
+    void activeAnalysisDeletionIsRejected() {
+        ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
+        Project project = new ProjectService(repository).create(new AuthenticatedPrincipal(7L, "owner", null), "demo");
+        AnalysisAttemptRepository active = new AnalysisAttemptRepository() {
+            public Optional<AnalysisAttempt> findProcessingByProjectId(String id) {
+                return Optional.of(new AnalysisAttempt(1, id, "r", 1, "1", "PROCESSING", Instant.now().plusSeconds(10), Instant.now(), null));
+            }
+        };
+        ProjectService service = new ProjectService(repository, new ProjectOwnershipGuard(repository), new com.agentfit.coreapi.domain.audit.service.AuditRecorder(), new ProjectRuntimeRepository(){}, new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){}, new PlanningInputValidator(), active);
+        assertThrows(ActiveAnalysisProjectDeletionException.class, () -> service.delete(new AuthenticatedPrincipal(7L, "owner", null), project.id(), true, 1L));
     }
 }
 

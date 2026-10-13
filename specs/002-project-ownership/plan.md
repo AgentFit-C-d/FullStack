@@ -18,7 +18,7 @@
 
 **Storage**: PostgreSQL을 Core API만 읽고 쓴다. 프로젝트 version/generation과 A6 분석 시도, Audit을 저장하며 삭제 그래프와 경쟁 갱신은 트랜잭션·행 잠금으로 경계를 둔다.
 
-**Testing**: JUnit 5·MockMvc 기반 Core API 테스트와 FastAPI pytest 계약·HMAC 테스트를 유지한다. 단위·웹·계약 테스트는 실행 완료했으며, PostgreSQL 경쟁·삭제 그래프와 실제 OAuth/HTTPS는 전용 환경에서 별도 검증한다.
+**Testing**: JUnit 5·MockMvc 기반 Core API 테스트와 FastAPI pytest 계약·HMAC 테스트를 유지한다. 테스트 소스와 수동 OAuth smoke 경로는 구현됐지만, 현재 검증 실행은 Maven 로컬 repository lock 때문에 Core API 결과가 NOT_RUN이며 PostgreSQL 경쟁·삭제 그래프와 실제 OAuth/HTTPS 배포 검증은 전용 환경에서 별도 확인한다.
 
 **Target Platform**: 정적 Frontend와 Core API를 같은 Origin으로 제공하고 `/api`로 프록시하는 웹 서비스 경계다. OAuth 시작·callback도 `/api` 아래에서 처리하며, Frontend는 UI·CSRF header·재로그인 안내를 담당한다. AI Service는 이 기능의 권한 판정·DB 접근에 참여하지 않는다.
 
@@ -68,7 +68,7 @@
 조사 근거와 대안은 [research.md](./research.md)에 정리한다.
 
 1. Core API의 프로젝트 소유권 경계가 유일한 업무 쓰기 주체다.
-2. Spring Boot가 `/api/oauth2/authorization/github`와 `/api/login/oauth2/code/github`에서 GitHub OAuth·PostgreSQL 기반 Spring Session JDBC 세션 발급을 직접 담당한다. OAuth callback은 `github_user_id BIGINT`로만 기존 USER를 찾고 없으면 `github_login VARCHAR(255)`을 함께 채운 새 USER를 만들며, 이메일·이름·login 자동 연결은 금지한다. 기존 행은 null GitHub ID를 보존하고, null이 아닌 ID만 유일하다. 세션은 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 기본 테이블과 `PRINCIPAL_NAME` 내부 userId를 사용한다. 같은 Origin의 `/api` 경계에서 이름이 `AGENTFIT_SESSION`인 host-only, `Path=/api`, 운영 환경 `Secure`, `SameSite=Lax`, `Max-Age=7일` 지속 HttpOnly 쿠키로 인증 주체를 소비한다. 서버 세션은 마지막 인증된 요청 후 7일 비활성 시 만료하고, 쿠키는 자동 연장하지 않으며 로그아웃은 즉시 폐기한다. CORS credential 설정은 사용하지 않고, `GET /api/auth/csrf`가 발급한 `Path=/`·비-HttpOnly `XSRF-TOKEN`과 상태 변경 요청의 `X-XSRF-TOKEN`으로 CSRF를 검증한다.
+2. Spring Boot가 `/api/oauth2/authorization/github`와 `/api/login/oauth2/code/github`에서 GitHub OAuth·PostgreSQL 기반 Spring Session JDBC 세션 발급을 직접 담당한다. OAuth callback은 `github_user_id BIGINT`로만 기존 USER를 찾고 없으면 `github_login VARCHAR(255)`을 함께 채운 새 USER를 만들며, 이메일·이름·login 자동 연결은 금지한다. 기존 행은 null GitHub ID를 보존하고, null이 아닌 ID만 유일하다. 세션은 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 기본 테이블과 `PRINCIPAL_NAME` 내부 userId를 사용한다. 같은 Origin에서 이름이 `AGENTFIT_SESSION`인 host-only, `Path=/`, 운영 환경 `Secure`, `SameSite=Lax`, `Max-Age=7일` 지속 HttpOnly 쿠키로 인증 주체를 소비한다. `Path=/`는 로그인 성공 redirect인 `/`와 `/api` 요청 모두에 세션을 전달한다. Spring Security `maximumSessions(1)`로 사용자당 활성 서버 세션을 하나로 제한하며 새 로그인이 이전 세션을 만료시킨다. 서버 세션은 마지막 인증된 요청 후 7일 비활성 시 만료하고, 쿠키는 자동 연장하지 않으며 로그아웃은 즉시 폐기한다. CORS credential 설정은 사용하지 않고, `GET /api/auth/csrf`가 발급한 `Path=/`·비-HttpOnly `XSRF-TOKEN`과 상태 변경 요청의 `X-XSRF-TOKEN`으로 CSRF를 검증한다.
 3. 프로젝트·세션의 1차 URL, 기본 DTO, 401/403/404/422 오류 의미, 이름 길이, 삭제 확인 형식은 승인했다. 프로젝트 자체 수정 endpoint와 해당 409는 범위에서 제외한다. `POST /internal/v1/analysis`의 HMAC header·canonical 문자열·timestamp·오류 의미도 승인했으며, Profile·DRAFT·Attempt의 상세 업무 schema와 실제 LLM 규칙은 후속 기능으로 남긴다.
 4. 데이터 모델은 논리 관계를 중심으로 기록하되, USER GitHub 식별자 필드·partial unique 규칙, Spring Session JDBC 기본 schema·cookie 이름, Flyway migration 경로는 승인된 인증 계약으로 포함한다. 전체 ERD·DDL과 프로젝트·하위 업무 데이터의 물리 구조는 후속 단계에서 정한다.
 
@@ -158,4 +158,8 @@ Core API는 A6를 커밋한 뒤 브라우저 HTTP 연결·사용자 세션과 �
 | 사용자 삭제 후 백업·복제본의 물리 삭제 증명 | 미확정 | 보관·운영 정책을 별도 결정 |
 
 tasks.md와 기능 구현은 위 게이트 중 해당 작업에 필요한 계약이 합의된 뒤에만 시작한다.
+
+### Convergence note (2026-10-13)
+
+The earlier 2026-10-08 delivery-gate row records the original `Path=/api` proposal. The implemented and current delivery policy is `Path=/` for `AGENTFIT_SESSION`, so the cookie reaches both the `/` login-success redirect and `/api` requests. The current policy also limits each user to one active server session with `maximumSessions(1)`; see `spec.md` Convergence and `quickstart.md` for the verification procedure.
 

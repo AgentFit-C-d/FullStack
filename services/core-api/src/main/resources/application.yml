@@ -13,8 +13,8 @@ spring:
       client:
         registration:
           github:
-            client-id: ${GITHUB_CLIENT_ID:change-me}
-            client-secret: ${GITHUB_CLIENT_SECRET:change-me}
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
             redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
             scope:
               - user:email
@@ -27,6 +27,9 @@ server:
   port: 8080
 
 agentfit:
+  analysis:
+    timeout-seconds: ${AGENTFIT_ANALYSIS_TIMEOUT_SECONDS:600}
+    cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_CLEANUP_INTERVAL_SECONDS:10}
   auth:
     cookie-secure: ${AGENTFIT_COOKIE_SECURE:true}
   hmac:

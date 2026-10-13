@@ -2,7 +2,7 @@
 
 **Feature Branch**: `[002-project-ownership]`  
 **Created**: 2026-10-06  
-**Status**: Draft  
+**Status**: Implementation complete; automated verification passed; PostgreSQL/deployment smoke verification pending
 **Input**: 개인 소유 프로젝트, 인증 주체 기반 소유자 결정, 전 보호 작업의 소유권 검사, 정보 은닉, 하위 리소스 격리, 안전한 삭제를 명세화한다.
 
 ## 근거와 상태
@@ -41,16 +41,22 @@
 ### Session 2026-10-08
 
 - Q: 브라우저를 닫았다 다시 열어도 로그인 상태를 유지할까요? → A: `Max-Age=7일`의 지속 HttpOnly 세션 쿠키를 발급한다. 서버 세션은 마지막 인증된 요청 후 7일 비활성 시 만료하며, 쿠키 만료 또는 서버 세션 만료 중 먼저 도래한 시점에 다시 GitHub OAuth 로그인을 진행한다. 쿠키는 자동 연장하지 않고, 로그아웃 시 DB 세션과 쿠키를 함께 즉시 폐기한다.
-- Q: Frontend와 Core API를 어떤 도메인 관계로 배포할까요? → A: 정적 Frontend와 Spring Boot Core API를 같은 Origin으로 제공하고 Core API는 `/api` 경로로 프록시한다. 운영 쿠키는 host-only, `Path=/api`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Max-Age=7일`로 발급한다. 개발 환경의 `localhost`만 `Secure`를 끌 수 있으며, 같은 Origin이므로 CORS credential 설정은 두지 않는다. 상태 변경 요청은 Spring Security CSRF 보호를 유지한다.
-- Q: `Path=/api` 세션 쿠키로 OAuth 요청 상태를 어떻게 유지할까요? → A: 로그인 시작 경로를 `GET /api/oauth2/authorization/github`, callback 경로를 `GET /api/login/oauth2/code/github`으로 고정하고, 프록시와 GitHub OAuth App의 redirect URI도 callback 경로를 사용한다. 따라서 OAuth 시작·callback에도 `/api` 세션 쿠키가 전달된다. 로그인 성공 뒤에는 `/?login=success`, 취소·실패 뒤에는 provider 오류 원문 없이 `/?login=failed`로 이동한다.
+- Q: Frontend와 Core API를 어떤 도메인 관계로 배포할까요? → A: 정적 Frontend와 Spring Boot Core API를 같은 Origin으로 제공하고 Core API는 `/api` 경로로 프록시한다. 운영 쿠키는 host-only, `Path=/`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Max-Age=7일`로 발급한다. `Path=/`는 로그인 성공 redirect인 `/`와 `/api` 요청 모두에 동일한 서버 세션을 전달하기 위한 구현 결정이다. 개발 환경의 `localhost`만 `Secure`를 끌 수 있으며, 같은 Origin이므로 CORS credential 설정은 두지 않는다. 상태 변경 요청은 Spring Security CSRF 보호를 유지한다.
+- Q: 세션 쿠키로 OAuth 요청 상태를 어떻게 유지할까요? → A: 로그인 시작 경로를 `GET /api/oauth2/authorization/github`, callback 경로를 `GET /api/login/oauth2/code/github`으로 고정하고, 프록시와 GitHub OAuth App의 redirect URI도 callback 경로를 사용한다. 세션 cookie의 `Path=/`로 OAuth 시작·callback과 로그인 성공 후 `/`의 Frontend 요청 모두에 동일한 세션이 전달된다. 로그인 성공 뒤에는 `/?login=success`, 취소·실패 뒤에는 provider 오류 원문 없이 `/?login=failed`로 이동한다.
 - Q: 정적 Frontend가 상태 변경 요청의 CSRF 토큰을 어떻게 보낼까요? → A: `GET /api/auth/csrf`가 JavaScript가 읽을 수 있도록 `Path=/`, 비-HttpOnly, 운영 환경 `Secure`, `SameSite=Lax`, `Max-Age` 없는 세션성 `XSRF-TOKEN` 쿠키를 발급하고, Frontend는 `POST`·`PUT`·`PATCH`·`DELETE /api/**` 요청에 같은 값을 `X-XSRF-TOKEN` 헤더로 보낸다. 누락·불일치는 `403 CSRF_INVALID`이며, 이 CSRF 쿠키는 세션 쿠키가 아니다.
 - Q: 프로젝트 삭제와 다른 보호 쓰기의 동시 경쟁은 어떻게 막을까요? → A: 삭제도 프로젝트 쓰기이므로 본문에 `{ "confirmation": true, "expectedVersion": number }`를 요구한다. Core API는 `PROJECT` 잠금 뒤 현재 version이 일치할 때만 삭제하고, 오래된 version은 삭제하지 않으며 `409 VERSION_CONFLICT`로 최신 조회를 안내한다.
 - Q: PostgreSQL 세션 저장소를 Spring Session JDBC의 기본 테이블로 사용할까요, 아니면 직접 `SESSION` 테이블을 설계할까요? → A: Spring Session JDBC 기본 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 테이블을 사용한다. `PRINCIPAL_NAME`에는 AgentFit의 내부 사용자 ID를 저장하며, 별도 AgentFit `SESSION` 테이블은 만들지 않는다.
 - Q: GitHub 계정 정보를 기존 AgentFit 사용자와 어떤 구조로 연결할까요? → A: 현재 MVP에서는 기존 `USER`에 GitHub 식별자 필드를 직접 추가한다. `github_user_id`는 GitHub의 변경되지 않는 숫자 ID로 유일하게 관리하고, `github_login`은 변경 가능한 표시·로그용 값으로만 쓴다. 별도 `OAUTH_ACCOUNT` 테이블과 provider token 저장은 만들지 않는다.
 - Q: 기존 USER 레코드가 있을 때 GitHub 식별자 필드를 어떻게 migration할까요? → A: 기존 USER 데이터는 보존하는 단계적 migration을 사용한다. 기존 행의 `github_user_id`는 처음에는 null을 허용하고, 값이 있는 `github_user_id`만 유일하게 관리한다. GitHub OAuth callback은 `github_user_id`로만 기존 사용자를 찾고, 이메일·이름·`github_login`으로 기존 행을 자동 연결하지 않는다. 일치하는 `github_user_id`가 없으면 새 USER를 생성하며, GitHub 식별자가 없는 기존 행의 계정 연결은 MVP 범위 밖의 명시적 후속 절차로 남긴다.
 - Q: USER에 추가하는 GitHub 필드의 DB 타입·길이는 무엇으로 할까요? → A: `github_user_id`는 `BIGINT NULL`, `github_login`은 `VARCHAR(255) NULL`로 추가한다. 새 GitHub OAuth 사용자 생성 시 두 필드를 모두 채우고, 기존 행은 null을 유지한다. `github_user_id IS NOT NULL`인 행에만 유일 제약 또는 동등한 partial unique index를 적용한다. `github_login`은 유일 제약이나 사용자 식별에 사용하지 않는다.
-- Q: 운영 세션 cookie의 이름은 무엇으로 할까요? → A: 인증 세션 cookie 이름은 `AGENTFIT_SESSION`으로 고정한다. 이는 `XSRF-TOKEN` CSRF cookie와 별개이며, host-only·`Path=/api`·`HttpOnly`·운영 환경 `Secure`·`SameSite=Lax`·`Max-Age=7일` 정책을 적용한다.
+- Q: 운영 세션 cookie의 이름은 무엇으로 할까요? → A: 인증 세션 cookie 이름은 `AGENTFIT_SESSION`으로 고정한다. 이는 `XSRF-TOKEN` CSRF cookie와 별개이며, host-only·`Path=/`·`HttpOnly`·운영 환경 `Secure`·`SameSite=Lax`·`Max-Age=7일` 정책을 적용한다.
+- Q: 같은 사용자에게 여러 로그인 세션을 허용할까요? → A: Spring Security의 `maximumSessions(1)` 정책을 적용한다. 새 GitHub 로그인은 이전 서버 세션을 만료시키고, 이전 브라우저에 남은 cookie가 있어도 보호 요청은 인증되지 않는다. `maxSessionsPreventsLogin(false)`로 새 로그인을 우선한다.
 - Q: 인증·프로젝트 데이터베이스 변경 이력은 어떤 방식으로 관리할까요? → A: Flyway를 사용한다. 버전 SQL migration은 `services/core-api/src/main/resources/db/migration/`에 두며, USER의 GitHub 필드 추가·partial unique index와 Spring Session JDBC 기본 schema를 같은 migration 체계에서 적용한다. 새 migration의 버전 번호와 파일명은 기존 Flyway 이력의 다음 번호를 사용한다.
+
+### Convergence 2026-10-13
+
+- 구현과 검증 결과를 반영해 위 Session 2026-10-08의 초기 `Path=/api` 제안은 `Path=/`로 정정한다. 실제 `SecurityConfig.java`는 `AGENTFIT_SESSION`을 host-only·`Path=/`·HttpOnly·SameSite=Lax·7일 Max-Age로 발급한다. 이 경로는 OAuth 시작·callback, 로그인 성공 redirect인 `/`, `/api` 보호 요청 모두에 동일한 세션을 전달하기 위한 것이다.
+- 실제 구현은 `maximumSessions(1)`과 `maxSessionsPreventsLogin(false)`를 사용해 사용자별 활성 서버 세션을 하나로 제한한다. 새 로그인은 이전 Spring Session을 만료시키며, 이전 브라우저에 남은 cookie가 있어도 서버에서 인증되지 않는다.
 
 ## User Scenarios & Testing *(mandatory)*
 

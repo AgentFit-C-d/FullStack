@@ -25,7 +25,7 @@
 
 - GitHub OAuth 시작은 `GET /api/oauth2/authorization/github`, callback·token 교환은 `GET /api/login/oauth2/code/github`에서 Spring Boot가 처리한다. GitHub OAuth App redirect URI와 reverse proxy도 callback 경로를 사용한다. provider는 GitHub 하나만 사용하며 scope는 `user:email`로 제한한다.
 - Spring Boot는 기존 USER와 PostgreSQL 기반 Spring Session JDBC 기본 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES`를 관리하고 브라우저에는 이름이 `AGENTFIT_SESSION`인 `Max-Age=7일` 지속 HttpOnly 세션 쿠키만 발급한다.
-- 정적 Frontend와 Core API는 같은 Origin에서 제공하고 Core API는 `/api` 경로로 프록시한다. `AGENTFIT_SESSION`은 host-only, `Path=/api`, 운영 환경 `Secure`, `SameSite=Lax`로 발급한다. 개발 환경 `localhost`만 `Secure`를 끌 수 있으며, 같은 Origin이므로 CORS credential 설정을 두지 않는다.
+- 정적 Frontend와 Core API는 같은 Origin에서 제공하고 Core API는 `/api` 경로로 프록시한다. `AGENTFIT_SESSION`은 host-only, `Path=/`, 운영 환경 `Secure`, `SameSite=Lax`로 발급한다. `Path=/`는 로그인 성공 redirect인 `/`와 `/api` 요청 모두에 같은 세션을 전달하기 위한 것이다. 개발 환경 `localhost`만 `Secure`를 끌 수 있으며, 같은 Origin이므로 CORS credential 설정을 두지 않는다.
 - 기존 `USER` 테이블을 서비스 사용자 기준으로 재사용한다. `github_user_id BIGINT NULL`과 `github_login VARCHAR(255) NULL`을 직접 추가하고, null이 아닌 `github_user_id`만 유일하게 관리한다. callback은 `github_user_id`로만 기존 USER를 찾고, 없으면 두 GitHub 필드를 채운 새 USER를 만든다. 이메일·이름·`github_login`으로 기존 USER를 자동 연결하지 않는다. `OAUTH_ACCOUNT`·별도 AgentFit `SESSION`·`VERIFICATION` 테이블은 만들지 않으며 provider access/refresh token은 저장하지 않는다.
 - Core API는 매 요청 `AGENTFIT_SESSION` cookie의 세션 토큰으로 PostgreSQL Spring Session JDBC의 `SPRING_SESSION`을 조회해 존재·만료·폐기 여부와 `PRINCIPAL_NAME` 내부 userId 연결을 확인한 뒤 인증 주체로 사용한다.
 - 서버 세션은 마지막 인증된 요청 뒤 7일간 활동이 없으면 만료한다. 지속 쿠키는 발급 뒤 7일에 만료되며 자동 연장하지 않는다. 쿠키·서버 세션 중 먼저 만료되거나 로그아웃하면 Spring Session JDBC 데이터와 브라우저 쿠키를 함께 즉시 폐기한다.

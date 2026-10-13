@@ -15,7 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public class AuditRecorder {
     private static final Set<String> BLOCKED_KEYS = Set.of(
-        "secret", "signature", "rawBody", "rawResponse", "accessToken", "refreshToken");
+        "secret", "signature", "rawBody", "rawResponse", "accessToken", "refreshToken",
+        "raw_content", "rawContent", "inputText", "document", "extracted_text", "extractedText", "citation", "citations");
 
     private final AuditSink sink;
 
@@ -44,7 +45,8 @@ public class AuditRecorder {
         }
         Map<String, String> safeMetadata = event.metadata() == null ? Map.of()
             : event.metadata().entrySet().stream()
-                .filter(entry -> !BLOCKED_KEYS.contains(entry.getKey()))
+                .filter(entry -> !BLOCKED_KEYS.contains(entry.getKey())
+                    && BLOCKED_KEYS.stream().noneMatch(blocked -> entry.getKey().toLowerCase().contains(blocked.toLowerCase())))
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
         return new AuditEvent(event.actorId(), event.projectId(), event.action(), event.result(),
             event.occurredAt(), event.reason(), safeMetadata);

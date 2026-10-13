@@ -4,6 +4,7 @@ package com.agentfit.coreapi.domain.auth.entity;
 import com.agentfit.coreapi.domain.auth.entity.*;
 import com.agentfit.coreapi.domain.auth.repository.*;
 import com.agentfit.coreapi.domain.auth.service.*;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -11,7 +12,9 @@ import java.util.Map;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
-public final class AgentFitOAuth2User implements OAuth2User {
+public final class AgentFitOAuth2User implements OAuth2User, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final UserAccount account;
     private final Map<String, Object> attributes;
     private final Collection<? extends GrantedAuthority> authorities;

@@ -40,14 +40,13 @@ import jakarta.servlet.http.HttpServletRequest;
 class ProjectDeletionWebMvcTest {
     @Autowired private MockMvc mockMvc;
     @MockBean private ProjectService projectService;
-    @MockBean private ProjectDeletionService deletionService;
     @MockBean private SessionPrincipalResolver principalResolver;
 
     @Test
     void staleDeleteReturns409() throws Exception {
         when(principalResolver.resolve(any(HttpServletRequest.class)))
             .thenReturn(Optional.of(new AuthenticatedPrincipal(7L, "owner", null)));
-        doThrow(new VersionConflictException(1L, 2L)).when(deletionService)
+        doThrow(new VersionConflictException(1L, 2L)).when(projectService)
             .delete(any(AuthenticatedPrincipal.class), eq("p-1"), eq(true), eq(1L));
 
         mockMvc.perform(delete("/api/projects/p-1")

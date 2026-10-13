@@ -22,18 +22,18 @@ class ProjectAccessWebMvcTest {
         ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
         Project project = new ProjectService(repository)
             .create(new AuthenticatedPrincipal(7L, "owner", null), "owned");
-        ProjectQueryService queryService = new ProjectQueryService(new ProjectOwnershipGuard(repository), repository);
+        ProjectService projectService = new ProjectService(repository);
 
         assertThrows(ProjectNotFoundException.class,
-            () -> queryService.get(new AuthenticatedPrincipal(8L, "other", null), project.id()));
+            () -> projectService.get(new AuthenticatedPrincipal(8L, "other", null), project.id()));
     }
 
     @Test
     void unknownProjectHasTheSameHiddenNotFoundMeaning() {
         ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
-        ProjectQueryService queryService = new ProjectQueryService(new ProjectOwnershipGuard(repository), repository);
+        ProjectService projectService = new ProjectService(repository);
         assertThrows(ProjectNotFoundException.class,
-            () -> queryService.get(new AuthenticatedPrincipal(7L, "owner", null), "unknown"));
+            () -> projectService.get(new AuthenticatedPrincipal(7L, "owner", null), "unknown"));
     }
 }
 

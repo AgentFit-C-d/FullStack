@@ -114,3 +114,7 @@
 
 계획에 남은 항목은 모호한 구현 과제가 아니라 명시적인 승인 게이트다. 인증·CSRF·프로젝트·HMAC 호출의 공유 계약과 USER 확장·Spring Session JDBC 기본 schema·`AGENTFIT_SESSION` cookie 이름·Flyway migration 방식은 승인 기록을 남겼다. 프로젝트·하위 업무 데이터 DDL의 상세와 LLM 입력·출력 업무 규칙을 확정하기 전에는 해당 부분을 구현 완료로 표시하지 않는다.
 
+## Convergence 2026-10-13
+
+초기 Decision 7의 `Path=/api` 표현은 구현 수렴 과정에서 `Path=/`로 정정한다. 실제 `SecurityConfig.java`는 `/`와 `/api` 모두에 `AGENTFIT_SESSION`을 전달해야 하는 현재 same-origin 구조를 반영해 `Path=/`를 사용한다. Spring Security `maximumSessions(1)`과 Spring Session-backed `SessionRegistry`도 구현된 인증 정책으로 문서화한다. 기존 결정 문장은 당시 승인 기록으로 보존하며, 현재 동작 기준은 `spec.md`의 Convergence 항목과 `quickstart.md`를 따른다.
+

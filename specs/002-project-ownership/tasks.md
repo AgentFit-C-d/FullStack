@@ -216,3 +216,16 @@ description: "프로젝트 소유권과 접근 격리 구현 작업 목록"
 - 충돌 시 조용한 덮어쓰기 0건, 삭제 후 지연 결과 복원 0건, 민감정보 Audit 저장 0건이다.
 - OpenAPI·DTO·서버 검증·fixture·테스트가 승인된 계약 버전을 공동으로 가리킨다.
 - T061 독립 리뷰와 T059 실행 결과가 남기 전에는 기능 완료로 표시하지 않는다.
+
+---
+
+## Phase 8: Convergence
+
+구현과 설계 산출물의 차이를 수렴한다. 이 단계는 기존 완료 항목을 소급해 바꾸지 않고,
+현재 코드·실행 증거·배포 전제조건을 문서에 명시한다.
+
+- [x] T062 [Convergence] `spec.md`, `plan.md`, `quickstart.md`, `data-model.md`, `contracts/project-ownership.md`의 `AGENTFIT_SESSION` cookie 정책을 실제 `SecurityConfig.java`와 일치시킨다. 구현된 정책은 host-only·`Path=/`·HttpOnly·SameSite=Lax·7일 Max-Age이며, `/` 경로가 로그인 성공 redirect와 `/api` 요청 모두에 세션을 전달하는 이유를 기록한다. (FR-OWN-002, FR-OWN-013, contradicts)
+- [x] T063 [Convergence] `SecurityConfig.java`의 Spring Security 단일 세션 정책(`maximumSessions(1)`, 새 로그인 시 기존 세션 만료)을 인증 명세·계획·검증 안내에 기록하고, Spring Session-backed `SessionRegistry` wiring 회귀 테스트 근거를 남긴다. (FR-OWN-002, partial)
+- [x] T064 [Convergence] Core API·AI Service 테스트를 다시 실행하고 실제 결과와 제한을 `review.md`에 기록한다. Maven 로컬 repository lock 또는 PostgreSQL 전제조건으로 실행되지 않은 테스트는 통과로 표시하지 않는다. (T059, partial)
+- [x] T065 [Convergence] 정적 Frontend가 아직 제공되지 않은 현재 상태에서 `/?login=success`가 root fallback/500이 될 수 있음을 `quickstart.md`와 `review.md`에 기록하고, 배포 전 root route 또는 정적 Frontend 제공이 필요한 smoke-test 조건을 명시한다. (FR-OWN-013, partial)
+- [x] T066 [Convergence] 프로젝트 CRUD를 `ProjectService` 하나로 통합하고 중복 `ProjectQueryService`·`ProjectDeletionService`를 제거한 뒤 `ProjectController`와 관련 테스트를 갱신한다. 공통 소유권 검사는 `ProjectOwnershipGuard`로 유지한다. (FR-OWN-003, FR-OWN-004, FR-OWN-013)

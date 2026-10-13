@@ -24,6 +24,17 @@ class AuditRecorderTest {
         assertFalse(event.metadata().containsKey("signature"));
         assertFalse(event.metadata().containsKey("rawResponse"));
     }
+
+    @Test
+    void removesPlanningSourceVariantsFromAuditMetadata() {
+        AuditEvent safe = new AuditRecorder().sanitize(new AuditEvent(1L, "p", "ANALYSIS", "SUCCEEDED", Instant.now(), null,
+            Map.of("raw_content", "secret", "inputText", "secret", "extracted_text", "secret", "citation", "secret", "state", "PROCESSING")));
+        assertFalse(safe.metadata().containsKey("raw_content"));
+        assertFalse(safe.metadata().containsKey("inputText"));
+        assertFalse(safe.metadata().containsKey("extracted_text"));
+        assertFalse(safe.metadata().containsKey("citation"));
+        assertTrue(safe.metadata().containsKey("state"));
+    }
 }
 
 
