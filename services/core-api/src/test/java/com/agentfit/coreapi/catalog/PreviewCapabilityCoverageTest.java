@@ -3,6 +3,7 @@ package com.agentfit.coreapi.catalog;
 import com.agentfit.coreapi.catalog.model.CatalogRelease;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
 import com.agentfit.coreapi.catalog.model.ToolSupport;
+import com.agentfit.coreapi.catalog.model.VerifiedCombination;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +48,31 @@ class PreviewCapabilityCoverageTest {
                 Set.of(DOCUMENT), List.of("invented"), Map.of()));
     }
 
+    @Test
+    void unreviewedInstalledCombinationCannotErasePartialWarning() {
+        var unreviewed = new CatalogRelease("test", release().tools(), Set.of());
+        assertThrows(IllegalArgumentException.class,
+            () -> PreviewCapabilityCoverage.evaluate(unreviewed, TARGET,
+                Set.of(DOCUMENT, BROWSER), List.of("docs"), Map.of("browser", "1.0")));
+    }
+
+    @Test
+    void installedToolWithMissingDependencyCannotCountAsCoverage() {
+        var browser = new CatalogTool("browser", "browser", CatalogTool.Kind.SKILL,
+            "https://example.org/browser", "1.0", Set.of(BROWSER), Set.of("runtime"),
+            Set.of(), Set.of("browser"), tool("browser", BROWSER).support());
+        var dependency = tool("runtime", DOCUMENT);
+        var release = new CatalogRelease("test", Map.of("docs", tool("docs", DOCUMENT),
+            "browser", browser, "runtime", dependency), Set.of());
+        assertThrows(IllegalArgumentException.class,
+            () -> PreviewCapabilityCoverage.evaluate(release, TARGET,
+                Set.of(DOCUMENT, BROWSER), List.of("docs"), Map.of("browser", "1.0")));
+    }
+
     private static CatalogRelease release() {
         return new CatalogRelease("test", Map.of(
-            "docs", tool("docs", DOCUMENT), "browser", tool("browser", BROWSER)), Set.of());
+            "docs", tool("docs", DOCUMENT), "browser", tool("browser", BROWSER)),
+            Set.of(new VerifiedCombination(Set.of("docs", "browser"), TARGET)));
     }
 
     private static CatalogTool tool(String key, String capability) {

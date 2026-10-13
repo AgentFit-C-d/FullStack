@@ -4,6 +4,7 @@ import com.agentfit.coreapi.catalog.model.CatalogRelease;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.selection.ConfigurationSelectionValidator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,10 @@ public final class PreviewCapabilityCoverage {
                 effective.add(tool.key());
             }
         }
+        // Coverage may only credit an effective set that Preview itself would accept.
+        // A supported installed tool alone does not prove its dependencies or combination.
+        new ConfigurationSelectionValidator(release).validate(Set.copyOf(selectedToolKeys),
+            target, List.of(), List.of(), trustedInstalledVersions);
         Set<String> covered = new HashSet<>();
         for (String key : effective) covered.addAll(release.tools().get(key).capabilityKeys());
         return new Result(requiredCapabilityKeys.stream().filter(key -> !covered.contains(key))

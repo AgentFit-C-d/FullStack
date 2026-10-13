@@ -3,6 +3,7 @@ package com.agentfit.coreapi.catalog;
 import com.agentfit.coreapi.catalog.model.CatalogRelease;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
 import com.agentfit.coreapi.catalog.model.ToolSupport;
+import com.agentfit.coreapi.catalog.model.VerifiedCombination;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
 import com.agentfit.coreapi.configuration.persistence.JdbcConfigurationContextReader;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
@@ -55,7 +56,8 @@ class StoredPreviewCoverageTest {
 
     private static ParsedCatalog catalog(String hash) {
         return new ParsedCatalog(hash, new CatalogRelease("test", Map.of(
-            "docs", tool("docs", DOCUMENT), "browser", tool("browser", BROWSER)), Set.of()),
+            "docs", tool("docs", DOCUMENT), "browser", tool("browser", BROWSER)),
+            Set.of(new VerifiedCombination(Set.of("docs", "browser"), TARGET))),
             List.of(), Map.of());
     }
 
