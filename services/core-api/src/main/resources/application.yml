@@ -1,6 +1,13 @@
 spring:
   application:
     name: agentfit-core-api
+  datasource:
+    url: ${AGENTFIT_DB_URL:jdbc:postgresql://localhost:5432/agentfit}
+    username: ${AGENTFIT_DB_USERNAME:postgres}
+    password: ${AGENTFIT_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: ${AGENTFIT_FLYWAY_ENABLED:true}
   security:
     oauth2:
       client:
