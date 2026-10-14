@@ -27,6 +27,13 @@ class JdbcProjectRepository implements ProjectRepository {
 
     @Override
     public Project save(Project project) {
+        if (project.ownerUuid() != null) {
+            jdbcTemplate.update("INSERT INTO project (id, user_id, name, version, current_step, analysis_generation, review_generation, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.fromString(project.id()), project.ownerUuid(), project.name(), project.version(),
+                toCurrentStep(project.stage()), project.analysisGeneration(), project.reviewGeneration(),
+                Timestamp.from(project.createdAt()), Timestamp.from(project.updatedAt()));
+            return project;
+        }
         jdbcTemplate.update("INSERT INTO PROJECT (id, owner_id, name, version, stage, analysis_generation, review_generation, created_at, updated_at, developer_role, current_input_revision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             project.id(), project.ownerId(), project.name(), project.version(), project.stage(),
             project.analysisGeneration(), project.reviewGeneration(),
@@ -59,6 +66,15 @@ class JdbcProjectRepository implements ProjectRepository {
                 rs.getLong("review_generation"), rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant()), id, ownerUuid)
             .stream().findFirst();
+    }
+
+    @Override
+    public List<Project> findByOwnerUuid(UUID ownerUuid) {
+        return jdbcTemplate.query("SELECT id, user_id, name, version, current_step, analysis_generation, review_generation, created_at, updated_at FROM project WHERE user_id = ? ORDER BY updated_at DESC, id ASC",
+            (rs, rowNum) -> mapUuid(rs.getObject("id", UUID.class).toString(), rs.getObject("user_id", UUID.class),
+                rs.getString("name"), rs.getLong("version"), rs.getString("current_step"),
+                rs.getLong("analysis_generation"), rs.getLong("review_generation"),
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant()), ownerUuid);
     }
 
     @Override
@@ -104,7 +120,16 @@ class JdbcProjectRepository implements ProjectRepository {
 
     private Project mapUuid(String id, UUID ownerUuid, String name, long version, String currentStep,
             long analysisGeneration, long reviewGeneration, java.time.Instant createdAt, java.time.Instant updatedAt) {
-        return new Project(id, 0L, ownerUuid, name, version, createdAt, updatedAt);
+        return new Project(id, 0L, name, version, currentStep, analysisGeneration, reviewGeneration,
+            createdAt, updatedAt, "BACKEND", null, ownerUuid);
+    }
+
+    private String toCurrentStep(String stage) {
+        if (stage == null || stage.isBlank() || "CREATED".equals(stage)) return "PLANNING";
+        return switch (stage) {
+            case "PLANNING", "ROLE_ENVIRONMENT", "RECOMMENDATION", "CONFIGURATION", "COMPLETED" -> stage;
+            default -> "PLANNING";
+        };
     }
 }
 
