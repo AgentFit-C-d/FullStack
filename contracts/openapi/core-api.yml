@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AgentFit Core API
-  version: 0.1.0
+  version: 0.2.0
 servers:
   - url: http://localhost:8080
 paths:
@@ -19,7 +19,325 @@ paths:
               example:
                 service: core-api
                 status: ok
+  /api/oauth2/authorization/github:
+    get:
+      summary: Start GitHub OAuth login
+      description: "Starts the same-origin OAuth flow. The reverse proxy and GitHub OAuth App must use `/api/login/oauth2/code/github` as the callback URL."
+      operationId: startGitHubOAuth
+      responses:
+        "302":
+          description: Redirect to GitHub authorization endpoint
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+  /api/login/oauth2/code/github:
+    get:
+      summary: Receive GitHub OAuth callback
+      description: Spring Boot consumes the provider callback, finds the USER only by the immutable GitHub ID or creates one with `github_user_id` and `github_login`, creates the server session, then redirects to `/?login=success`; failed or cancelled login redirects to `/?login=failed`. Provider tokens, provider error details, code, and state are never exposed in the response body or redirect query. Existing users are never linked by email, name, or GitHub login.
+      operationId: completeGitHubOAuth
+      responses:
+        "302":
+          description: Redirect to `/?login=success` or `/?login=failed`
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+            Set-Cookie:
+              required: false
+              description: "Present only after successful login: `AGENTFIT_SESSION`, host-only, `Path=/`, `HttpOnly`, production `Secure`, `SameSite=Lax`, and `Max-Age=7일`. Failed or cancelled login does not issue this cookie."
+              schema:
+                type: string
+  /api/auth/csrf:
+    get:
+      summary: Issue a CSRF token for same-origin state-changing requests
+      operationId: issueCsrfToken
+      responses:
+        "204":
+          description: "A session-only, `Path=/`, non-HttpOnly, production `Secure`, `SameSite=Lax` `XSRF-TOKEN` cookie is issued; JavaScript reads it and sends the same value in `X-XSRF-TOKEN` for POST, PUT, PATCH, and DELETE requests under `/api`."
+          headers:
+            Set-Cookie:
+              description: "A session-only, `Path=/`, non-HttpOnly, production `Secure`, `SameSite=Lax` `XSRF-TOKEN` cookie. It is separate from the HttpOnly `Path=/` `AGENTFIT_SESSION` cookie."
+              schema:
+                type: string
+  /api/auth/logout:
+    post:
+      summary: Log out the current user
+      operationId: logout
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: Spring Session JDBC server-side session and `AGENTFIT_SESSION` cookie invalidated
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/CsrfRejected"
+  /api/auth/get-session:
+    get:
+      summary: Return the safe current session or null
+      operationId: getSession
+      responses:
+        "200":
+          description: Authenticated public session or unauthenticated null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/PublicSession"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/projects:
+    get:
+      summary: List projects owned by the authenticated user
+      operationId: listProjects
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Projects ordered by updatedAt descending, then id ascending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+    post:
+      summary: Create a project owned by the authenticated user
+      operationId: createProject
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [metadata]
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/ProjectCreateMetadataRequest"
+                file:
+                  type: string
+                  format: binary
+                inputText:
+                  type: string
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreateRequest"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/CsrfRejected"
+        "422":
+          $ref: "#/components/responses/InvalidInput"
+  /api/projects/{projectId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      summary: Get a project and its current analysis state
+      operationId: getProject
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+    delete:
+      summary: Delete an owned project and its dependent data
+      operationId: deleteProject
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectDeleteRequest"
+      responses:
+        "204":
+          description: Deleted; response has no JSON body
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/CsrfRejected"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "409":
+          description: Version conflict or active analysis deletion forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/InvalidInput"
+    patch:
+      summary: Update project metadata
+      operationId: updateProject
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdateRequest"
+      responses:
+        "200": { description: Updated project detail }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+    put:
+      summary: Replace planning input
+      operationId: replacePlanningInput
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+                file: { type: string, format: binary }
+                inputText: { type: string }
+      responses:
+        "200": { description: Replaced planning input metadata }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { description: Version or active analysis conflict, with ErrorResponse body }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/projects/{projectId}/analysis-attempts:
+    post:
+      summary: Start an analysis attempt
+      operationId: startProjectAnalysis
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisStartRequest"
+      responses:
+        "202": { description: Analysis accepted as PROCESSING }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/AnalysisConflict" }
+        "429": { $ref: "#/components/responses/AnalysisCapacity" }
 components:
+  securitySchemes:
+    agentFitSession:
+      type: apiKey
+      in: cookie
+      name: AGENTFIT_SESSION
+      description: "Spring Session JDBC session cookie. It is host-only, `Path=/`, `HttpOnly`, production `Secure`, `SameSite=Lax`, and `Max-Age=7일`; it is not a bearer token."
+  parameters:
+    CsrfToken:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: "Value issued by `GET /api/auth/csrf` in the readable `XSRF-TOKEN` cookie."
+      schema:
+        type: string
+        minLength: 1
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    Unauthenticated:
+      description: Login required or session expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    CsrfRejected:
+      description: CSRF token is missing or does not match the current browser context
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ProjectNotFound:
+      description: Project does not exist or is not owned by the caller
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InvalidInput:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    VersionConflict:
+      description: The supplied expected version is no longer current; refresh before retrying
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    AnalysisConflict:
+      description: "Error code is `ANALYSIS_ALREADY_PROCESSING` for duplicate project requests or `ANALYSIS_ACTIVE_PROJECT_DELETE_FORBIDDEN` for deletion during active analysis."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    AnalysisCapacity:
+      description: "Error code is `ANALYSIS_USER_LIMIT_REACHED` for the per-user limit or `ANALYSIS_SERVER_LIMIT_REACHED` for the server-wide limit."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthResponse:
       type: object
@@ -31,3 +349,131 @@ components:
           type: string
         status:
           type: string
+    PublicSession:
+      type: object
+      required:
+        - user
+        - session
+      properties:
+        user:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+        session:
+          type: object
+          required: [expiresAt]
+          properties:
+            expiresAt:
+              type: string
+              format: date-time
+    Project:
+      type: object
+      required: [id, name, version, createdAt, updatedAt, role, runtimes]
+      properties:
+        id: { type: string }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Trimmed string measured in Unicode code points
+        version: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        role: { type: string, enum: [FRONTEND, BACKEND, FULL_STACK, AI, DESIGNER] }
+        runtimes:
+          type: array
+          maxItems: 30
+          items:
+            type: string
+            maxLength: 200
+      additionalProperties: false
+    ProjectResponse:
+      type: object
+      required: [project]
+      properties:
+        project:
+          $ref: "#/components/schemas/Project"
+    ProjectListResponse:
+      type: object
+      required: [projects]
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+    ProjectCreateRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    ProjectCreateMetadataRequest:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        role: { type: string, enum: [FRONTEND, BACKEND, FULL_STACK, AI, DESIGNER] }
+        runtimes: { type: string }
+    ProjectUpdateRequest:
+      type: object
+      required: [expectedVersion]
+      properties:
+        name: { type: string, maxLength: 100 }
+        role: { type: string, enum: [FRONTEND, BACKEND, FULL_STACK, AI, DESIGNER] }
+        runtimes: { type: string }
+        expectedVersion: { type: integer, minimum: 1 }
+    AnalysisStartRequest:
+      type: object
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+    ProjectDeleteRequest:
+      type: object
+      required: [confirmation, expectedVersion]
+      additionalProperties: false
+      properties:
+        confirmation:
+          type: boolean
+          enum: [true]
+        expectedVersion:
+          type: integer
+          minimum: 0
+    ProjectDetailResponse:
+      type: object
+      required: [project, confirmed, draft, latestAttempt]
+      properties:
+        project:
+          $ref: "#/components/schemas/Project"
+        confirmed:
+          nullable: true
+          type: object
+          additionalProperties: true
+        draft:
+          nullable: true
+          type: object
+          additionalProperties: true
+        latestAttempt:
+          nullable: true
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            fields:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
