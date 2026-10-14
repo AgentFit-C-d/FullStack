@@ -35,7 +35,8 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
             CatalogRecommendationWorkflow.Result result) {
         UUID id = UUID.randomUUID();
         return transactions.execute(status -> {
-            var connection = DataSourceUtils.getConnection(dataSource);
+            try {
+                var connection = DataSourceUtils.getConnection(dataSource);
                 long currentVersion;
                 try (var query = connection.prepareStatement("SELECT version FROM project WHERE id = ? FOR UPDATE")) {
                     query.setObject(1, UUID.fromString(snapshot.projectId()));
