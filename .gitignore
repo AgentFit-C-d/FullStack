@@ -2,11 +2,13 @@
 .DS_Store
 Thumbs.db
 .idea/
+.specify
 .vscode/
 
 # Java / Spring
 services/core-api/target/
 services/core-api/.gradle/
+.m2-cache/
 *.class
 
 # Python / FastAPI
@@ -24,3 +26,7 @@ venv/
 
 # Logs
 *.log
+
+# Local skills.sh discovery and triage state (not an approved Catalog release)
+catalog-candidates/skills-sh-candidates.json
+catalog-candidates/skills-sh-decisions.json

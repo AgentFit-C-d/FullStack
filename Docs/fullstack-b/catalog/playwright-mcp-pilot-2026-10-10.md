@@ -1,0 +1,53 @@
+# Playwright MCP 조사 후보 — 2026-10-10
+
+> **후보 조사 / AgentFit Catalog 승인 아님.** 팀의 첫 도구 목록과 지원 OS·Client 버전은 미확정이다. 이 파일은 단일 후보의 실행 가능성을 확인한 기록이며 `PASS` 지원 행, 권한 매핑, 설정 템플릿, 조합 검증의 근거가 아니다.
+
+## 고정 조사 대상
+
+| 항목 | 관찰값 |
+| --- | --- |
+| 도구 | Microsoft [`playwright-mcp`](https://github.com/microsoft/playwright-mcp) |
+| npm 패키지 | `@playwright/mcp@0.0.83` (`npm view` 확인) |
+| 출처 | `https://github.com/microsoft/playwright-mcp` (`package.json`의 repository) |
+| 런타임 | 이 PC Node.js `v24.16.0`; 패키지 요구사항 `node >=18` |
+| 종속 버전 | `playwright`/`playwright-core` `1.64.0-alpha-1790635538000` |
+| 후보 Capability | `cap_browser_verification` — 실제 업무 수행 검증 전의 분류 후보 |
+| Client 파일럿 | Windows의 Claude Code `2.1.270`; Claude Code 설정에는 등록하지 않음 |
+
+[공식 README](https://github.com/microsoft/playwright-mcp#readme)는 Claude Code에 MCP 서버를 추가하는 방법과 Node.js 요구사항을 제시한다. 다만 README의 `@latest` 예시는 제품 Catalog에 그대로 쓰지 않고 고정 버전의 파일·명령·의존성을 검토해야 한다.
+
+## 고정 배포물 무결성
+
+2026-10-10 npm 레지스트리의 `@playwright/mcp@0.0.83` 메타데이터에서 tarball URL `https://registry.npmjs.org/@playwright/mcp/-/mcp-0.0.83.tgz`와 `dist.integrity=sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==`를 확인했다. `npm pack`으로 격리 폴더에 받은 24,095-byte archive의 SHA-512를 별도로 계산해 같은 SRI 값임을 확인했다. 레지스트리의 `repository.url`은 Microsoft 저장소를 가리키고, 패키지의 Node 요구사항은 `>=18`이며 Playwright 종속성은 `1.64.0-alpha-1790635538000`이다. 이 검사는 내려받은 bytes와 레지스트리 메타데이터의 일치만 확인한다. 게시자 신원·코드 안전성·알파 종속성의 운영 적합성이나 AgentFit의 독립 릴리스 승인을 대신하지 않는다. 받은 archive는 검사 후 삭제했다.
+
+## 로컬 관찰
+
+`npm install --prefix <격리 폴더> --ignore-scripts --no-audit --no-fund @playwright/mcp@0.0.83`으로 전역 설치·사용자 설정 변경 없이 패키지를 받았다. `node <격리 폴더>/node_modules/@playwright/mcp/cli.js --help`가 완료됐다. 같은 CLI의 stdio에 MCP `initialize` 요청을 보내 `serverInfo.name=Playwright`, `serverInfo.version=1.64.0-alpha-1790635538000` 응답을 받았고, `tools/list`에서 25개 도구를 확인했다. 목록에는 `browser_navigate`, `browser_snapshot`, `browser_click`과 `browser_run_code_unsafe`가 포함됐다.
+
+이어 설치된 Microsoft Edge를 `--browser msedge --headless --isolated`로 실행했다. 제한된 샌드박스에서는 Edge의 임시 프로필 파일 쓰기가 실패했으나, 일반 실행 환경에서 MCP `browser_navigate`가 `data:text/html,...<h1>AgentFit Pilot</h1>`을 열었고 생성된 접근성 스냅샷에 `heading "AgentFit Pilot"`이 있었다. 외부 사이트나 사용자 파일은 열지 않았다.
+
+Claude Code `2.1.270`에서도 사용자·프로젝트 MCP 설정을 수정하지 않고 임시 `--mcp-config`와 `--strict-mcp-config`로 같은 서버를 연결했다. 첫 호출은 Client의 도구 권한에서 거부됐다. 다음 호출에서 `browser_navigate`만 `--allowedTools`로 허용하자 Client가 페이지 제목을 반환했고, 같은 격리 폴더에 접근성 스냅샷이 생성됐다. 별도 `browser_snapshot` 호출은 허용하지 않아 거부됐다. 이 결과는 **해당 로컬 페이지에 한정된 Claude Code → MCP → Edge 탐색 파일럿 성공**이다. 테스트 파일과 설치 폴더는 조사 후 제거했다.
+
+이후 같은 고정 패키지를 격리 폴더에 다시 설치해 **MCP 서버 프로세스를 종료하고 새 프로세스로 재시작**하는 시험을 수행했다. 각 프로세스에서 별도로 `initialize`와 `browser_navigate`를 호출했고, 로컬 `data:` 페이지의 접근성 스냅샷에서 두 번 모두 `heading "AgentFit Pilot"`을 확인했다. 첫 제한 샌드박스 실행은 Edge 임시 프로필 쓰기 제한으로 실패했고, 일반 실행 환경에서는 두 탐색 모두 성공했다. 이는 직접 MCP 클라이언트에서의 수동 재시작 시험이다. Claude Code의 자동 복구·재연결, 실제 사이트 접근, 사용 중 브라우저 장애 복구까지 검증한 것은 아니다.
+
+이 파일럿으로 패키지 시작·MCP 핸드셰이크·로컬 페이지 탐색을 확인했다. 실제 업무 페이지의 검증, 쓰기·외부 연결 권한, 인증/Secret, 제품 설정 템플릿, 실패 복구, 다른 도구와의 조합은 시험하지 않았다. 특히 `browser_run_code_unsafe`가 포함되므로 사용자에게 제시할 권한 범위와 허용 작업을 정하기 전에는 설정을 생성하거나 추천하지 않는다. [미승인 Catalog 후보](../../../catalog-candidates/README.md)의 **제품 지원 행**은 `documentation`·`format`·`standalone` 모두 `NOT_RUN`이다. 개별 파일럿 관찰을 제품 지원 범위 전체의 `PASS`로 승격하지 않는다.
+
+## 실제 릴리스에 앞서 필요한 결정·시험
+
+### 2026-10-12 재현 가능한 로컬 검사
+
+`tools/catalog_mcp_pilot.py`를 추가했다. 고정 패키지를 **호출자가 격리 설치**한 뒤 `python tools/catalog_mcp_pilot.py -- node <격리 폴더>/node_modules/@playwright/mcp/cli.js --browser msedge --headless --isolated`로 실행한다. 검사기는 사용자 Claude Code 설정을 변경하지 않고, 두 개의 새 MCP 서버 프로세스에서 각각 `initialize` → `tools/list` → 로컬 `data:` 페이지 탐색을 실행한다. 생성된 스냅샷은 각 프로세스의 임시 작업 디렉터리에서 읽고 제거한다. 패키지 설치와 네트워크 접속은 검사기 범위 밖이다.
+
+2026-10-12 검사기를 보완해 두 프로세스의 전체 `tools/list` 응답(이름·설명·입력 스키마 포함)을 비교한다. 이전에는 도구 개수와 `unsafe` 도구명만 같으면 일반 도구 목록이 바뀌어도 통과했다. 회귀 시험은 동일 개수의 일반 도구가 재시작 후 바뀐 경우를 실패로 확인한다. 이 보완은 검사기 자체의 판정 정확도이며 실제 Playwright MCP 후보를 새로 실행하거나 Catalog를 승인한 결과는 아니다.
+
+2026-10-12에는 Claude Code Client 연결도 다시 확인했다. 별도 임시 폴더에 `@playwright/mcp@0.0.83`을 `--ignore-scripts`로 설치하고, 임시 JSON의 `mcpServers.agentfit_pilot`에 해당 폴더의 CLI 절대 경로와 `--browser msedge --headless --isolated` 인자를 지정했다. Claude Code `2.1.270`을 `--mcp-config <임시 JSON> --strict-mcp-config --allowedTools mcp__agentfit_pilot__browser_navigate --disallowedTools mcp__agentfit_pilot__browser_snapshot --tools '' --no-session-persistence`로 실행했다. 비용 상한 USD 0.10과 로컬 `data:` URL만 여는 프롬프트를 지정했고, 호출 결과에는 `AgentFit Pilot` 제목이 반환됐다. 임시 작업 폴더의 Playwright 접근성 스냅샷에도 `heading "AgentFit Pilot"`이 있었다. 호출 비용은 약 USD 0.078이었다. 제한된 샌드박스의 첫 호출은 결과 없이 지연돼 중단했고, 네트워크 허용 환경의 재실행에서 성공했다. 사용자·프로젝트 MCP 설정은 변경하지 않았다. `claude mcp list`는 이 임시 `--mcp-config` 서버를 나열하지 않았으므로 그 명령의 출력은 연결 검증 증거로 사용하지 않았다. 이 시험은 로컬 페이지 탐색 1건만 입증하며 권한 거부 동작을 이번에 재검증한 것은 아니다.
+
+이 PC에서 `@playwright/mcp@0.0.83`을 격리 설치하고 일반 실행 환경에서 Python 검사기를 실행한 결과 두 번 모두 성공했다. 반환값은 `status=LOCAL_PILOT_ONLY`, `runs=2`, `server=Playwright`, `toolCount=25`, `version=1.64.0-alpha-1790635538000`이고, 목록에 `browser_run_code_unsafe`가 있었다. 제한된 샌드박스에서는 Edge 임시 프로필 접근 때문에 실패했으며, 격리 폴더·생성 스냅샷은 검사 후 삭제했다. **Python 검사기 자체는 직접 MCP 클라이언트의 로컬 페이지·재시작 시험**만 반복한다. 위의 별도 Claude Code 시험도 실제 업무 사이트, 권한 집행, 구성 파일·조합·복구 및 독립 승인 결과를 대신하지 않는다. 따라서 후보 `support-matrix.json`은 계속 `NOT_RUN`이다.
+
+1. 팀이 이 도구와 정확한 npm 버전, Windows/Claude Code 버전을 1차 검증 대상으로 채택한다.
+2. 설치된 패키지의 출처·배포물 해시·알파 의존성 허용 여부를 검토한다.
+3. 로컬 페이지 탐색과 MCP 서버의 수동 종료·재시작은 확인했다. 격리된 프로젝트에서 실제 사용 시나리오와 Claude Code의 장애 복구를 추가 시험한다.
+4. 도구별 작업·resource 범위, 외부 연결·실행 권한, 상위 Client 정책과 Secret 처리 방식을 검토한다.
+5. 설정·적용·복구 가이드를 고정 템플릿으로 작성하고 단독 및 전체 조합을 별도 검증한다. 독립 검토자가 릴리스 해시를 승인하기 전에는 활성화하지 않는다.
+
+2026-10-12에는 원본 후보를 바꾸지 않고 [별도 안내 초안 후보](../../../catalog-candidates/playwright-mcp-0.0.83-windows-claude-2.1.270-guide-draft/)를 만들었다. 적용 전 준비, 로컬 확인 범위, 확인·복구 절차를 정적 파일로 넣고 인덱스·매니페스트를 작성했다. Java 후보 검증에서 파일 무결성과 정적 출력 형식은 통과했지만 지원 검사는 여전히 `NOT_RUN`이고 권한 매핑·독립 승인은 남았다. 이 초안에는 사용자 설정에 복사할 제품용 실행 명령이나 검증된 설정 파일이 없으며 Catalog 활성화에 사용하지 않는다.

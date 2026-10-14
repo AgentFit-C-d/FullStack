@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:agentfit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema-h2.sql'
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  session:
+    jdbc:
+      initialize-schema: always
+      schema: classpath:schema-h2.sql
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: test-client
+            client-secret: test-secret
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
+            scope:
+              - user:email
+
+agentfit:
+  auth:
+    cookie-secure: false
+  hmac:
+    current-key-id: test-current
+    current-secret: test-secret

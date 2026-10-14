@@ -19,7 +19,89 @@ paths:
               example:
                 service: ai-service
                 status: ok
+  /internal/v1/analysis:
+    post:
+      summary: Process a Core API-owned analysis request
+      description: Internal endpoint only. It accepts no browser cookie, Bearer/JWT, GitHub token, user permission, or project-ownership information. Canonical HMAC input is METHOD, PATH, X-AgentFit-Timestamp, requestId, generation, contractVersion, and lowercase SHA-256 hex of the exact UTF-8 request body, separated by LF. HMAC verifies Core API request provenance and integrity; Core API remains responsible for persistence and authorization.
+      operationId: processAnalysis
+      parameters:
+        - $ref: "#/components/parameters/AgentFitKeyId"
+        - $ref: "#/components/parameters/AgentFitTimestamp"
+        - $ref: "#/components/parameters/AgentFitSignature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisRequest"
+      responses:
+        "200":
+          description: Contract test-double result for the requested A6 context; Core API must still revalidate its A6 and project state before persistence.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResponse"
+        "400":
+          $ref: "#/components/responses/InvalidAnalysisRequest"
+        "401":
+          $ref: "#/components/responses/InternalAuthFailed"
+        "503":
+          $ref: "#/components/responses/TemporarilyUnavailable"
 components:
+  parameters:
+    AgentFitKeyId:
+      name: X-AgentFit-Key-Id
+      in: header
+      required: true
+      description: Identifier of the current or briefly retained previous HMAC key.
+      schema:
+        type: string
+        minLength: 1
+    AgentFitTimestamp:
+      name: X-AgentFit-Timestamp
+      in: header
+      required: true
+      description: Unix epoch seconds. The AI Service accepts only timestamps within ±5 minutes of its server clock.
+      schema:
+        type: string
+        pattern: '^\d{10}$'
+    AgentFitSignature:
+      name: X-AgentFit-Signature
+      in: header
+      required: true
+      description: Padding-free base64url-encoded HMAC-SHA256 of the canonical string defined by this contract.
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_-]+$'
+  responses:
+    InvalidAnalysisRequest:
+      description: Required request context or analysis input is malformed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InternalErrorResponse"
+          example:
+            error:
+              code: INVALID_AI_REQUEST
+              message: Analysis request is invalid.
+              requestId: core-request-id
+    InternalAuthFailed:
+      description: HMAC, timestamp, or duplicate-request validation failed. The response deliberately does not distinguish the cause.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InternalErrorResponse"
+          example:
+            error:
+              code: INTERNAL_AUTH_FAILED
+              message: Internal request authentication failed.
+              requestId: core-request-id
+    TemporarilyUnavailable:
+      description: AI Service did not accept or begin processing the request. It must not retain the request fingerprint; Core API may retry once with the same context. A timeout or any response with uncertain processing state is not retried.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InternalErrorResponse"
   schemas:
     HealthResponse:
       type: object
@@ -31,3 +113,61 @@ components:
           type: string
         status:
           type: string
+    AnalysisRequest:
+      type: object
+      required: [requestId, generation, contractVersion, input]
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+          description: Opaque Core API A6 request identifier.
+        generation:
+          type: integer
+          minimum: 1
+          description: Project analysis generation associated with the A6 attempt.
+        contractVersion:
+          type: string
+          minLength: 1
+          description: Version of this analysis DTO contract.
+        input:
+          type: object
+          additionalProperties: true
+          description: AI analysis input. Detailed model semantics are owned by a later AI feature.
+    AnalysisResponse:
+      type: object
+      required: [requestId, generation, contractVersion, result]
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+        generation:
+          type: integer
+          minimum: 1
+        contractVersion:
+          type: string
+        result:
+          type: object
+          required: [kind]
+          additionalProperties: false
+          description: Contract-only test-double result. A future AI contract version replaces this with model-specific semantics.
+          properties:
+            kind:
+              type: string
+              enum: [CONTRACT_TEST_DOUBLE]
+    InternalErrorResponse:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string

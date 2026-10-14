@@ -1,0 +1,3 @@
+package com.agentfit.coreapi.domain.project.dto.request;
+import com.fasterxml.jackson.annotation.JsonAlias;
+public record ProjectCreateMetadataRequest(String name, String role, @JsonAlias({"runtimeInput", "runtimes"}) String runtimes) { }
