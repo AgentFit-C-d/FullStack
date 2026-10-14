@@ -12,7 +12,7 @@
 
 ## 2단계: 기반 작업 — UUID 전체 schema
 
-- [ ] T004 `services/core-api/src/test/resources/schema-h2.sql` 또는 PostgreSQL migration 테스트 fixture에 UUID `USER`·`PROJECT`와 A15/B9/Audit 핵심 FK를 먼저 추가해 schema 실패를 확인하고, 새 빈 DB에 전체 migration을 적용하는 실행 경계를 검증한다.
+- [X] T004 `services/core-api/src/test/resources/schema-h2.sql` 또는 PostgreSQL migration 테스트 fixture에 UUID `USER`·`PROJECT`와 A15/B9/Audit 핵심 FK를 먼저 추가해 schema 실패를 확인하고, 새 빈 DB에 전체 migration을 적용하는 실행 경계를 검증한다.
 - [X] T005 `services/core-api/src/main/resources/db/migration/V5__agentfit_ab_uuid_schema.sql`에 UUID `USER`·`PROJECT` 및 A15 전체 테이블을 생성한다. PDF 기준의 `PROJECT` version, current step/review 역참조, 상태 enum, NOT NULL/nullable 규칙을 반영한다.
 - [X] T006 `V5__agentfit_ab_uuid_schema.sql`에 B9 전체 테이블을 추가한다. `recommendation`, `recommendation_capability`, `recommendation_item`, `recommendation_notice`, `config_preview`, `config_selection`, `config_permission_selection`, `config_preview_file`, `config_export`의 UUID PK/FK·복합 UNIQUE·상태 CHECK를 반영한다.
 - [X] T007 [P] `services/core-api/src/main/resources/db/migration/V5__agentfit_ab_uuid_schema.sql`에 공통 `AUDIT_EVENT`와 필요한 인덱스를 추가하고, 성공 업무 상태와 Audit을 project-scoped UUID로 연결한다.
