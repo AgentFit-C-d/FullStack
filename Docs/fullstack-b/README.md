@@ -51,7 +51,7 @@ FullStack/Docs/
 | 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](archive/plans/configuration/history/generation-history-plan.md) |
 | Preview·승인·생성 이력·적용 보고의 B5–B9 JDBC 기록 | `configuration/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 
-B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관리한다. 이 문서에서 말하는 구현은 외부 서비스·DB에 연결되지 않은 경계 코드다.
+B Phase 1 코드는 `origin/develop`에 병합되어 기능별 패키지로 유지된다. 이 문서에서 말하는 구현은 내부 규칙·JDBC 경계까지의 범위이며, A/AI adapter·인증된 공개 API·통합 migration이 연결됐다는 뜻은 아니다. 현재 연결 수준은 [A/B 병합 연계 현황](../ab-integration-status.md)에서 확인한다.
 
 ## 현재 구현 수준
 
