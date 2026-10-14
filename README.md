@@ -1,6 +1,6 @@
 # AgentFit FullStack
 
-AgentFit MVP monorepo baseline.
+AgentFit MVP 모노레포입니다. A와 B 코드는 단일 Spring Boot Core API에 병합되어 있으며, FastAPI AI Service는 독립 서비스로 유지됩니다.
 
 ## Repository Layout
 
@@ -12,29 +12,27 @@ services/
   ai-service/          # FastAPI service for AI request handling and structured extraction
 contracts/
   openapi/             # API contracts shared by frontend, core API, and AI service
+Docs/
+  ab-integration-status.md # A/B 연결 상태와 다음 통합 지점
 ```
 
 ## Backend Services
 
-- `services/core-api`: Single-module Spring Boot project for A/B development. The application entry point and `/health` endpoint exist; B has also implemented pure Catalog, recommendation, selection, and Preview domain code. Authenticated business APIs and persistence are not connected.
-- `services/ai-service`: Independent FastAPI project for AI development. Only the application entry point and `/health` endpoint are implemented.
-- `contracts/openapi`: Initial OpenAPI files describing the health endpoints, not the full business API contract.
+- `services/core-api`: A의 인증·프로젝트·분석·Audit과 B의 Catalog·추천·Preview·승인·Export 내부 규칙 및 JDBC 경계를 함께 담은 단일 Spring Boot 서비스입니다.
+- `services/ai-service`: Core API 내부 호출을 위한 인증·분석 경계와 health endpoint를 제공하는 독립 FastAPI 서비스입니다.
+- `contracts/openapi`: Frontend/Core API 및 Core API/AI Service 간 공동 API 계약 위치입니다.
 
 ## Setup Scope
 
-The layout follows section 2 (pages 4-5) of the development baseline in `Docs/`.
-A/B features belong in the same Spring Boot application; FastAPI remains a separate service.
-The planned flow is Next.js -> Spring Boot -> FastAPI -> external LLM, with PostgreSQL access owned by Spring Boot.
-Database access, authentication, business features, service-to-service HTTP calls, and external LLM integration are not implemented yet.
-The frontend directory is a placeholder.
+구조는 기준 문서의 흐름을 따릅니다: Next.js -> Spring Boot Core API -> FastAPI AI Service -> external LLM. PostgreSQL 읽기·쓰기는 Core API만 소유합니다.
 
-Current scaffold versions are Java 21 / Spring Boot 3.3.5 and Python 3.11+ / FastAPI.
-These versions were selected for the scaffold and are not prescribed by section 2 of the baseline.
-Maven is required for the commands below; a Maven wrapper is not included yet.
+소스가 병합되어 함께 컴파일되는 것과 인증된 사용자 흐름이 실제로 연결된 것은 다릅니다. 현재 B workflow는 A/AI의 신뢰 adapter, 승인된 Catalog, 원자 저장 port가 제공될 때만 활성화됩니다. A snapshot·AI 계약·공개 API·Flyway 통합·프로젝트 삭제 transaction은 아직 후속 통합 작업입니다. 자세한 상태는 [A/B 병합 연계 현황](Docs/ab-integration-status.md)을 확인하세요.
+
+현재 기준 런타임은 Java 21 / Spring Boot 3.3.5 및 Python 3.11+ / FastAPI입니다. Maven wrapper는 포함하지 않습니다.
 
 ## Local Run
 
-Prerequisites: JDK 21, Maven, and Python 3.11+. Each service manages its own dependencies.
+Prerequisites: JDK 21, Maven, and Python 3.11+. Maven 실행 시 `JAVA_HOME`도 JDK 21을 가리켜야 합니다. 각 서비스는 의존성을 개별 관리합니다.
 Build output (`target/`), Python virtual environments (`.venv/`), IDE settings, and local `.env` files are intentionally excluded from Git.
 Maven downloads Java dependencies during the first build; the Python install command below installs the AI service dependencies.
 
@@ -58,10 +56,10 @@ Default ports:
 
 ## Local Verification
 
-- Core API: run `mvn -B -ntp clean verify` from `services/core-api`. The 2026-10-06 local run found 80 tests: 79 passed and one Windows symlink test was skipped. That run used JDK 24 to build Java 21 bytecode; the GitHub workflow uses JDK 21 on Linux.
-- AI service: run `python -m pytest -q` from `services/ai-service` after installing the development dependencies. Both tests passed locally on Python 3.13; the GitHub workflow uses Python 3.11.
+- Core API: run `mvn -B -ntp test` from `services/core-api`. JDK 21로 실행한 2026-10-14 기준 표준 테스트는 440개 실행, 실패·오류 0개, Docker/환경 의존 테스트 50개 skip으로 완료됐습니다. PostgreSQL opt-in 테스트는 별도 Docker와 환경 변수가 필요합니다.
+- AI service: 개발 의존성을 설치한 뒤 `services/ai-service`에서 `python -m pytest -q`를 실행합니다. 2026-10-14 기준 격리 가상환경에서 10개 테스트가 통과했으며, FastAPI startup event와 Starlette TestClient의 deprecation warning 3개가 남아 있습니다.
 
-These checks do not verify database, authenticated API, real Catalog, external AI, or deployed-environment integration.
+이 검증은 실제 PostgreSQL, 승인 Catalog, 외부 LLM, 인증된 B 공개 API, 배포 환경을 검증하지 않습니다.
 
 ## Continuous Integration
 
