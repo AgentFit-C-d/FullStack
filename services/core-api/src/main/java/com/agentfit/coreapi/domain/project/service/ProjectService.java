@@ -119,7 +119,8 @@ public class ProjectService {
                 throw new IllegalStateException("Idempotency request is still being created");
             }
         }
-        Project project = new Project(id, principal.userId(), name, 1L, "CREATED", 0L, 0L, now, now, normalizedRole, 1L);
+        Project project = new Project(id, principal.userId(), principal.userUuid(), name, 1L, now, now)
+            .withLegacyState("CREATED", normalizedRole, 1L);
         PlanningInput input = inputValidator.validate(id, 1L, file, inputText);
         repository.save(project); runtimeRepository.replace(id, toRuntimes(id, runtimes)); inputRepository.save(input);
         idempotencyRepository.linkProject(principal.userId(),"PROJECT_CREATE",idempotencyKey,id);
@@ -164,6 +165,9 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<Project> list(AuthenticatedPrincipal principal) {
+        if (principal != null && principal.userUuid() != null) {
+            return repository.findByOwnerUuid(principal.userUuid());
+        }
         return repository.findByOwnerId(principal.userId());
     }
 
