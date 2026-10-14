@@ -57,7 +57,7 @@ Default ports:
 ## Local Verification
 
 - Core API: run `mvn -B -ntp test` from `services/core-api`. JDK 21로 실행한 2026-10-14 기준 표준 테스트는 440개 실행, 실패·오류 0개, Docker/환경 의존 테스트 50개 skip으로 완료됐습니다. PostgreSQL opt-in 테스트는 별도 Docker와 환경 변수가 필요합니다.
-- AI service: 개발 의존성을 설치한 뒤 `services/ai-service`에서 `python -m pytest -q`를 실행합니다.
+- AI service: 개발 의존성을 설치한 뒤 `services/ai-service`에서 `python -m pytest -q`를 실행합니다. 2026-10-14 기준 격리 가상환경에서 10개 테스트가 통과했으며, FastAPI startup event와 Starlette TestClient의 deprecation warning 3개가 남아 있습니다.
 
 이 검증은 실제 PostgreSQL, 승인 Catalog, 외부 LLM, 인증된 B 공개 API, 배포 환경을 검증하지 않습니다.
 
