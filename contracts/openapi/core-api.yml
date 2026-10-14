@@ -565,15 +565,40 @@ components:
         notices: { type: array, items: { type: object, additionalProperties: true } }
     PreviewCreateRequest:
       type: object
-      required: [recommendationId, selectedToolKeys, permissionSelections, existingState, generatorVersion]
+      required: [basis, recommendationId, target, selectedToolKeys, permissionSelections, existingState, providedFiles, generatorVersion]
       additionalProperties: false
       properties:
+        basis:
+          $ref: "#/components/schemas/PreviewBasis"
         recommendationId: { type: string, format: uuid }
+        target:
+          $ref: "#/components/schemas/EnvironmentTarget"
         selectedToolKeys: { type: array, items: { type: string }, maxItems: 20 }
         permissionSelections: { type: array, items: { type: object, additionalProperties: true } }
         existingState: { type: string, enum: [UNKNOWN, USER_SAYS_EMPTY, PROVIDED] }
         generatorVersion: { type: string, minLength: 1, maxLength: 100 }
         providedFiles: { type: array, items: { type: object, additionalProperties: false } }
+    PreviewBasis:
+      type: object
+      required: [projectId, projectVersion, confirmedProfileId, confirmedProfileVersion, confirmationEventId, reviewVersion, developerVersion, environmentVersion, catalogReleaseId, catalogHash]
+      properties:
+        projectId: { type: string, format: uuid }
+        projectVersion: { type: integer, minimum: 1 }
+        confirmedProfileId: { type: string, format: uuid }
+        confirmedProfileVersion: { type: integer, minimum: 1 }
+        confirmationEventId: { type: string, format: uuid }
+        reviewVersion: { type: integer, minimum: 0 }
+        developerVersion: { type: integer, minimum: 0 }
+        environmentVersion: { type: integer, minimum: 0 }
+        catalogReleaseId: { type: string, minLength: 1 }
+        catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+    EnvironmentTarget:
+      type: object
+      required: [osFamily, clientId, clientVersion]
+      properties:
+        osFamily: { type: string, minLength: 1 }
+        clientId: { type: string, minLength: 1 }
+        clientVersion: { type: string, minLength: 1 }
     PreviewResponse:
       type: object
       required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt]
