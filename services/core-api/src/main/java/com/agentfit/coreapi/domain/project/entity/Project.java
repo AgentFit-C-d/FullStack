@@ -28,6 +28,11 @@ public record Project(String id, long ownerId, String name, long version, String
             long analysisGeneration, long reviewGeneration, Instant createdAt, Instant updatedAt) {
         this(id, ownerId, name, version, stage, analysisGeneration, reviewGeneration, createdAt, updatedAt, "BACKEND", null);
     }
+
+    public Project withLegacyState(String nextStage, String nextDeveloperRole, Long nextInputRevision) {
+        return new Project(id, ownerId, name, version, nextStage, analysisGeneration, reviewGeneration,
+            createdAt, updatedAt, nextDeveloperRole, nextInputRevision, ownerUuid);
+    }
 }
 
 
