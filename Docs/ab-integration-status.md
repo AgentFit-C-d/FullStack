@@ -33,8 +33,11 @@
 | 추천 생성 | owner-checked snapshot, AI Capability analyzer, 승인 Catalog reader, 원자 recommendation store |
 | Preview 생성 | trusted recommendation context, 승인 Catalog reader, 원자 preview store |
 | 승인·다운로드·미충족 경고 | trusted preview/download reader, 승인 Catalog reader, approval/history store, 서버 ID 발급기, clock |
-| 최신 추천 조회 | owner-checked current basis, 저장 recommendation metadata reader, 승인 Catalog reader |
-| 이력·적용 보고 | owner-checked basis/generation reader, report store, report ID 발급기, clock |
+| 최신 추천 요약 조회 | owner-checked basis reader, 저장 recommendation reader |
+| 최신 추천 상세 조회 | owner-checked current reader, 저장 metadata reader, 승인 Catalog reader |
+| 이력 단건 조회 | owner-checked basis reader, generation reader, latest report reader |
+| 이력 페이지 조회 | owner-checked basis reader, page reader |
+| 사용자 적용 보고 | trusted generation reader, report store, report ID 발급기, clock |
 | Catalog 조회 | authenticated caller, 승인 Catalog reader |
 
 이 포트는 `services/core-api/src/main/java/com/agentfit/autoconfigure/`에 조건부 Spring bean으로 선언되어 있다. 테스트용 port를 제공한 경우에는 workflow가 활성화되지만, 이는 운영 adapter가 존재한다는 뜻이 아니다.
