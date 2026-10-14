@@ -1,6 +1,7 @@
 # AgentFit 개발 문서
 
 - [1차 AB 통합 개발 기준 PDF](AgentFit_AB_1차통합_개발기준.pdf): 팀 공통 기준 문서.
+- [A/B 병합 연계 현황](ab-integration-status.md): 병합된 코드의 실제 연결 수준, 책임 경계, 다음 통합 지점.
 - [풀스택 B 시작 안내](fullstack-b/README.md): B 담당 범위, 구현 파일 지도, 읽는 순서.
 - [풀스택 B 현재 상태](fullstack-b/STATUS.md): 작업 번호별 완료·미완료 항목.
 - [풀스택 B 다음 작업](fullstack-b/NEXT-STEPS.md): 다른 담당자와 맞춰야 할 계약과 구현 우선순위.
