@@ -1,16 +1,9 @@
 package com.agentfit.coreapi.domain.project.repository;
 
 
-import com.agentfit.coreapi.domain.auth.entity.*;
-import com.agentfit.coreapi.domain.project.dto.request.*;
-import com.agentfit.coreapi.domain.project.dto.response.*;
-import com.agentfit.coreapi.domain.project.entity.*;
-import com.agentfit.coreapi.domain.project.exception.*;
-import com.agentfit.coreapi.domain.project.repository.*;
-import com.agentfit.coreapi.domain.project.service.*;
-import com.agentfit.coreapi.global.exception.*;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface ProjectRepository {
     Project save(Project project);
@@ -19,6 +12,12 @@ public interface ProjectRepository {
 
     Optional<Project> findByIdAndOwnerId(String id, long ownerId);
 
+    default List<Project> findByOwnerUuid(UUID ownerUuid) {
+        return List.of();
+    }
+
+    default Optional<Project> findByIdAndOwnerUuid(String id, UUID ownerUuid) {
+        return Optional.empty();
     default Optional<Project> findByIdForUpdate(String id) {
         return Optional.empty();
     }

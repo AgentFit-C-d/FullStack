@@ -20,8 +20,27 @@ import com.agentfit.coreapi.domain.analysis.repository.AnalysisAttemptRepository
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttempt;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.ArrayList;
 
 class ProjectDeletionTest {
+    @Test
+    void deletesBDataBeforeAProjectGraph() {
+        ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();
+        Project project = new ProjectService(repository)
+            .create(new AuthenticatedPrincipal(7L, "owner", null), "demo");
+        ArrayList<String> calls = new ArrayList<>();
+        ProjectService service = new ProjectService(repository, new ProjectOwnershipGuard(repository),
+            new com.agentfit.coreapi.domain.audit.service.AuditRecorder(), new ProjectRuntimeRepository(){},
+            new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){},
+            new PlanningInputValidator(), new AnalysisAttemptRepository(){},
+            id -> calls.add("B:" + id));
+
+        service.delete(new AuthenticatedPrincipal(7L, "owner", null), project.id(), true, 1L);
+
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("B:" + project.id()), calls);
+        org.junit.jupiter.api.Assertions.assertTrue(repository.projects.isEmpty());
+    }
+
     @Test
     void staleDeleteDoesNotCallRepositoryDelete() {
         ProjectCreationTest.InMemoryProjectRepository repository = new ProjectCreationTest.InMemoryProjectRepository();

@@ -258,6 +258,81 @@ paths:
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/AnalysisConflict" }
         "429": { $ref: "#/components/responses/AnalysisCapacity" }
+  /api/projects/{projectId}/recommendations:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Create an owner-checked recommendation
+      operationId: createRecommendation
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationCreateRequest"
+      responses:
+        "201":
+          description: Recommendation created with its immutable basis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+        "503": { $ref: "#/components/responses/InternalError" }
+  /api/projects/{projectId}/recommendations/latest:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      summary: Read the latest owner-checked recommendation
+      operationId: getLatestRecommendation
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Latest recommendation without an AI call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /api/projects/{projectId}/config-previews:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Create a trusted configuration Preview
+      operationId: createConfigPreview
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewCreateRequest"
+      responses:
+        "201":
+          description: Content-free Preview metadata and fingerprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
 components:
   securitySchemes:
     agentFitSession:
@@ -453,6 +528,63 @@ components:
           nullable: true
           type: object
           additionalProperties: true
+    RecommendationCreateRequest:
+      type: object
+      required: [expectedVersions]
+      additionalProperties: false
+      properties:
+        expectedVersions:
+          type: object
+          required: [project, developer, environment]
+          properties:
+            project: { type: integer, minimum: 1 }
+            developer: { type: integer, minimum: 0 }
+            environment: { type: integer, minimum: 0 }
+    RecommendationResponse:
+      type: object
+      required: [recommendationId, status, basis]
+      properties:
+        recommendationId: { type: string, format: uuid }
+        status: { type: string, enum: [RECOMMENDED, NO_ADDITIONS_NEEDED, NEEDS_INFORMATION, NO_COMPATIBLE_TOOLS] }
+        basis:
+          type: object
+          required: [projectId, projectVersion, confirmedProfileId, confirmedProfileVersion, confirmationEventId, reviewVersion, developerVersion, environmentVersion, catalogReleaseId, catalogHash]
+          properties:
+            projectId: { type: string, format: uuid }
+            projectVersion: { type: integer, minimum: 0 }
+            confirmedProfileId: { type: string, format: uuid }
+            confirmedProfileVersion: { type: integer, minimum: 1 }
+            confirmationEventId: { type: string, format: uuid }
+            reviewVersion: { type: integer, minimum: 0 }
+            developerVersion: { type: integer, minimum: 0 }
+            environmentVersion: { type: integer, minimum: 0 }
+            catalogReleaseId: { type: string }
+            catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        capabilities: { type: array, items: { type: object, additionalProperties: true } }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+        notices: { type: array, items: { type: object, additionalProperties: true } }
+    PreviewCreateRequest:
+      type: object
+      required: [recommendationId, selectedToolKeys, permissionSelections, existingState, generatorVersion]
+      additionalProperties: false
+      properties:
+        recommendationId: { type: string, format: uuid }
+        selectedToolKeys: { type: array, items: { type: string }, maxItems: 20 }
+        permissionSelections: { type: array, items: { type: object, additionalProperties: true } }
+        existingState: { type: string, enum: [UNKNOWN, USER_SAYS_EMPTY, PROVIDED] }
+        generatorVersion: { type: string, minLength: 1, maxLength: 100 }
+        providedFiles: { type: array, items: { type: object, additionalProperties: false } }
+    PreviewResponse:
+      type: object
+      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt]
+      properties:
+        previewId: { type: string, format: uuid }
+        recommendationId: { type: string, format: uuid }
+        fingerprint: { type: string, pattern: '^[0-9a-f]{64}$' }
+        selectionDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
+        contentDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
         draft:
           nullable: true
           type: object

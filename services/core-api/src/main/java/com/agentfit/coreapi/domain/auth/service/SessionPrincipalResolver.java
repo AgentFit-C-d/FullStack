@@ -1,11 +1,9 @@
 package com.agentfit.coreapi.domain.auth.service;
 
 
-import com.agentfit.coreapi.domain.auth.entity.*;
-import com.agentfit.coreapi.domain.auth.repository.*;
-import com.agentfit.coreapi.domain.auth.service.*;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -29,9 +27,24 @@ public class SessionPrincipalResolver {
             return Optional.empty();
         }
 
+        String principalName = authentication.getName();
+        Optional<UserAccount> accountByUuid;
+        try {
+            accountByUuid = userAccountRepository.findByUuid(UUID.fromString(principalName));
+        } catch (IllegalArgumentException ex) {
+            accountByUuid = Optional.empty();
+        }
+        if (accountByUuid.isPresent()) {
+            HttpSession session = request.getSession(false);
+            Instant expiresAt = session == null ? null
+                : Instant.ofEpochMilli(session.getLastAccessedTime())
+                    .plusSeconds(Math.max(0, session.getMaxInactiveInterval()));
+            return Optional.of(new AuthenticatedPrincipal(accountByUuid.get(), expiresAt));
+        }
+
         long userId;
         try {
-            userId = Long.parseLong(authentication.getName());
+            userId = Long.parseLong(principalName);
         } catch (NumberFormatException ex) {
             return Optional.empty();
         }

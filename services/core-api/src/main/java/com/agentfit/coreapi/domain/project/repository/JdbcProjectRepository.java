@@ -12,6 +12,7 @@ import com.agentfit.coreapi.global.exception.*;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -47,6 +48,16 @@ class JdbcProjectRepository implements ProjectRepository {
             (rs, rowNum) -> map(rs.getString("id"), rs.getLong("owner_id"), rs.getString("name"),
                 rs.getLong("version"), rs.getString("stage"), rs.getLong("analysis_generation"),
                 rs.getLong("review_generation"), rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), rs.getString("developer_role"), (Long) rs.getObject("current_input_revision")), id, ownerId)
+            .stream().findFirst();
+    }
+
+    @Override
+    public Optional<Project> findByIdAndOwnerUuid(String id, UUID ownerUuid) {
+        return jdbcTemplate.query("SELECT id, user_id, name, version, current_step, analysis_generation, review_generation, created_at, updated_at FROM project WHERE id = ? AND user_id = ?",
+            (rs, rowNum) -> mapUuid(rs.getString("id"), rs.getObject("user_id", UUID.class), rs.getString("name"),
+                rs.getLong("version"), rs.getString("current_step"), rs.getLong("analysis_generation"),
+                rs.getLong("review_generation"), rs.getTimestamp("created_at").toInstant(),
+                rs.getTimestamp("updated_at").toInstant()), id, ownerUuid)
             .stream().findFirst();
     }
 
@@ -89,6 +100,10 @@ class JdbcProjectRepository implements ProjectRepository {
             long analysisGeneration, long reviewGeneration, java.time.Instant createdAt, java.time.Instant updatedAt,
             String developerRole, Long currentInputRevision) {
         return new Project(id, ownerId, name, version, stage, analysisGeneration, reviewGeneration, createdAt, updatedAt, developerRole, currentInputRevision);
+    }
+    private Project mapUuid(String id, UUID ownerUuid, String name, long version, String currentStep,
+            long analysisGeneration, long reviewGeneration, java.time.Instant createdAt, java.time.Instant updatedAt) {
+        return new Project(id, 0L, ownerUuid, name, version, createdAt, updatedAt);
     }
 }
 

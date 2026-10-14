@@ -37,22 +37,32 @@ public class ProjectService {
     private final ProjectCreationIdempotencyRepository idempotencyRepository;
     private final PlanningInputValidator inputValidator;
     private final AnalysisAttemptRepository analysisAttemptRepository;
+    private final ProjectBDeletionPort bDeletion;
 
     public ProjectService(ProjectRepository repository) {
-        this(repository, new ProjectOwnershipGuard(repository), new com.agentfit.coreapi.domain.audit.service.AuditRecorder(), new ProjectRuntimeRepository(){}, new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){}, new PlanningInputValidator(), new AnalysisAttemptRepository(){});
+        this(repository, new ProjectOwnershipGuard(repository), new com.agentfit.coreapi.domain.audit.service.AuditRecorder(), new ProjectRuntimeRepository(){}, new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){}, new PlanningInputValidator(), new AnalysisAttemptRepository(){}, ProjectBDeletionPort.noop());
     }
 
     public ProjectService(ProjectRepository repository,
             ProjectOwnershipGuard ownershipGuard,
             AuditRecorder auditRecorder) {
-        this(repository, ownershipGuard, auditRecorder, new ProjectRuntimeRepository(){}, new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){}, new PlanningInputValidator(), new AnalysisAttemptRepository(){});
+        this(repository, ownershipGuard, auditRecorder, new ProjectRuntimeRepository(){}, new PlanningInputRepository(){}, new ProjectCreationIdempotencyRepository(){}, new PlanningInputValidator(), new AnalysisAttemptRepository(){}, ProjectBDeletionPort.noop());
+    }
+
+    public ProjectService(ProjectRepository repository, ProjectOwnershipGuard ownershipGuard, AuditRecorder auditRecorder,
+            ProjectRuntimeRepository runtimeRepository, PlanningInputRepository inputRepository,
+            ProjectCreationIdempotencyRepository idempotencyRepository, PlanningInputValidator inputValidator,
+            AnalysisAttemptRepository analysisAttemptRepository) {
+        this(repository, ownershipGuard, auditRecorder, runtimeRepository, inputRepository,
+            idempotencyRepository, inputValidator, analysisAttemptRepository, ProjectBDeletionPort.noop());
+>>>>>>> d9200f3 (feat: integrate A flows with B recommendation and preview)
     }
 
     @Autowired
     public ProjectService(ProjectRepository repository, ProjectOwnershipGuard ownershipGuard, AuditRecorder auditRecorder,
             ProjectRuntimeRepository runtimeRepository, PlanningInputRepository inputRepository,
             ProjectCreationIdempotencyRepository idempotencyRepository, PlanningInputValidator inputValidator,
-            AnalysisAttemptRepository analysisAttemptRepository) {
+            AnalysisAttemptRepository analysisAttemptRepository, ProjectBDeletionPort bDeletion) {
         this.repository = repository;
         this.ownershipGuard = ownershipGuard;
         this.auditRecorder = auditRecorder;
@@ -61,6 +71,7 @@ public class ProjectService {
         this.idempotencyRepository = idempotencyRepository;
         this.inputValidator = inputValidator;
         this.analysisAttemptRepository = analysisAttemptRepository;
+        this.bDeletion = bDeletion;
     }
 
     @Transactional
@@ -73,7 +84,7 @@ public class ProjectService {
             throw new IllegalArgumentException("Project name must contain 1 to 100 code points");
         }
         Instant now = Instant.now();
-        Project project = new Project(java.util.UUID.randomUUID().toString(), principal.userId(), name, 1L, now, now);
+        Project project = new Project(java.util.UUID.randomUUID().toString(), principal.userId(), principal.userUuid(), name, 1L, now, now);
         Project saved = repository.save(project);
         auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(
             principal.userId(), saved.id(), "PROJECT_CREATED", "SUCCEEDED", now, null,
@@ -191,6 +202,7 @@ public class ProjectService {
         if (locked.version() != expectedVersion) {
             throw new VersionConflictException(expectedVersion, locked.version());
         }
+        bDeletion.delete(locked.id());
         auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(
             principal.userId(), locked.id(), "PROJECT_DELETED", "SUCCEEDED", Instant.now(), null,
             java.util.Map.of("target", "PROJECT")));
