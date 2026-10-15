@@ -16,6 +16,9 @@
 .env
 .env.*
 !.env.example
+**/.env
+**/.env.*
+!**/.env.example
 tmp_agentfit_*.txt
 tmp_pdf_*.txt
 .tmp_presentation_render
