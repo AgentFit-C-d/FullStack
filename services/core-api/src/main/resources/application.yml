@@ -1,6 +1,42 @@
 spring:
   application:
     name: agentfit-core-api
+  datasource:
+    url: ${AGENTFIT_DB_URL:jdbc:postgresql://localhost:5432/agentfit}
+    username: ${AGENTFIT_DB_USERNAME:postgres}
+    password: ${AGENTFIT_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: ${AGENTFIT_FLYWAY_ENABLED:true}
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
+            scope:
+              - user:email
+  session:
+    timeout: 7d
+    jdbc:
+      initialize-schema: never
 
 server:
   port: 8080
+
+agentfit:
+  ai-service:
+    url: ${AGENTFIT_AI_SERVICE_URL:http://localhost:8000/internal/v1/analysis}
+  analysis:
+    timeout-seconds: ${AGENTFIT_ANALYSIS_TIMEOUT_SECONDS:600}
+    cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_CLEANUP_INTERVAL_SECONDS:10}
+  auth:
+    cookie-secure: ${AGENTFIT_COOKIE_SECURE:true}
+  hmac:
+    current-key-id: ${AGENTFIT_HMAC_CURRENT_KEY_ID:}
+    current-secret: ${AGENTFIT_HMAC_CURRENT_SECRET:}
+    previous-key-id: ${AGENTFIT_HMAC_PREVIOUS_KEY_ID:}
+    previous-secret: ${AGENTFIT_HMAC_PREVIOUS_SECRET:}
+    previous-valid-until: ${AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL:}

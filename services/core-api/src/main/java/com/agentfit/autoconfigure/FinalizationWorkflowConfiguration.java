@@ -1,0 +1,53 @@
+package com.agentfit.autoconfigure;
+
+import com.agentfit.coreapi.catalog.ApprovalCreationService;
+import com.agentfit.coreapi.catalog.ConfigurationDownloadService;
+import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import com.agentfit.coreapi.catalog.StoredPreviewCoverageService;
+import java.time.Clock;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.annotation.Bean;
+
+/** A supplies server-issued IDs, clock, owner-checked readers, and atomic persistence ports. */
+@AutoConfiguration(after = CatalogSourceConfiguration.class)
+public class FinalizationWorkflowConfiguration {
+    public interface ServerIssuedIds {
+        String approvalId();
+        String generationId();
+    }
+
+    @Bean
+    @ConditionalOnBean({ApprovalCreationService.TrustedPreviewReader.class,
+        RecommendationCreationService.ApprovedCatalogReader.class,
+        ApprovalCreationService.ApprovalStore.class,
+        ServerIssuedIds.class, Clock.class})
+    ApprovalCreationService approvalCreationService(
+        ApprovalCreationService.TrustedPreviewReader previews,
+        RecommendationCreationService.ApprovedCatalogReader catalogs,
+        ServerIssuedIds ids, Clock clock, ApprovalCreationService.ApprovalStore store) {
+        return new ApprovalCreationService(previews, catalogs, ids::approvalId, clock, store);
+    }
+
+    @Bean
+    @ConditionalOnBean({ConfigurationDownloadService.TrustedDownloadReader.class,
+        RecommendationCreationService.ApprovedCatalogReader.class,
+        ConfigurationDownloadService.HistoryStore.class,
+        ServerIssuedIds.class, Clock.class})
+    ConfigurationDownloadService configurationDownloadService(
+        ConfigurationDownloadService.TrustedDownloadReader downloads,
+        RecommendationCreationService.ApprovedCatalogReader catalogs,
+        ServerIssuedIds ids, Clock clock, ConfigurationDownloadService.HistoryStore historyStore) {
+        return new ConfigurationDownloadService(downloads, catalogs,
+            ids::generationId, clock, historyStore);
+    }
+
+    @Bean
+    @ConditionalOnBean({StoredPreviewCoverageService.TrustedPreviewReader.class,
+        RecommendationCreationService.ApprovedCatalogReader.class, Clock.class})
+    StoredPreviewCoverageService storedPreviewCoverageService(
+        StoredPreviewCoverageService.TrustedPreviewReader previews,
+        RecommendationCreationService.ApprovedCatalogReader catalogs, Clock clock) {
+        return new StoredPreviewCoverageService(previews, catalogs, clock);
+    }
+}

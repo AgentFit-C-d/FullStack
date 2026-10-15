@@ -1,0 +1,129 @@
+package com.agentfit.coreapi.domain.project.controller;
+
+
+import com.agentfit.coreapi.domain.auth.entity.*;
+import com.agentfit.coreapi.domain.project.dto.request.*;
+import com.agentfit.coreapi.domain.project.dto.response.*;
+import com.agentfit.coreapi.domain.project.entity.*;
+import com.agentfit.coreapi.domain.project.exception.*;
+import com.agentfit.coreapi.domain.project.repository.*;
+import com.agentfit.coreapi.domain.project.service.*;
+import com.agentfit.coreapi.domain.analysis.service.ProjectAnalysisService;
+import com.agentfit.coreapi.domain.analysis.dto.response.AnalysisAttemptResponse;
+import com.agentfit.coreapi.global.exception.*;
+import java.util.List;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+
+import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
+import com.agentfit.coreapi.domain.auth.service.SessionPrincipalResolver;
+import com.agentfit.coreapi.global.exception.UnauthenticatedException;
+
+@RestController
+@RequestMapping("/api/projects")
+public class ProjectController {
+    private final ProjectService projectService;
+    private final SessionPrincipalResolver principalResolver;
+    private final ProjectAnalysisService analysisService;
+
+    @Autowired
+    public ProjectController(ProjectService projectService, SessionPrincipalResolver principalResolver, ObjectProvider<ProjectAnalysisService> analysisService) {
+        this.projectService = projectService;
+        this.principalResolver = principalResolver;
+        this.analysisService = analysisService.getIfAvailable();
+    }
+
+    public ProjectController(ProjectService projectService, SessionPrincipalResolver principalResolver) {
+        this.projectService = projectService;
+        this.principalResolver = principalResolver;
+        this.analysisService = null;
+    }
+
+    @PostMapping
+    public ResponseEntity<ProjectResponseEnvelope> create(HttpServletRequest request,
+            @Valid @RequestBody ProjectCreateRequest body) {
+        Project project = projectService.create(principal(request), body.name());
+        return ResponseEntity.status(201).body(new ProjectResponseEnvelope(response(project)));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProjectResponseEnvelope> createMultipart(HttpServletRequest request,
+            @RequestPart("metadata") ProjectCreateMetadataRequest metadata,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "inputText", required = false) String inputText,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        Project project = projectService.create(principal(request), metadata.name(), metadata.role(), metadata.runtimes(), file, inputText, idempotencyKey);
+        return ResponseEntity.status(201).body(new ProjectResponseEnvelope(response(project)));
+    }
+
+    @GetMapping
+    public ProjectListResponse list(HttpServletRequest request) {
+        List<ProjectResponse> projects = projectService.list(principal(request)).stream()
+            .map(this::response).toList();
+        return new ProjectListResponse(projects);
+    }
+
+    @GetMapping("/{projectId}")
+    public ProjectDetailResponse get(HttpServletRequest request, @PathVariable String projectId) {
+        var principal = principal(request);
+        ProjectDetailResponse detail = projectService.detail(principal, projectId);
+        return detail != null ? detail : new ProjectDetailResponse(response(projectService.get(principal, projectId)), null, null, null);
+    }
+
+    @PatchMapping("/{projectId}")
+    public ProjectDetailResponse update(HttpServletRequest request, @PathVariable String projectId, @RequestBody ProjectUpdateRequest body) {
+        projectService.update(principal(request), projectId, body);
+        return projectService.detail(principal(request), projectId);
+    }
+
+    @PutMapping("/{projectId}/planning-input")
+    public PlanningInputMetadataResponse replaceInput(HttpServletRequest request, @PathVariable String projectId,
+            @RequestPart("expectedVersion") long expectedVersion, @RequestPart(value="file",required=false) MultipartFile file,
+            @RequestPart(value="inputText",required=false) String inputText) {
+        return projectService.replaceInput(principal(request),projectId,expectedVersion,file,inputText);
+    }
+
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable String projectId,
+            @Valid @RequestBody ProjectDeleteRequest body) {
+        projectService.delete(principal(request), projectId, body.confirmation(), body.expectedVersion());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{projectId}/analysis-attempts")
+    public ResponseEntity<AnalysisAttemptResponse> startAnalysis(HttpServletRequest request, @PathVariable String projectId,
+            @RequestBody AnalysisStartRequest body) {
+        var attempt = analysisService.start(principal(request), projectId, body.expectedVersion());
+        return ResponseEntity.status(202).body(AnalysisAttemptResponse.from(attempt));
+    }
+
+    private AuthenticatedPrincipal principal(HttpServletRequest request) {
+        return principalResolver.resolve(request).orElseThrow(UnauthenticatedException::new);
+    }
+
+    private ProjectResponse response(Project project) {
+        ProjectResponse response = projectService.response(project);
+        return response == null ? ProjectResponse.from(project) : response;
+    }
+
+}
+
+
+

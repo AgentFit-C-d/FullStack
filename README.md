@@ -16,7 +16,7 @@ contracts/
 
 ## Backend Services
 
-- `services/core-api`: Single-module Spring Boot project for A/B development. Only the application entry point and `/health` endpoint are implemented.
+- `services/core-api`: Single-module Spring Boot project for A/B development. The application entry point and `/health` endpoint exist; B has also implemented pure Catalog, recommendation, selection, and Preview domain code. Authenticated business APIs and persistence are not connected.
 - `services/ai-service`: Independent FastAPI project for AI development. Only the application entry point and `/health` endpoint are implemented.
 - `contracts/openapi`: Initial OpenAPI files describing the health endpoints, not the full business API contract.
 
@@ -31,6 +31,35 @@ The frontend directory is a placeholder.
 Current scaffold versions are Java 21 / Spring Boot 3.3.5 and Python 3.11+ / FastAPI.
 These versions were selected for the scaffold and are not prescribed by section 2 of the baseline.
 Maven is required for the commands below; a Maven wrapper is not included yet.
+
+## Docker full-stack development
+
+Prerequisite: Docker Desktop with the Linux engine running. From the repository root, copy the environment template and replace the GitHub OAuth and HMAC placeholders with your local values. `.env.docker` is local and ignored by Git; never commit it or any secrets.
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Edit .env.docker and set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+# AGENTFIT_HMAC_CURRENT_KEY_ID, and AGENTFIT_HMAC_CURRENT_SECRET.
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml up --build -d
+```
+
+Core API and AI service health endpoints are `http://localhost:8080/health` and `http://localhost:8001/health`. PostgreSQL is available on host port `5433` and retains its data in the named Docker volume.
+
+Both `infra/postgres/compose.yaml` and `infra/compose.fullstack.yaml` bind host port `5433`; stop one Compose stack before starting the other.
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml ps
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml logs -f core-api ai-service postgres
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down
+```
+
+To deliberately delete the full-stack PostgreSQL volume and all its data, run this destructive reset separately:
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down -v
+```
+
+Run the Core API tests with Docker available, including Testcontainers tests, from `services/core-api` using `mvn -B -ntp test`.
 
 ## Local Run
 
@@ -58,7 +87,13 @@ Default ports:
 
 ## Local Verification
 
-- Core API: Maven package build and one health endpoint test passed with Java 21.0.7. The packaged application returned HTTP 200 with `{"service":"core-api","status":"ok"}` from `/health`.
-- AI service: Both health tests passed. Run `python -m pytest -q` from `services/ai-service` after installing the development dependencies.
+- Core API: run `mvn -B -ntp clean verify` from `services/core-api`. The 2026-10-06 local run found 80 tests: 79 passed and one Windows symlink test was skipped. That run used JDK 24 to build Java 21 bytecode; the GitHub workflow uses JDK 21 on Linux.
+- AI service: run `python -m pytest -q` from `services/ai-service` after installing the development dependencies. Both tests passed locally on Python 3.13; the GitHub workflow uses Python 3.11.
 
-These checks cover the scaffold only, not database, business, or AI integration.
+These checks do not verify database, authenticated API, real Catalog, external AI, or deployed-environment integration.
+
+## Continuous Integration
+
+The [GitHub Actions CI workflow](.github/workflows/ci.yml) runs on pushes, pull requests, and manual dispatch. It independently builds and tests `core-api` with Java 21 and `ai-service` with Python 3.11. A successful Core API job retains its tested JAR for seven days as a downloadable workflow artifact.
+
+Deployment automation is not configured: the team has not chosen a deployment target, credentials, or environment yet. A downloadable artifact is a build result, not a deployment. Once those choices are agreed, the deploy workflow and post-deployment checks can be added under the A-owned deployment boundary.
