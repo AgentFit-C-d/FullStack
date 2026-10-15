@@ -45,6 +45,8 @@ docker compose --env-file .env.docker -f infra/compose.fullstack.yaml up --build
 
 Core API and AI service health endpoints are `http://localhost:8080/health` and `http://localhost:8001/health`. PostgreSQL is available on host port `5433` and retains its data in the named Docker volume.
 
+Both `infra/postgres/compose.yaml` and `infra/compose.fullstack.yaml` bind host port `5433`; stop one Compose stack before starting the other.
+
 ```powershell
 docker compose --env-file .env.docker -f infra/compose.fullstack.yaml ps
 docker compose --env-file .env.docker -f infra/compose.fullstack.yaml logs -f core-api ai-service postgres
