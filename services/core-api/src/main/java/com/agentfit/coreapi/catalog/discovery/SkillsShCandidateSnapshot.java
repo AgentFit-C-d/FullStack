@@ -112,8 +112,16 @@ public final class SkillsShCandidateSnapshot {
             byte[] bytes = JSON.writeValueAsBytes(root);
             if (bytes.length > MAX_BYTES) throw new InvalidSnapshotException("candidate snapshot too large");
             Files.write(temporary, bytes);
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException
+                     | java.nio.file.AccessDeniedException atomicMoveFailure) {
+                // Windows can reject replacing an existing file with ATOMIC_MOVE even
+                // on a single volume. The temp file still protects the write itself;
+                // fall back to the provider's regular replacement operation.
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+            }
             return changed;
         } catch (IOException ex) {
             throw new InvalidSnapshotException("candidate snapshot write failed", ex);
