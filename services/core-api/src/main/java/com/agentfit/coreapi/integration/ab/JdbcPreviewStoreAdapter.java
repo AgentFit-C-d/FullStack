@@ -32,11 +32,30 @@ public final class JdbcPreviewStoreAdapter implements PreviewCreationService.Pre
             var connection = DataSourceUtils.getConnection(dataSource);
             try {
                 var now = Instant.now();
-                return writer.write(connection, UUID.randomUUID().toString(), draft, now,
+                StoredPreviewState saved = writer.write(connection, UUID.randomUUID().toString(), draft, now,
                     now.plus(Duration.ofMinutes(30)));
+                writeSuccessAudit(connection, UUID.fromString(draft.basis().projectId()),
+                    UUID.fromString(saved.previewId()), "PREVIEW", "PREVIEW_CREATED");
+                return saved;
             } catch (SQLException exception) {
                 throw new IllegalStateException("Preview transaction failed", exception);
             }
         });
+    }
+
+    private static void writeSuccessAudit(java.sql.Connection connection, UUID projectId,
+            UUID targetId, String targetType, String event) throws SQLException {
+        try (var insert = connection.prepareStatement("""
+            INSERT INTO audit_event (id, project_id, actor_id, event, outcome, target_type, target_id, occurred_at)
+            SELECT ?, p.id, p.user_id, ?, 'SUCCEEDED', ?, ?, CURRENT_TIMESTAMP
+              FROM project p WHERE p.id = ?
+            """)) {
+            insert.setObject(1, UUID.randomUUID());
+            insert.setString(2, event);
+            insert.setString(3, targetType);
+            insert.setObject(4, targetId);
+            insert.setObject(5, projectId);
+            if (insert.executeUpdate() != 1) throw new SQLException("project owner disappeared before Audit");
+        }
     }
 }
