@@ -32,6 +32,33 @@ Current scaffold versions are Java 21 / Spring Boot 3.3.5 and Python 3.11+ / Fas
 These versions were selected for the scaffold and are not prescribed by section 2 of the baseline.
 Maven is required for the commands below; a Maven wrapper is not included yet.
 
+## Docker full-stack development
+
+Prerequisite: Docker Desktop with the Linux engine running. From the repository root, copy the environment template and replace the GitHub OAuth and HMAC placeholders with your local values. `.env.docker` is local and ignored by Git; never commit it or any secrets.
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Edit .env.docker and set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+# AGENTFIT_HMAC_CURRENT_KEY_ID, and AGENTFIT_HMAC_CURRENT_SECRET.
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml up --build -d
+```
+
+Core API and AI service health endpoints are `http://localhost:8080/health` and `http://localhost:8001/health`. PostgreSQL is available on host port `5433` and retains its data in the named Docker volume.
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml ps
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml logs -f core-api ai-service postgres
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down
+```
+
+To deliberately delete the full-stack PostgreSQL volume and all its data, run this destructive reset separately:
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down -v
+```
+
+Run the Core API tests with Docker available, including Testcontainers tests, from `services/core-api` using `mvn -B -ntp test`.
+
 ## Local Run
 
 Prerequisites: JDK 21, Maven, and Python 3.11+. Each service manages its own dependencies.
