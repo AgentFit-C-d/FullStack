@@ -50,11 +50,29 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
                 }
                 JdbcRecommendationMetadataWriter.Draft draft = draft(id, basis, result, snapshot);
                 writer.write(connection, draft);
+                writeSuccessAudit(connection, UUID.fromString(snapshot.projectId()), id,
+                    "RECOMMENDATION", "RECOMMENDATION_CREATED");
                 return id.toString();
             } catch (SQLException exception) {
                 throw new IllegalStateException("recommendation transaction failed", exception);
             }
         });
+    }
+
+    private static void writeSuccessAudit(java.sql.Connection connection, UUID projectId,
+            UUID targetId, String targetType, String event) throws SQLException {
+        try (var insert = connection.prepareStatement("""
+            INSERT INTO audit_event (id, project_id, actor_id, event, outcome, target_type, target_id, occurred_at)
+            SELECT ?, p.id, p.user_id, ?, 'SUCCEEDED', ?, ?, CURRENT_TIMESTAMP
+              FROM project p WHERE p.id = ?
+            """)) {
+            insert.setObject(1, UUID.randomUUID());
+            insert.setString(2, event);
+            insert.setString(3, targetType);
+            insert.setObject(4, targetId);
+            insert.setObject(5, projectId);
+            if (insert.executeUpdate() != 1) throw new SQLException("project owner disappeared before Audit");
+        }
     }
 
     private static JdbcRecommendationMetadataWriter.Draft draft(UUID id,
