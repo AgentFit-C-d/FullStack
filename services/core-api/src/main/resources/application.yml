@@ -27,6 +27,8 @@ server:
   port: 8080
 
 agentfit:
+  ai-service:
+    url: ${AGENTFIT_AI_SERVICE_URL:http://localhost:8000/internal/v1/analysis}
   analysis:
     timeout-seconds: ${AGENTFIT_ANALYSIS_TIMEOUT_SECONDS:600}
     cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_CLEANUP_INTERVAL_SECONDS:10}
