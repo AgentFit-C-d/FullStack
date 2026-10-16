@@ -15,7 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 /** Gives the frontend a reload-and-retry signal for stale or expired finalization. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {
-    ConfigurationApprovalController.class, ConfigurationDownloadController.class
+    ConfigurationApprovalController.class, ConfigurationDownloadController.class,
+    ConfigurationUserReportController.class
 })
 public class ConfigurationFinalizationExceptionHandler {
     public record FinalizationError(String code, String message, Instant timestamp) {}

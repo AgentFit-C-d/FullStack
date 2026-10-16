@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.agentfit.coreapi.configuration.api.ConfigurationApprovalService;
 import com.agentfit.coreapi.configuration.api.ConfigurationDownloadRuntimeService;
+import com.agentfit.coreapi.configuration.api.ConfigurationUserReportRuntimeService;
+import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
 import com.agentfit.coreapi.configuration.persistence.JdbcPreviewMetadataWriter;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
@@ -161,10 +163,29 @@ class FinalizationApiV5PostgresTest {
             approved.approvalId(), previewId, fingerprint, request, userId));
         assertTrue(generated.zipBytes().length > 0);
         assertEquals(List.of("cap_browser_verification"), generated.unmetCapabilityKeys());
-        assertEquals(2, new JdbcTemplate(dataSource).queryForObject(
+        var reports = new ConfigurationUserReportRuntimeService(dataSource, Clock.systemUTC());
+        var report = transactions.execute(status -> reports.report(projectId.toString(),
+            generated.exportId(), new ConfigurationUserReport.Submission(
+                ConfigurationUserReport.ReportedState.APPLIED, null), userId));
+        assertEquals(ConfigurationUserReport.Source.USER, report.source());
+        assertEquals(ConfigurationUserReport.ReportedState.APPLIED, report.reportedState());
+        assertEquals(3, new JdbcTemplate(dataSource).queryForObject(
             "SELECT COUNT(*) FROM audit_event WHERE project_id = ?", Integer.class, projectId));
+        assertEquals(userId, new JdbcTemplate(dataSource).queryForObject(
+            "SELECT reported_by FROM config_export WHERE id = ?", UUID.class,
+            UUID.fromString(generated.exportId())));
+        assertEquals(1, new JdbcTemplate(dataSource).queryForObject(
+            "SELECT COUNT(*) FROM audit_event WHERE project_id = ? "
+                + "AND event = 'CONFIGURATION_APPLICATION_REPORTED'", Integer.class, projectId));
         assertEquals(1, new JdbcTemplate(dataSource).queryForObject(
             "SELECT COUNT(*) FROM config_export", Integer.class));
+        assertThrows(ProjectNotFoundException.class, () -> transactions.execute(status ->
+            reports.report(projectId.toString(), generated.exportId(),
+                new ConfigurationUserReport.Submission(
+                    ConfigurationUserReport.ReportedState.FAILED,
+                    ConfigurationUserReport.ReasonCode.UNKNOWN), UUID.randomUUID())));
+        assertEquals(3, new JdbcTemplate(dataSource).queryForObject(
+            "SELECT COUNT(*) FROM audit_event WHERE project_id = ?", Integer.class, projectId));
         assertThrows(ProjectNotFoundException.class, () -> transactions.execute(status ->
             approvals.approve(projectId.toString(), previewId, fingerprint, true, UUID.randomUUID())));
         new JdbcTemplate(dataSource).update("UPDATE environment_profile SET version = 2 "
