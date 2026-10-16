@@ -17,6 +17,7 @@ class ProjectDbIdTest {
     @Test
     void rejectsLegacyAndMalformedProjectIdsBeforeSql() {
         assertThrows(IllegalArgumentException.class, () -> ProjectDbId.uuid("project-1"));
+        assertThrows(IllegalArgumentException.class, () -> ProjectDbId.uuid("1-1-1-1-1"));
         assertThrows(IllegalArgumentException.class, () -> ProjectDbId.uuid(""));
         assertThrows(IllegalArgumentException.class, () -> ProjectDbId.uuid(null));
     }
