@@ -44,6 +44,7 @@ The adapter is the boundary. FullStack remains the source of truth for authentic
 - Raw documents, secrets, provider credentials, and raw provider responses are not logged or persisted.
 - Provider/model failures, malformed outputs, deadline expiry, and evidence-validation failures map to the existing failure behavior and do not create a successful analysis snapshot.
 - B remains the validator of capability keys, allowed source fields, required/optional/undetermined semantics, Catalog compatibility, and recommendation persistence.
+- `NEEDS_INFORMATION` and `NO_COMPATIBLE_TOOLS` are valid B outcomes, not AI failures. AI, contract, timeout, identifier, version, and persistence failures use a separate failure path and preserve the previous successful recommendation.
 
 ## Testing strategy
 
@@ -55,6 +56,7 @@ Tests are written before production changes. The first red tests cover:
 4. AI v2 output maps to the existing response contract while preserving request context;
 5. malformed/provider failure results are rejected without a successful result;
 6. no raw input, secrets, or provider response is emitted to ordinary logs.
+7. B normal outcomes and integration failures remain distinguishable and preserve the last successful recommendation on failure.
 
 The existing Core API and AI service suites remain required verification gates.
 
