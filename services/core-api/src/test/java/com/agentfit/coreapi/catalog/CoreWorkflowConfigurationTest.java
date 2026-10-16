@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.aop.support.AopUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -103,6 +104,22 @@ class CoreWorkflowConfigurationTest {
             .withBean(RecommendationCreationService.RecommendationStore.class,
                 () -> (snapshot, basis, result) -> null)
             .run(context -> assertNotNull(context.getBean(RecommendationCreationService.class)));
+    }
+
+    @Test
+    void actualApplicationActivatesLatestReadWithApprovedCatalog() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        new WebApplicationContextRunner()
+            .withUserConfiguration(CoreApiApplication.class)
+            .withInitializer(new ConfigDataApplicationContextInitializer())
+            .withPropertyValues("spring.flyway.enabled=false",
+                "agentfit.catalog.directory=" + directory,
+                "agentfit.catalog.approved-hash=" + hash)
+            .run(context -> {
+                var latest = context.getBean(RecommendationLatestDetailsService.class);
+                assertNotNull(latest);
+                assertTrue(AopUtils.isAopProxy(latest));
+            });
     }
 
     @Test

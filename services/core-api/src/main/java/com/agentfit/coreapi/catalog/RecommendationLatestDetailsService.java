@@ -12,9 +12,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Restores B1-B4 details without AI and enriches only a current result from the approved Catalog. */
-public final class RecommendationLatestDetailsService {
+public class RecommendationLatestDetailsService {
     /** A reads one owner-checked, consistent current basis and environment target. */
     public record Current(PreviewBasis basis, EnvironmentTarget target) {}
 
@@ -56,6 +58,8 @@ public final class RecommendationLatestDetailsService {
         this.catalogs = Objects.requireNonNull(catalogs);
     }
 
+    // B's saved metadata reader uses FOR SHARE; PostgreSQL rejects that lock in a read-only transaction.
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Snapshot latest(String projectId) {
         if (projectId == null || projectId.isBlank()) {
             throw new IllegalArgumentException("project ID required");
