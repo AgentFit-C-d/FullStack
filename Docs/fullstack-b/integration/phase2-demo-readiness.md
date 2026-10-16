@@ -13,6 +13,7 @@
 | Preview 저장 시 동시 변경 차단 | **미완** | A 담당: `JdbcPreviewStoreAdapter`의 동일 트랜잭션에서 현재 project/profile/review/developer/environment basis를 재조회·비교하고 동시 수정 테스트를 추가해야 한다. B writer의 추천 basis 검증만으로 A 현재 상태를 보장하지 않는다. |
 | 최종 승인·ZIP 다운로드 HTTP | **B 서비스 검증, A HTTP 차단** | B 소유 API가 A의 세션·소유권 검사를 재사용한다. 합성 Catalog를 사용하는 V5 PostgreSQL 서비스 테스트에서 부분 구성 승인, 경고, ZIP, B9/Audit 저장, 환경 변경 차단을 확인했다. 실제 HTTP에서는 공통 A 소유권 저장소 오류부터 해결해야 한다. [API 계약](phase2-finalization-api.md). |
 | 다운로드 후 USER 적용 보고 | **B API·DB 연결 검증, A HTTP 차단** | B가 생성 이력 소속·소유자를 확인하고 APPLIED/FAILED 진술과 Audit를 저장한다. 보고는 설치 검증으로 승격하지 않는다. PostgreSQL·Controller 테스트를 수행하며 실제 세션 HTTP 경로는 A UUID 수정 후 재검증한다. [API 계약](phase2-user-report-api.md). |
+| 설정 생성 이력 GET | **B API·DB 연결 검증, A HTTP 차단** | B가 생성 메타데이터·USER 보고만 페이지로 반환하고 현재 basis에 대한 CURRENT/STALE을 판정한다. PostgreSQL V5와 Controller 테스트가 통과했으나 실제 세션 HTTP는 A 소유권 UUID 오류 수정 후 재검증해야 한다. [API 계약](phase2-history-api.md). |
 
 ## 재현한 검증 환경
 
@@ -25,5 +26,6 @@
 - 최종화 API 추가 후 전용 PostgreSQL을 포함한 전체 Maven 테스트는 465개 중 실패·오류 0건, 건너뜀 3건이다. 이후 저장 시 소유권 재검사를 404로 통일한 수정은 최종화 PostgreSQL·HTTP 집중 테스트로 다시 통과했다. 테스트 Catalog는 합성 릴리스이므로 실제 Client 동작을 증명하지 않는다.
 - 2026-10-16 최신 로컬 PostgreSQL 17 회귀는 `Tests run: 464, Failures: 0, Errors: 0, Skipped: 3`, `BUILD SUCCESS`였다. 별도의 A/B 실제 HTTP 재현은 A 소유권 UUID 바인딩 오류로 실패했고, 실패하는 실험 테스트는 커밋하지 않았다. 위의 회귀 성공 수치가 HTTP 연결 성공을 의미하지 않는다.
 - B 사용자 적용 보고 API 추가 후 전체 core-api 회귀는 `Tests run: 468, Failures: 0, Errors: 0, Skipped: 3`, `BUILD SUCCESS`였다. PostgreSQL의 격리 스키마에서 보고·Audit 저장과 타 사용자 거부를, Controller 테스트에서 요청 필드 제한과 응답 형식을 확인했다. A 실제 세션 HTTP 경로는 여전히 별도 차단 상태다.
+- B 생성 이력 GET 연결 후 로컬 PostgreSQL을 포함한 전체 core-api 회귀는 `Tests run: 472, Failures: 0, Errors: 0, Skipped: 3`, `BUILD SUCCESS`였다. 현재→환경 버전 변경 후 STALE 전환과 적용 보고 조회를 확인했다. 실제 인증된 A/B 종단 HTTP 성공은 아직 아니다.
 
 다음 데모의 성공 기준은 검증된 Catalog와 실제 AI 응답을 넣어 인증된 프로젝트에서 추천 생성→조회→Preview까지 HTTP로 통과시키는 것이다. 그 전에는 B의 데이터 저장 검증만 성공으로 표시한다.
