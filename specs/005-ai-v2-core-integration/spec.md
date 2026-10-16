@@ -6,7 +6,9 @@
 
 **Status**: Draft
 
-**Input**: User description: "AI v2의 핵심 분석 로직만 가져오고 FullStack API와 HMAC 인증은 유지한다"
+**Input**: User description: "[AgentFit_AI_v2](https://github.com/AgentFit-C-d/AgentFit_AI_v2)에서 AI 핵심 로직만 가져오고, API는 우리 방식으로 유지해서 FullStack AI 서비스와 연결한다"
+
+**Source Repository**: [AgentFit_AI_v2](https://github.com/AgentFit-C-d/AgentFit_AI_v2)
 
 ## User Scenarios & Testing
 
@@ -72,6 +74,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-008**: The system MUST NOT log or persist raw source documents, secrets, provider credentials, or raw provider responses.
 - **FR-009**: The integration MUST support deterministic synthetic testing without requiring a paid provider call.
 - **FR-010**: The initial integration MUST NOT include the separate Skill needs/ranking workflow.
+- **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
 
 ### Key Entities
 
