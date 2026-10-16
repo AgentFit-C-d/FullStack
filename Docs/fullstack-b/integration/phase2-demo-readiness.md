@@ -11,7 +11,7 @@
 | AI Capability 실제 응답 | **차단** | AI 담당: 9종 claim·question·선택/불필요 구분·오류 응답을 OpenAPI와 FastAPI에 구현해 A adapter와 계약 테스트로 맞춰야 한다. 현재는 `CONTRACT_TEST_DOUBLE`이다. |
 | 실제 승인 Catalog | **차단** | B/검증 담당: 첫 Client/OS/버전과 도구·권한·정적 템플릿·조합의 실제 검증 근거, 독립 승인 hash가 필요하다. skills.sh 후보를 자동으로 활성화하지 않는다. |
 | Preview 저장 시 동시 변경 차단 | **미완** | A 담당: `JdbcPreviewStoreAdapter`의 동일 트랜잭션에서 현재 project/profile/review/developer/environment basis를 재조회·비교하고 동시 수정 테스트를 추가해야 한다. B writer의 추천 basis 검증만으로 A 현재 상태를 보장하지 않는다. |
-| 최종 승인·ZIP 다운로드/적용 안내 HTTP | **미완** | A+B 공동: 인증/소유권, 현재 basis, Preview 만료·fingerprint, 승인·B9/Audit 원자성, 승인된 Catalog 재생성을 공개 경로로 묶어야 한다. 부분 구성을 허용하되 미충족 경고를 유지한다. |
+| 최종 승인·ZIP 다운로드 HTTP | **B 연결 검증** | B 소유 API가 A의 세션·소유권 검사를 재사용한다. 합성 Catalog를 사용하는 V5 PostgreSQL 테스트에서 부분 구성 승인, 경고, ZIP, B9/Audit 저장, 환경 변경 차단을 확인했다. 실제 로그인 세션 HTTP 왕복과 A 수정 트랜잭션의 동시성 검증은 남았다. [API 계약](phase2-finalization-api.md). |
 
 ## 재현한 검증 환경
 
@@ -21,5 +21,6 @@
 - 결과: `Tests run: 456, Failures: 0, Errors: 0, Skipped: 3`, `BUILD SUCCESS`. 건너뛴 항목은 Windows에서 심볼릭 링크 생성 권한을 요구하는 Catalog 테스트 1개와 Testcontainers가 Docker를 사용할 수 없다고 판정한 A의 PostgreSQL 동시성 테스트 2개다. 전체 기능 시연 성공을 뜻하지 않는다.
 - 후속 B UUID 형식 보강: Java UUID 파서가 허용하는 `1-1-1-1-1` 같은 비정규 표기를 SQL 전에 거부한다. 변경 후 DB 미설정 전체 테스트는 456개 중 실패·오류 0, DB 의존 항목 등 53개 건너뜀이다. 별도 임시 PostgreSQL에서 B UUID/V5 관련 집중 테스트 52개는 건너뜀 없이 모두 통과했다.
 - 최신 추천 읽기 연결 후 전체 회귀는 전용 PostgreSQL과 함께 458개 중 실패·오류 0건, 건너뜀 3건이다. 조회 서비스는 반복 읽기 격리 트랜잭션에서 실행한다. 기존 B 조회 SQL의 `FOR SHARE` 때문에 PostgreSQL의 `readOnly=true` 트랜잭션은 사용할 수 없지만, 이 경로는 쓰기 SQL을 실행하지 않는다.
+- 최종화 API 추가 후 전용 PostgreSQL을 포함한 전체 Maven 테스트는 465개 중 실패·오류 0건, 건너뜀 3건이다. 이후 저장 시 소유권 재검사를 404로 통일한 수정은 최종화 PostgreSQL·HTTP 집중 테스트로 다시 통과했다. 테스트 Catalog는 합성 릴리스이므로 실제 Client 동작을 증명하지 않는다.
 
 다음 데모의 성공 기준은 검증된 Catalog와 실제 AI 응답을 넣어 인증된 프로젝트에서 추천 생성→조회→Preview까지 HTTP로 통과시키는 것이다. 그 전에는 B의 데이터 저장 검증만 성공으로 표시한다.
