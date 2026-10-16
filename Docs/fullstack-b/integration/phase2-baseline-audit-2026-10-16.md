@@ -2,7 +2,7 @@
 
 ## 현재 기준
 
-- B 작업 브랜치 `feat/fullstack-b-phase2`는 A Phase 2가 병합된 `origin/main`의 `1046f46`을 기준으로 한다. 이전 develop 기반 작업은 `feat/fullstack-b-phase2-develop-base`에 보존했다.
+- B 작업 브랜치 `feat/fullstack-b-phase2`는 A Phase 2가 병합된 `origin/main`의 `1046f46`을 기준으로 한다. 이전 develop 기반 작업은 `feat/fullstack-b-phase2-develop-base`에 보존했다. `origin/develop`의 최신 병합 커밋 `66a7d6a`는 이 main의 조상이 아니다. 두 원격 브랜치의 공통 조상은 `11056d6`이며, develop의 후속 정리 커밋을 이 B 브랜치에 일괄 반영하지 않았다.
 - A 소유 인증·프로젝트·연동 adapter·OpenAPI·V5 migration과 FastAPI 파일은 이 B 브랜치에서 수정하지 않았다. 기존 미추적 발표 자료 `Docs/fullstack-b/presentation/`도 그대로 두었다.
 - B의 프로젝트 ID JDBC 경계는 UUID를 검증해 PostgreSQL UUID 컬럼에 바인딩한다. 승인자·적용 보고자도 UUID로 기록한다. B 단독 DDL의 Phase 1 타입 가정 역시 UUID로 맞췄다.
 - B Preview가 반환하는 생성·만료 시각은 PostgreSQL의 마이크로초 정밀도로 정규화한다. 그렇지 않으면 저장 직후 승인 시 DB에서 복원한 시각과 반환값이 달라져 승인 검증이 실패했다.
@@ -18,5 +18,6 @@
 | Catalog | skills.sh 수집은 후보 연구 경로이며, 지원 OS·Client·버전·권한·조합을 실제 검증하고 독립 승인한 릴리스는 아직 확인되지 않았다. 합성 Catalog 테스트를 제품 추천 성공으로 해석하지 않는다. |
 | Preview 신선도 | A의 `JdbcPreviewStoreAdapter`는 B 저장과 Audit을 하나의 트랜잭션에서 실행하지만 저장 직전 A의 현재 project/profile/developer/environment 버전을 다시 확인하는 코드는 보이지 않는다. 동시 수정 차단은 A 연동 과제다. |
 | 승인·다운로드 API | B 내부 승인·B9 기록 경로는 있으나 A의 인증된 최종 승인/ZIP 다운로드 HTTP 경로는 아직 확인되지 않았다. |
+| 최신 추천 조회 | B `RecommendationLatestDetailsService`와 A의 GET 라우트는 있지만, 필수 `OwnerCheckedCurrentReader`·`StoredMetadataReader` 런타임 구현이 없어 서비스 bean이 활성화되지 않는다. 현재 GET 성공을 주장할 수 없다. |
 
 세부 검증 명령, 미구현 경계와 담당자는 [데모 준비 상태](phase2-demo-readiness.md)에 기록했다.
