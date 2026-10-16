@@ -6,12 +6,12 @@
 | --- | --- | --- |
 | B 추천·Preview·승인·이력·삭제의 UUID 저장 | **검증됨** | `BPhase2UuidSchemaPostgresTest`가 격리된 PostgreSQL에 A Flyway V1–V5를 적용해 추천의 9개 Capability, Preview, 승인자 UUID, B9 export/USER 보고, B 삭제 및 Audit 실패 rollback을 검사한다. |
 | B 내부 추천·설정 규칙 회귀 | **검증됨** | Maven 전체 456개 테스트 통과, 실패/오류 0, 건너뜀 3. JDK 24에서 Java 21 release로 빌드했으며 Mockito의 자체 부착 오류를 Byte Buddy 시작 에이전트로 해결했다. JDK 21 실행 결과는 아직 없다. |
-| A 로그인 → 추천 생성·Preview 공개 API | **부분 연결** | `RecommendationController`와 A adapter가 있고 Spring context 및 기존 프로젝트/분석 WebMvc 테스트는 통과했다. 이 컨트롤러의 요청·응답과 실제 A UUID 데이터까지 통과한 HTTP 테스트는 아직 없다. |
-| 최신 추천 GET | **DB·Spring 연결 검증** | B의 두 읽기 포트를 A 현재 UUID snapshot과 B1–B4 저장 내역에 연결했다. Spring bean 활성화와 V5 PostgreSQL에서 CURRENT→환경 버전 변경 후 STALE, 타 프로젝트 미반환을 확인했다. A 인증 HTTP 왕복과 프론트 연결은 아직 미검증이다. |
+| A 로그인 → 추천 생성·Preview 공개 API | **UUID HTTP 차단 재현** | 실제 V5 PostgreSQL HTTP 조회에서 A 소유권 저장소의 UUID/String 바인딩 오류로 500이 발생했다. GitHub 계정 조회·생성에도 BIGINT 경로가 남아 있다. [A 인계](phase2-a-uuid-http-blockers.md). |
+| 최신 추천 GET | **서비스 검증, HTTP 차단** | B 읽기 포트는 V5 PostgreSQL에서 CURRENT→환경 버전 변경 후 STALE을 반환한다. 실제 HTTP 요청은 A 소유권 저장소의 UUID 바인딩 오류로 500이므로 인증된 프론트 연결 성공은 아직 아니다. [재현 결과](phase2-a-uuid-http-blockers.md). |
 | AI Capability 실제 응답 | **차단** | AI 담당: 9종 claim·question·선택/불필요 구분·오류 응답을 OpenAPI와 FastAPI에 구현해 A adapter와 계약 테스트로 맞춰야 한다. 현재는 `CONTRACT_TEST_DOUBLE`이다. |
 | 실제 승인 Catalog | **차단** | B/검증 담당: 첫 Client/OS/버전과 도구·권한·정적 템플릿·조합의 실제 검증 근거, 독립 승인 hash가 필요하다. skills.sh 후보를 자동으로 활성화하지 않는다. |
 | Preview 저장 시 동시 변경 차단 | **미완** | A 담당: `JdbcPreviewStoreAdapter`의 동일 트랜잭션에서 현재 project/profile/review/developer/environment basis를 재조회·비교하고 동시 수정 테스트를 추가해야 한다. B writer의 추천 basis 검증만으로 A 현재 상태를 보장하지 않는다. |
-| 최종 승인·ZIP 다운로드 HTTP | **B 연결 검증** | B 소유 API가 A의 세션·소유권 검사를 재사용한다. 합성 Catalog를 사용하는 V5 PostgreSQL 테스트에서 부분 구성 승인, 경고, ZIP, B9/Audit 저장, 환경 변경 차단을 확인했다. 실제 로그인 세션 HTTP 왕복과 A 수정 트랜잭션의 동시성 검증은 남았다. [API 계약](phase2-finalization-api.md). |
+| 최종 승인·ZIP 다운로드 HTTP | **B 서비스 검증, A HTTP 차단** | B 소유 API가 A의 세션·소유권 검사를 재사용한다. 합성 Catalog를 사용하는 V5 PostgreSQL 서비스 테스트에서 부분 구성 승인, 경고, ZIP, B9/Audit 저장, 환경 변경 차단을 확인했다. 실제 HTTP에서는 공통 A 소유권 저장소 오류부터 해결해야 한다. [API 계약](phase2-finalization-api.md). |
 
 ## 재현한 검증 환경
 
@@ -22,5 +22,6 @@
 - 후속 B UUID 형식 보강: Java UUID 파서가 허용하는 `1-1-1-1-1` 같은 비정규 표기를 SQL 전에 거부한다. 변경 후 DB 미설정 전체 테스트는 456개 중 실패·오류 0, DB 의존 항목 등 53개 건너뜀이다. 별도 임시 PostgreSQL에서 B UUID/V5 관련 집중 테스트 52개는 건너뜀 없이 모두 통과했다.
 - 최신 추천 읽기 연결 후 전체 회귀는 전용 PostgreSQL과 함께 458개 중 실패·오류 0건, 건너뜀 3건이다. 조회 서비스는 반복 읽기 격리 트랜잭션에서 실행한다. 기존 B 조회 SQL의 `FOR SHARE` 때문에 PostgreSQL의 `readOnly=true` 트랜잭션은 사용할 수 없지만, 이 경로는 쓰기 SQL을 실행하지 않는다.
 - 최종화 API 추가 후 전용 PostgreSQL을 포함한 전체 Maven 테스트는 465개 중 실패·오류 0건, 건너뜀 3건이다. 이후 저장 시 소유권 재검사를 404로 통일한 수정은 최종화 PostgreSQL·HTTP 집중 테스트로 다시 통과했다. 테스트 Catalog는 합성 릴리스이므로 실제 Client 동작을 증명하지 않는다.
+- 2026-10-16 최신 로컬 PostgreSQL 17 회귀는 `Tests run: 464, Failures: 0, Errors: 0, Skipped: 3`, `BUILD SUCCESS`였다. 별도의 A/B 실제 HTTP 재현은 A 소유권 UUID 바인딩 오류로 실패했고, 실패하는 실험 테스트는 커밋하지 않았다. 위의 회귀 성공 수치가 HTTP 연결 성공을 의미하지 않는다.
 
 다음 데모의 성공 기준은 검증된 Catalog와 실제 AI 응답을 넣어 인증된 프로젝트에서 추천 생성→조회→Preview까지 HTTP로 통과시키는 것이다. 그 전에는 B의 데이터 저장 검증만 성공으로 표시한다.
