@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {
     ConfigurationApprovalController.class, ConfigurationDownloadController.class,
-    ConfigurationUserReportController.class
+    ConfigurationUserReportController.class, ConfigurationHistoryController.class
 })
 public class ConfigurationFinalizationExceptionHandler {
     public record FinalizationError(String code, String message, Instant timestamp) {}

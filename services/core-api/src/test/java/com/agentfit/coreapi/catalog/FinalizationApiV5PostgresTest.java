@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.agentfit.coreapi.configuration.api.ConfigurationApprovalService;
 import com.agentfit.coreapi.configuration.api.ConfigurationDownloadRuntimeService;
 import com.agentfit.coreapi.configuration.api.ConfigurationUserReportRuntimeService;
+import com.agentfit.coreapi.configuration.api.ConfigurationHistoryRuntimeService;
+import com.agentfit.coreapi.configuration.history.ConfigurationGenerationHistory;
 import com.agentfit.coreapi.configuration.report.ConfigurationUserReport;
 import com.agentfit.coreapi.configuration.persistence.JdbcPreviewMetadataWriter;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
@@ -169,6 +171,18 @@ class FinalizationApiV5PostgresTest {
                 ConfigurationUserReport.ReportedState.APPLIED, null), userId));
         assertEquals(ConfigurationUserReport.Source.USER, report.source());
         assertEquals(ConfigurationUserReport.ReportedState.APPLIED, report.reportedState());
+        var history = new ConfigurationHistoryRuntimeService(dataSource, snapshots, catalogProvider);
+        var firstPage = transactions.execute(status -> history.list(projectId.toString(), null, 20));
+        assertEquals(1, firstPage.items().size());
+        assertEquals(generated.exportId(), firstPage.items().get(0).generation().id());
+        assertEquals(ConfigurationGenerationHistory.Validity.CURRENT,
+            firstPage.items().get(0).validity());
+        assertEquals(report.id(), firstPage.items().get(0).latestUserReport().id());
+        assertEquals(report.reportedState(),
+            firstPage.items().get(0).latestUserReport().reportedState());
+        assertTrue(Math.abs(java.time.Duration.between(report.reportedAt(),
+            firstPage.items().get(0).latestUserReport().reportedAt()).toNanos()) <= 500);
+        assertEquals(null, firstPage.nextCursor());
         assertEquals(3, new JdbcTemplate(dataSource).queryForObject(
             "SELECT COUNT(*) FROM audit_event WHERE project_id = ?", Integer.class, projectId));
         assertEquals(userId, new JdbcTemplate(dataSource).queryForObject(
@@ -190,6 +204,9 @@ class FinalizationApiV5PostgresTest {
             approvals.approve(projectId.toString(), previewId, fingerprint, true, UUID.randomUUID())));
         new JdbcTemplate(dataSource).update("UPDATE environment_profile SET version = 2 "
             + "WHERE project_id = ?", projectId);
+        var stalePage = transactions.execute(status -> history.list(projectId.toString(), null, 20));
+        assertEquals(ConfigurationGenerationHistory.Validity.STALE,
+            stalePage.items().get(0).validity());
         assertThrows(RuntimeException.class, () -> transactions.execute(status ->
             downloads.download(projectId.toString(), approved.approvalId(), previewId,
                 fingerprint, request, userId)));
