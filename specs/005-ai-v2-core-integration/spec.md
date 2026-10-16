@@ -16,6 +16,7 @@
 
 - Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 분석 중 임시 보관만 하고, 분석 결과가 저장되면 원문은 폐기한다.
 - Q: A 분석과 B 추천은 한 번에 실행할까요, 별도 단계로 실행할까요? → A: A 분석을 먼저 완료·저장한 뒤 사용자가 별도의 추천 API를 호출한다.
+- Q: B 추천 전에 A 분석 결과를 누가 확정할까요? → A: 사용자가 분석 결과를 확인하고 직접 확정한다.
 
 ## User Scenarios & Testing
 
@@ -30,7 +31,7 @@ When the system starts an analysis for an approved project input, it should use 
 **Acceptance Scenarios**:
 
 1. **Given** a valid approved input and valid internal authentication, **When** analysis is requested, **Then** the system saves a validated A result in the existing FullStack contract.
-2. **Given** a completed and verified A result, **When** the user calls the recommendation endpoint, **Then** AI v2 capability output is mapped and B creates the recommendation.
+2. **Given** a completed A result that the user has reviewed and confirmed, **When** the user calls the recommendation endpoint, **Then** AI v2 capability output is mapped and B creates the recommendation.
 3. **Given** a valid synthetic input without a configured paid provider key, **When** analysis is requested in test mode, **Then** the system returns the deterministic test result without calling a paid provider.
 
 ### User Story 2 - Reject unsafe or invalid analysis requests (Priority: P1)
@@ -85,7 +86,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
 - **FR-012**: The system MUST NOT retain raw source documents after the one-time analysis flow completes; transient document content MUST be discarded after the result is saved or the analysis fails.
 - **FR-013**: The system MUST retain the structured analysis result and necessary audit metadata without retaining the original document content.
-- **FR-014**: B recommendation creation MUST be a separate operation that requires a completed and verified A analysis result; an incomplete, failed, stale, or unverified result MUST be rejected.
+- **FR-014**: B recommendation creation MUST be a separate operation that requires a completed, user-confirmed A analysis result; an incomplete, failed, stale, or unconfirmed result MUST be rejected.
 
 ### Key Entities
 
@@ -105,7 +106,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-005**: Automated tests cover request mapping, response mapping, B capability mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
 - **SC-006**: Tests verify that raw source content is removed after analysis completion or failure and is not retained in the database, ordinary logs, or durable service storage.
 - **SC-007**: A valid AI capability assessment reaches B's existing recommendation engine without changing B's capability keys, validation rules, or public recommendation API.
-- **SC-008**: A recommendation request cannot create a B recommendation before a completed and verified A result exists.
+- **SC-008**: A recommendation request cannot create a B recommendation before a completed and user-confirmed A result exists.
 
 ## Assumptions
 
