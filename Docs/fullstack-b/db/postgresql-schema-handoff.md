@@ -1,5 +1,7 @@
 # Phase 1 PostgreSQL: B-owned schema handoff
 
+> **Phase 2 기준 주의:** 아래의 `VARCHAR(36)` 프로젝트 ID와 `BIGINT` 사용자 ID 설명은 당시 A Phase 1 스키마의 기록이다. A Phase 2의 Flyway V5는 이 컬럼들을 UUID로 바꿨으며, 현재 B JDBC/단독 DDL도 UUID로 맞췄다. 운영·데모 준비 판정은 [Phase 2 검증 결과](../integration/phase2-demo-readiness.md)를 우선한다. 이 Phase 1 문서를 현재 배포 DDL 지침으로 사용하지 않는다.
+
 Source: [AgentFit A·B Phase 1 development baseline](../../AgentFit_AB_1차통합_개발기준.pdf), pages 6 and 20–24 (B1–B9), page 35 (deletion). The source calls this a design, not tested DDL. [b-schema.sql](../../../services/core-api/src/main/resources/db/postgresql/b-schema.sql) is the first B-owned PostgreSQL DDL implementation of that design.
 
 ## Ownership and integration order

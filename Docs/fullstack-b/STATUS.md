@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**Phase 2 갱신 (2026-10-16):** A Phase 2가 들어간 `origin/main` 기준 B UUID JDBC 저장 경계를 수정했고, A Flyway V1–V5를 적용한 독립 PostgreSQL에서 B 추천→Preview→승인→이력/보고→삭제 및 rollback을 검증했다. 전체 Java 테스트는 JDK 24/Java 21 release로 456개 중 실패·오류 0건, 건너뜀 3건이다. 실제 AI 응답·승인 Catalog·인증된 추천/Preview HTTP 왕복과 최종 다운로드는 여전히 미완이다. [검증 범위와 담당](integration/phase2-demo-readiness.md). 아래 B01–B12 체크 표시는 이 통합 검증만으로 올리지 않는다.
+
 Source: `Docs/AgentFit_AB_1차통합_개발기준.pdf` (sections 7–12) and the B PRD in `D:/capstone/Docs/team-prds/full-stack-b/PRD.md`.
 
 The repository has no `.specify/` prerequisite script or feature `tasks.md` yet, so the Spec Kit implement command cannot consume an approved task plan. This tracker records the B work without claiming those missing artifacts exist. It does not change A or AI ownership.
