@@ -14,7 +14,7 @@
 
 ### Session 2026-10-16
 
-- Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 포함하지 않는다. 원문은 요청 처리 중에만 전달하고 처리 후 폐기한다.
+- Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 분석 중 임시 보관만 하고, 분석 결과가 저장되면 원문은 폐기한다.
 
 ## User Scenarios & Testing
 
@@ -81,7 +81,8 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-009**: The integration MUST support deterministic synthetic testing without requiring a paid provider call.
 - **FR-010**: The initial integration MUST NOT include the separate Skill needs/ranking workflow.
 - **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
-- **FR-012**: The system MUST NOT add persistent storage for raw source documents; transient document content MUST be discarded after analysis processing completes or fails.
+- **FR-012**: The system MUST NOT retain raw source documents after the one-time analysis flow completes; transient document content MUST be discarded after the result is saved or the analysis fails.
+- **FR-013**: The system MUST retain the structured analysis result and necessary audit metadata without retaining the original document content.
 
 ### Key Entities
 
@@ -99,12 +100,12 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-003**: 100% of provider or evidence-validation failures leave no new successful analysis result.
 - **SC-004**: Existing analysis callers require no endpoint or authentication change.
 - **SC-005**: Automated tests cover request mapping, response mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
-- **SC-006**: Tests verify that raw source content is not written to the database, ordinary logs, or durable service storage.
+- **SC-006**: Tests verify that raw source content is removed after analysis completion or failure and is not retained in the database, ordinary logs, or durable service storage.
 
 ## Assumptions
 
 - FullStack remains the authority for project ownership, private input access, budget reservation, leases, and persistence.
 - The AI v2 repository is used as the source of reusable analysis logic, not as a replacement for the FullStack service boundary.
-- Raw source documents are not persisted by this integration; the Core API sends approved content to the AI service only for the duration of the request.
+- Raw source documents are retained only for the one-time analysis operation; the structured result and audit metadata remain after the source is removed.
 - Paid provider calls are enabled only in explicitly configured environments; tests use deterministic providers or test doubles.
 - The first delivery covers document analysis only; Skill recommendation mapping is a later feature.
