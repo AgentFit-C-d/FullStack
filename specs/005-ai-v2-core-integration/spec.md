@@ -18,6 +18,7 @@
 - Q: A 분석과 B 추천은 한 번에 실행할까요, 별도 단계로 실행할까요? → A: A 분석을 먼저 완료·저장한 뒤 사용자가 별도의 추천 API를 호출한다.
 - Q: B 추천 전에 A 분석 결과를 누가 확정할까요? → A: 사용자가 분석 결과를 확인하고 직접 확정한다.
 - Q: 정상적인 추천 상태와 AI·연동 실패를 구분할까요? → A: 구분한다. `NEEDS_INFORMATION`과 `NO_COMPATIBLE_TOOLS`는 정상적인 추천 결과이고, AI·계약·저장 실패는 별도 실패로 처리한다.
+- Q: AI가 판단 불가를 반환한 경우와 응답 자체가 깨진 경우를 어떻게 구분할까요? → A: `UNDETERMINED`와 질문이 있는 유효 응답은 `NEEDS_INFORMATION`으로 처리하고, 필수 필드 누락·알 수 없는 Capability ID·형식 오류·호출 실패는 `FAILED`로 처리한다.
 
 ## User Scenarios & Testing
 
@@ -92,6 +93,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-016**: B MUST return `NO_COMPATIBLE_TOOLS` when information is sufficient but no verified tool combination satisfies all required capabilities, with no recommendation items and a reason.
 - **FR-017**: AI provider failure, timeout, parsing failure, invalid identifier, contract mismatch, version conflict, and persistence failure MUST be represented as a separate failure outcome and MUST NOT be converted into `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS`, or an apparently successful empty recommendation.
 - **FR-018**: A failed new recommendation MUST preserve the last successful recommendation and its basis.
+- **FR-019**: A valid AI response with `UNDETERMINED` capability claims and clarification questions MUST be processed as `NEEDS_INFORMATION`; missing required fields, unknown capability IDs, duplicate capability IDs, or malformed response data MUST be processed as `FAILED`.
 
 ### Key Entities
 
