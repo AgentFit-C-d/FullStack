@@ -22,4 +22,4 @@
 - 같은 `configuration/history/`의 `ApprovedConfigurationGenerator`는 승인된 ZIP과 최소 이력의 생성 순서를 묶는다.
 - 테스트는 `services/core-api/src/test/java/com/agentfit/coreapi/catalog/`, `configuration/preview/`, `configuration/export/`, `configuration/report/`, `configuration/history/`에 같은 단위로 배치했다.
 
-현재는 **메모리 내 Preview·승인/내보내기·사용자 보고 검증 경계**까지만 연결됐다. 서버 저장·인증/소유권·감사·HTTP 다운로드 및 보고 API는 구현되지 않았다. 사용자 제공 원본과 Diff를 영속화해서는 안 되며, Secret 검사는 모든 비밀값을 찾는 보증이 아니다. [다음 작업](../NEXT-STEPS.md)의 4·5번에서 A 계약과 함께 완성해야 한다.
+Phase 2에서 B의 Preview·승인·ZIP·USER 보고 메타데이터 저장과 승인·다운로드·USER 보고 HTTP API를 추가했다. PostgreSQL과 Controller 단위의 연결은 검증했지만, 실제 A 세션을 거친 HTTP 요청은 [UUID 소유권 조회 오류](../integration/phase2-a-uuid-http-blockers.md)가 해결되기 전까지 통과하지 않는다. 실제 AI 응답과 승인 Catalog도 필요하다. 사용자 제공 원본과 Diff는 영속화하지 않으며, Secret 검사는 알려진 패턴에 한정된다.
