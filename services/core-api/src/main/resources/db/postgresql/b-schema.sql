@@ -88,7 +88,7 @@ CREATE TABLE config_preview (
     created_at TIMESTAMPTZ NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     approval_id UUID UNIQUE,
-    approved_by BIGINT,
+    approved_by UUID,
     approved_at TIMESTAMPTZ,
     approval_expires_at TIMESTAMPTZ,
     CONSTRAINT config_preview_expiry CHECK (created_at < expires_at),
@@ -146,7 +146,7 @@ CREATE TABLE config_export (
     latest_report_id UUID UNIQUE,
     reported_state VARCHAR(20),
     reason_code VARCHAR(50),
-    reported_by BIGINT,
+    reported_by UUID,
     reported_at TIMESTAMPTZ,
     CONSTRAINT config_export_report_shape CHECK (
         (latest_report_id IS NULL AND reported_state IS NULL
