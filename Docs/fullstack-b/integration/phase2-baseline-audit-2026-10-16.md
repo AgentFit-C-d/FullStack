@@ -18,6 +18,6 @@
 | Catalog | skills.sh 수집은 후보 연구 경로이며, 지원 OS·Client·버전·권한·조합을 실제 검증하고 독립 승인한 릴리스는 아직 확인되지 않았다. 합성 Catalog 테스트를 제품 추천 성공으로 해석하지 않는다. |
 | Preview 신선도 | A의 `JdbcPreviewStoreAdapter`는 B 저장과 Audit을 하나의 트랜잭션에서 실행하지만 저장 직전 A의 현재 project/profile/developer/environment 버전을 다시 확인하는 코드는 보이지 않는다. 동시 수정 차단은 A 연동 과제다. |
 | 승인·다운로드 API | B 내부 승인·B9 기록 경로는 있으나 A의 인증된 최종 승인/ZIP 다운로드 HTTP 경로는 아직 확인되지 않았다. |
-| 최신 추천 조회 | B `RecommendationLatestDetailsService`와 A의 GET 라우트는 있지만, 필수 `OwnerCheckedCurrentReader`·`StoredMetadataReader` 런타임 구현이 없어 서비스 bean이 활성화되지 않는다. 현재 GET 성공을 주장할 수 없다. |
+| 최신 추천 조회 | B `OwnerCheckedCurrentReader`·`StoredMetadataReader` 런타임 구현을 추가했다. V5 DB 및 Spring bean 활성화는 검증했지만, 인증된 GET HTTP 왕복은 아직 검증하지 않았다. |
 
 세부 검증 명령, 미구현 경계와 담당자는 [데모 준비 상태](phase2-demo-readiness.md)에 기록했다.
