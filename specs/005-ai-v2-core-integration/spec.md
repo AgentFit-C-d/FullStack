@@ -10,6 +10,12 @@
 
 **Source Repository**: [AgentFit_AI_v2](https://github.com/AgentFit-C-d/AgentFit_AI_v2)
 
+## Clarifications
+
+### Session 2026-10-16
+
+- Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 포함하지 않는다. 원문은 요청 처리 중에만 전달하고 처리 후 폐기한다.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Analyze an approved project input (Priority: P1)
@@ -66,7 +72,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 
 - **FR-001**: The system MUST preserve the existing internal analysis entry point and authentication behavior for current callers.
 - **FR-002**: The system MUST use the AI v2 document analysis, provider execution, and evidence-validation capabilities for approved analysis requests.
-- **FR-003**: The system MUST translate existing FullStack analysis requests into the input expected by the AI v2 capabilities.
+- **FR-003**: The system MUST translate existing FullStack analysis requests and transient document content into the input expected by the AI v2 capabilities.
 - **FR-004**: The system MUST translate validated AI v2 results into the existing FullStack response contract while preserving request context.
 - **FR-005**: The system MUST reject invalid, expired, tampered, replayed, malformed, or deadline-exceeded requests.
 - **FR-006**: Provider failures and invalid AI results MUST NOT create a successful analysis result.
@@ -75,12 +81,14 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-009**: The integration MUST support deterministic synthetic testing without requiring a paid provider call.
 - **FR-010**: The initial integration MUST NOT include the separate Skill needs/ranking workflow.
 - **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
+- **FR-012**: The system MUST NOT add persistent storage for raw source documents; transient document content MUST be discarded after analysis processing completes or fails.
 
 ### Key Entities
 
 - **Analysis Request**: The approved, authenticated request context and input reference for one analysis attempt.
 - **Analysis Result**: The validated profile, evidence, model metadata, status, and request context returned to the existing product flow.
 - **Provider Failure**: A normalized failure category that prevents a successful analysis result from being produced.
+- **Transient Analysis Input**: Document content held only for the duration of one approved analysis request and not retained as a document record.
 
 ## Success Criteria
 
@@ -91,10 +99,12 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-003**: 100% of provider or evidence-validation failures leave no new successful analysis result.
 - **SC-004**: Existing analysis callers require no endpoint or authentication change.
 - **SC-005**: Automated tests cover request mapping, response mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
+- **SC-006**: Tests verify that raw source content is not written to the database, ordinary logs, or durable service storage.
 
 ## Assumptions
 
 - FullStack remains the authority for project ownership, private input access, budget reservation, leases, and persistence.
 - The AI v2 repository is used as the source of reusable analysis logic, not as a replacement for the FullStack service boundary.
+- Raw source documents are not persisted by this integration; the Core API sends approved content to the AI service only for the duration of the request.
 - Paid provider calls are enabled only in explicitly configured environments; tests use deterministic providers or test doubles.
 - The first delivery covers document analysis only; Skill recommendation mapping is a later feature.

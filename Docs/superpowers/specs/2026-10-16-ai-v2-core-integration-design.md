@@ -32,13 +32,14 @@ Spring Boot core-api
   -> FullStack response contract
 ```
 
-The adapter is the boundary. FullStack remains the source of truth for authentication, project authorization, input references, leases, deadlines, budget decisions, and persistence. The AI service receives only the approved request projection and returns a validated, contract-shaped result.
+The adapter is the boundary. FullStack remains the source of truth for authentication, project authorization, leases, deadlines, budget decisions, and persistence. The AI service receives the approved document content transiently for one request, returns a validated contract-shaped result, and does not retain the source content.
 
 ## Contract decisions
 
 - FullStack HMAC headers remain mandatory; Bearer authentication from AI v2 is not copied.
 - TLS remains required in deployed environments because HMAC authenticates integrity and origin but does not encrypt payloads.
 - Existing `requestId`, `generation`, and `contractVersion` context is preserved in the mapped request and response.
+- Raw document content is sent only for the duration of the request; no document storage or document-retrieval endpoint is added by this integration.
 - Raw documents, secrets, provider credentials, and raw provider responses are not logged or persisted.
 - Provider/model failures, malformed outputs, deadline expiry, and evidence-validation failures map to the existing failure behavior and do not create a successful analysis snapshot.
 
