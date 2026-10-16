@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.agentfit.coreapi.configuration.api.ConfigurationFinalizationExceptionHandler;
+import com.agentfit.coreapi.catalog.CatalogBundleLoader;
 import com.agentfit.coreapi.configuration.api.ConfigurationHistoryController;
 import com.agentfit.coreapi.configuration.api.ConfigurationHistoryRuntimeService;
 import com.agentfit.coreapi.configuration.history.ConfigurationGenerationHistory;
@@ -92,6 +93,18 @@ class ConfigurationHistoryControllerTest {
                 .param("limit", "many"))
             .andExpect(status().isUnprocessableEntity());
         verifyNoInteractions(history);
+    }
+
+    @Test
+    void unavailableApprovedCatalogReturnsRetryableServiceError() throws Exception {
+        var principal = mock(AuthenticatedPrincipal.class);
+        when(principals.resolve(any())).thenReturn(Optional.of(principal));
+        when(history.list(eq(project), eq(null), eq(20)))
+            .thenThrow(new CatalogBundleLoader.CatalogUnavailableException("hash mismatch"));
+
+        mvc().perform(get("/api/projects/{projectId}/configuration-history", project))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.code").value("CATALOG_UNAVAILABLE"));
     }
 
     private org.springframework.test.web.servlet.MockMvc mvc() {

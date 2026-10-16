@@ -1,5 +1,6 @@
 package com.agentfit.coreapi.configuration.api;
 
+import com.agentfit.coreapi.catalog.CatalogBundleLoader;
 import com.agentfit.coreapi.configuration.export.PreviewFreshnessGate;
 import com.agentfit.coreapi.global.exception.ErrorCode;
 import com.agentfit.coreapi.global.exception.ErrorResponse;
@@ -27,6 +28,14 @@ public class ConfigurationFinalizationExceptionHandler {
             ? "CONFIGURATION_NOT_FOUND" : "CATALOG_UNAVAILABLE";
         return ResponseEntity.status(exception.getStatusCode())
             .body(new FinalizationError(code, exception.getReason(), Instant.now()));
+    }
+
+    @ExceptionHandler(CatalogBundleLoader.CatalogUnavailableException.class)
+    ResponseEntity<FinalizationError> catalogUnavailable(
+            CatalogBundleLoader.CatalogUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(new FinalizationError("CATALOG_UNAVAILABLE",
+                "approved Catalog is unavailable", Instant.now()));
     }
 
     @ExceptionHandler({PreviewFreshnessGate.StalePreviewException.class,
