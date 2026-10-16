@@ -17,6 +17,7 @@
 - Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 분석 중 임시 보관만 하고, 분석 결과가 저장되면 원문은 폐기한다.
 - Q: A 분석과 B 추천은 한 번에 실행할까요, 별도 단계로 실행할까요? → A: A 분석을 먼저 완료·저장한 뒤 사용자가 별도의 추천 API를 호출한다.
 - Q: B 추천 전에 A 분석 결과를 누가 확정할까요? → A: 사용자가 분석 결과를 확인하고 직접 확정한다.
+- Q: 정상적인 추천 상태와 AI·연동 실패를 구분할까요? → A: 구분한다. `NEEDS_INFORMATION`과 `NO_COMPATIBLE_TOOLS`는 정상적인 추천 결과이고, AI·계약·저장 실패는 별도 실패로 처리한다.
 
 ## User Scenarios & Testing
 
@@ -87,6 +88,10 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-012**: The system MUST NOT retain raw source documents after the one-time analysis flow completes; transient document content MUST be discarded after the result is saved or the analysis fails.
 - **FR-013**: The system MUST retain the structured analysis result and necessary audit metadata without retaining the original document content.
 - **FR-014**: B recommendation creation MUST be a separate operation that requires a completed, user-confirmed A analysis result; an incomplete, failed, stale, or unconfirmed result MUST be rejected.
+- **FR-015**: B MUST return `NEEDS_INFORMATION` when decision-changing information is unresolved, with no recommendation items and one or more clarification questions.
+- **FR-016**: B MUST return `NO_COMPATIBLE_TOOLS` when information is sufficient but no verified tool combination satisfies all required capabilities, with no recommendation items and a reason.
+- **FR-017**: AI provider failure, timeout, parsing failure, invalid identifier, contract mismatch, version conflict, and persistence failure MUST be represented as a separate failure outcome and MUST NOT be converted into `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS`, or an apparently successful empty recommendation.
+- **FR-018**: A failed new recommendation MUST preserve the last successful recommendation and its basis.
 
 ### Key Entities
 
@@ -107,6 +112,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-006**: Tests verify that raw source content is removed after analysis completion or failure and is not retained in the database, ordinary logs, or durable service storage.
 - **SC-007**: A valid AI capability assessment reaches B's existing recommendation engine without changing B's capability keys, validation rules, or public recommendation API.
 - **SC-008**: A recommendation request cannot create a B recommendation before a completed and user-confirmed A result exists.
+- **SC-009**: Tests distinguish `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS`, and integration failure outcomes, including preservation of the last successful recommendation after a failed new attempt.
 
 ## Assumptions
 
