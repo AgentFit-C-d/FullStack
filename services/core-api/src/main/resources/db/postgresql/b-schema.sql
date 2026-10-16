@@ -6,7 +6,7 @@
 
 CREATE TABLE recommendation (
     id UUID PRIMARY KEY,
-    project_id VARCHAR(36) NOT NULL REFERENCES project(id),
+    project_id UUID NOT NULL REFERENCES project(id),
     confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id),
     confirmed_profile_version BIGINT NOT NULL CHECK (confirmed_profile_version >= 1),
     confirmation_event_id UUID NOT NULL REFERENCES profile_confirmation_event(id),

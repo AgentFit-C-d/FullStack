@@ -43,7 +43,7 @@ public final class JdbcConfigurationHistoryReader {
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("history page limit must be between 1 and 100");
         }
-        String project = ProjectDbId.require(projectId);
+        UUID project = ProjectDbId.uuid(projectId);
         String sql = "SELECT e.id, e.generated_at FROM config_export e "
             + "JOIN config_preview cp ON cp.id = e.preview_id "
             + "JOIN recommendation r ON r.id = cp.recommendation_id "
@@ -54,7 +54,7 @@ public final class JdbcConfigurationHistoryReader {
         List<Cursor> rows = new ArrayList<>();
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             int position = 1;
-            query.setString(position++, project);
+            query.setObject(position++, project);
             if (after != null) {
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
                 query.setObject(position++, java.sql.Timestamp.from(after.generatedAt()));
@@ -84,7 +84,7 @@ public final class JdbcConfigurationHistoryReader {
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("history read requires a caller-owned transaction");
         }
-        String project = ProjectDbId.require(projectId);
+        UUID project = ProjectDbId.uuid(projectId);
         UUID export = uuid(generationId);
         String sql = "SELECT e.id AS export_id, e.fingerprint AS export_fingerprint, e.generated_at, "
             + "e.latest_report_id, e.reported_state, e.reason_code, e.reported_at, "
@@ -98,7 +98,7 @@ public final class JdbcConfigurationHistoryReader {
             + "WHERE e.id = ? AND r.project_id = ? FOR SHARE OF e, cp, r";
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
             query.setObject(1, export);
-            query.setString(2, project);
+            query.setObject(2, project);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
                 UUID approvalId = row.getObject("approval_id", UUID.class);

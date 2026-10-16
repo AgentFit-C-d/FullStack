@@ -80,7 +80,8 @@ public final class JdbcPreviewMetadataWriter {
             query.setObject(1, id);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next() || !"RECOMMENDED".equals(row.getString("status"))
-                    || !row.getString("project_id").equals(ProjectDbId.require(basis.projectId()))
+                    || !row.getObject("project_id", UUID.class)
+                        .equals(ProjectDbId.uuid(basis.projectId()))
                     || !row.getObject("confirmed_profile_id", UUID.class)
                         .equals(uuid(basis.confirmedProfileId()))
                     || row.getLong("confirmed_profile_version") != basis.confirmedProfileVersion()

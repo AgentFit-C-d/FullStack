@@ -79,7 +79,7 @@ public final class JdbcLatestRecommendationReader {
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("recommendation read requires a caller-owned transaction");
         }
-        String project = ProjectDbId.require(projectId);
+        UUID project = ProjectDbId.uuid(projectId);
         String sql = "SELECT id, project_id, project_version, confirmed_profile_id, "
             + "confirmed_profile_version, confirmation_event_id, review_version, "
             + "developer_version, environment_version, catalog_release, catalog_hash, status "
@@ -88,7 +88,7 @@ public final class JdbcLatestRecommendationReader {
                 ? "ORDER BY created_at DESC, id DESC LIMIT 1 FOR SHARE"
                 : "AND id = ? FOR SHARE");
         try (PreparedStatement query = transaction.prepareStatement(sql)) {
-            query.setString(1, project);
+            query.setObject(1, project);
             if (recommendationId != null) query.setObject(2, recommendationId);
             try (ResultSet row = query.executeQuery()) {
                 if (!row.next()) return null;
