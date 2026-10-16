@@ -18,17 +18,17 @@
 
 ## User Scenarios & Testing
 
-### User Story 1 - Analyze an approved project input (Priority: P1)
+### User Story 1 - Analyze an approved project input and produce recommendation capabilities (Priority: P1)
 
-When the system starts an analysis for an approved project input, it should use the AI v2 analysis capabilities and return a result in the existing FullStack format.
+When the system starts an analysis for an approved project input, it should use the AI v2 analysis capabilities and produce the validated capability assessment that FullStack B's recommendation flow consumes.
 
 **Why this priority**: This is the primary value of the integration and enables the existing product flow to use the new analysis implementation without changing its callers.
 
-**Independent Test**: Submit a synthetic, valid analysis request and verify that the existing response shape contains the mapped AI v2 result and original request context.
+**Independent Test**: Submit a synthetic, valid analysis request and verify that the existing response shape contains the mapped AI v2 result, original request context, and B-compatible capability claims/questions.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid approved input and valid internal authentication, **When** analysis is requested, **Then** the system returns a validated result in the existing FullStack contract.
+1. **Given** a valid approved input and valid internal authentication, **When** analysis is requested, **Then** the system returns a validated result in the existing FullStack contract and B can consume its capability assessment.
 2. **Given** a valid synthetic input without a configured paid provider key, **When** analysis is requested in test mode, **Then** the system returns the deterministic test result without calling a paid provider.
 
 ### User Story 2 - Reject unsafe or invalid analysis requests (Priority: P1)
@@ -79,7 +79,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-007**: Project ownership, source-input authorization, lease state, budget decisions, and persistence MUST remain controlled by the existing backend.
 - **FR-008**: The system MUST NOT log or persist raw source documents, secrets, provider credentials, or raw provider responses.
 - **FR-009**: The integration MUST support deterministic synthetic testing without requiring a paid provider call.
-- **FR-010**: The initial integration MUST NOT include the separate Skill needs/ranking workflow.
+- **FR-010**: The integration MUST connect AI v2's needs and candidate-ranking capabilities to the existing B capability assessment flow through an adapter; those provider-specific endpoints MUST NOT become public FullStack endpoints.
 - **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
 - **FR-012**: The system MUST NOT retain raw source documents after the one-time analysis flow completes; transient document content MUST be discarded after the result is saved or the analysis fails.
 - **FR-013**: The system MUST retain the structured analysis result and necessary audit metadata without retaining the original document content.
@@ -99,8 +99,9 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-002**: 100% of invalid, tampered, replayed, expired, or malformed requests are rejected without a successful result.
 - **SC-003**: 100% of provider or evidence-validation failures leave no new successful analysis result.
 - **SC-004**: Existing analysis callers require no endpoint or authentication change.
-- **SC-005**: Automated tests cover request mapping, response mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
+- **SC-005**: Automated tests cover request mapping, response mapping, B capability mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
 - **SC-006**: Tests verify that raw source content is removed after analysis completion or failure and is not retained in the database, ordinary logs, or durable service storage.
+- **SC-007**: A valid AI capability assessment reaches B's existing recommendation engine without changing B's capability keys, validation rules, or public recommendation API.
 
 ## Assumptions
 
@@ -108,4 +109,4 @@ The product team can deploy the AI v2 analysis capability without moving project
 - The AI v2 repository is used as the source of reusable analysis logic, not as a replacement for the FullStack service boundary.
 - Raw source documents are retained only for the one-time analysis operation; the structured result and audit metadata remain after the source is removed.
 - Paid provider calls are enabled only in explicitly configured environments; tests use deterministic providers or test doubles.
-- The first delivery covers document analysis only; Skill recommendation mapping is a later feature.
+- AI v2's needs/rank behavior is used internally to produce B's existing capability claims and questions; the public API remains FullStack's recommendation API.
