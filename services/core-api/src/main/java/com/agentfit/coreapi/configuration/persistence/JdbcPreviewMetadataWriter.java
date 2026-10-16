@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,11 +35,17 @@ public final class JdbcPreviewMetadataWriter {
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("Preview metadata requires a caller-owned transaction");
         }
-        if (createdAt == null || expiresAt == null || !createdAt.isBefore(expiresAt)
+        if (createdAt == null || expiresAt == null
             || draft.basis() == null || draft.existingState() == null
             || draft.selectedToolKeys() == null || draft.selectedToolKeys().isEmpty()
             || draft.fileMetadata() == null || draft.fileMetadata().isEmpty()) {
             throw new IllegalArgumentException("incomplete Preview metadata");
+        }
+        // PostgreSQL stores timestamps at microsecond precision. Return the same values it stores.
+        createdAt = createdAt.truncatedTo(ChronoUnit.MICROS);
+        expiresAt = expiresAt.truncatedTo(ChronoUnit.MICROS);
+        if (!createdAt.isBefore(expiresAt)) {
+            throw new IllegalArgumentException("Preview expiry must follow creation");
         }
         UUID id = uuid(previewId);
         UUID recommendationId = uuid(draft.recommendationId());
