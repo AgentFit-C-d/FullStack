@@ -16,6 +16,7 @@ public final class AiCapabilityIntake {
         "profile.projectName",
         "profile.projectType",
         "profile.domain",
+        "developer.role",
         "developer.version",
         "environment.osFamily",
         "environment.clientId",
@@ -115,6 +116,14 @@ public final class AiCapabilityIntake {
     public static boolean isApprovedSourceField(String field) {
         if (blank(field)) return false;
         if (APPROVED_DIRECT_SOURCE_FIELDS.contains(field)) return true;
+
+        if (field.startsWith("developer.responsibility.")) {
+            try {
+                return Integer.parseInt(field.substring("developer.responsibility.".length())) >= 0;
+            } catch (NumberFormatException exception) {
+                return false;
+            }
+        }
 
         String[] parts = field.split("\\.", -1);
         if (parts.length != 4 || !"profile".equals(parts[0]) || !"item".equals(parts[1])

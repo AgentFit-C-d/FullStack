@@ -56,6 +56,7 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
     }
 
     private static String fieldFor(String sourcePath) {
+        if (sourcePath.startsWith("developer.responsibility.")) return "features";
         if (sourcePath.startsWith("profile.item.")) {
             String[] parts = sourcePath.split("\\.");
             return parts.length >= 3 ? parts[2] : "unknown";
@@ -64,6 +65,7 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
             case "profile.projectName" -> "project_name";
             case "profile.projectType" -> "project_type";
             case "profile.domain" -> "domain";
+            case "developer.role" -> "backend";
             case "developer.version" -> "backend";
             case "environment.osFamily", "environment.clientId", "environment.clientVersion" -> "deployment";
             default -> "unknown";

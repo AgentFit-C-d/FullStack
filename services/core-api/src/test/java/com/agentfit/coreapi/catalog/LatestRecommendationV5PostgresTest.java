@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.integration.ab.OwnerCheckedSnapshotReaderAdapter;
 import com.agentfit.coreapi.integration.ab.JdbcRecommendationStoreAdapter;
+import com.agentfit.coreapi.integration.ab.RecommendationInputsService;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
@@ -63,6 +64,45 @@ class LatestRecommendationV5PostgresTest {
              var statement = connection.createStatement()) {
             statement.execute("DROP SCHEMA " + schema + " CASCADE");
         }
+    }
+
+    @Test
+    void roleAndEnvironmentInputsUseOptimisticVersionsAndFeedConfirmedSnapshot() {
+        var dataSource = new DriverManagerDataSource(scopedUrl(), user, password);
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO \"USER\" (id, name) VALUES (?, ?)", userId, "owner");
+        jdbc.update("INSERT INTO project (id, user_id, name, version, current_step, created_at, updated_at) VALUES (?, ?, ?, 1, 'RECOMMENDATION', now(), now())",
+            projectId, userId, "demo");
+        jdbc.update("INSERT INTO project_profile (id, project_id, kind, version, field_metadata, confirmed_by, confirmed_at, created_at, updated_at) VALUES (?, ?, 'CONFIRMED', 1, '{}'::jsonb, ?, now(), now(), now())",
+            profileId, projectId, userId);
+        jdbc.update("INSERT INTO profile_confirmation_event (id, project_id, confirmed_profile_id, confirmed_profile_version, project_version, actor_id, confirmed_at, request_id, profile_snapshot) VALUES (?, ?, ?, 1, 1, ?, now(), ?, '{}'::jsonb)",
+            confirmationId, projectId, profileId, userId, "inputs-test");
+
+        var inputs = new RecommendationInputsService(dataSource);
+        assertEquals(1, inputs.saveDeveloper(projectId.toString(), 0,
+            "FULL_STACK", List.of("API 검증", "문서 검색")));
+        assertEquals(1, inputs.saveEnvironment(projectId.toString(), 0,
+            "WINDOWS", "example-client", "1.0", true, List.of()));
+        var snapshot = new OwnerCheckedSnapshotReaderAdapter(jdbc).load(projectId.toString());
+        assertEquals(1, snapshot.developerVersion());
+        assertEquals(1, snapshot.environmentVersion());
+        assertEquals(Map.of(), snapshot.installedToolVersions());
+        assertEquals("FULL_STACK", snapshot.aiSourceValues().get("developer.role"));
+        assertEquals("API 검증", snapshot.aiSourceValues().get("developer.responsibility.0"));
+
+        assertThrows(com.agentfit.coreapi.global.exception.VersionConflictException.class,
+            () -> inputs.saveEnvironment(projectId.toString(), 0,
+                "WINDOWS", "example-client", "1.0", true, List.of()));
+        assertEquals(2, inputs.saveEnvironment(projectId.toString(), 1,
+            "WINDOWS", "example-client", "1.0", true,
+            List.of(new RecommendationInputsService.InstalledComponent("example-tool", "1.0"))));
+        assertEquals("1.0", new OwnerCheckedSnapshotReaderAdapter(jdbc)
+            .load(projectId.toString()).installedToolVersions().get("example-tool"));
+        var current = inputs.current(projectId.toString());
+        assertEquals(1, current.developer().version());
+        assertEquals("FULL_STACK", current.developer().role());
+        assertEquals(2, current.environment().version());
+        assertEquals("example-tool", current.environment().installedComponents().get(0).toolKey());
     }
 
     @Test

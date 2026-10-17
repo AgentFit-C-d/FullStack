@@ -46,6 +46,7 @@ class AiV2AnalysisToRecommendationIntegrationTest {
             List<?> facts = (List<?>) payload.get("facts");
             assertTrue(facts.contains(Map.of("id", "profile.projectType", "field", "project_type", "value", "web")));
             assertTrue(facts.contains(Map.of("id", "profile.domain", "field", "domain", "value", "education")));
+            assertTrue(facts.contains(Map.of("id", "developer.responsibility.0", "field", "features", "value", "API 검증")));
             List<Map<String, Object>> claims = CapabilityKey.keys().stream().sorted().map(key -> Map.of(
                 "capabilityKey", key,
                 "need", key.equals("cap_document_reference") ? "REQUIRED" : "OPTIONAL",
@@ -80,8 +81,9 @@ class AiV2AnalysisToRecommendationIntegrationTest {
 
     private static RecommendationCreationService.OwnerCheckedSnapshot confirmedSnapshot(String projectId) {
         return new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7, "confirmed-1", 1,
-            "confirmation-1", 1, 1, 1, Set.of("profile.item.features.0", "profile.projectType", "profile.domain"),
-            Map.of("profile.item.features.0", "document search", "profile.projectType", "web", "profile.domain", "education"), false,
+            "confirmation-1", 1, 1, 1, Set.of("profile.item.features.0", "profile.projectType", "profile.domain", "developer.responsibility.0"),
+            Map.of("profile.item.features.0", "document search", "profile.projectType", "web", "profile.domain", "education",
+                "developer.responsibility.0", "API 검증"), false,
             new EnvironmentTarget("WINDOWS", "client", "1.0"), Map.of());
     }
 

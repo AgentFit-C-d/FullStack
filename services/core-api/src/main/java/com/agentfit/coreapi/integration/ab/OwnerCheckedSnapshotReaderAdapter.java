@@ -29,7 +29,8 @@ public final class OwnerCheckedSnapshotReaderAdapter
                 SELECT p.version AS project_version, pp.project_name, pp.project_type, pp.domain,
                        pp.id AS profile_id, pp.version AS profile_version,
                        ce.id AS confirmation_event_id, COALESCE(pr.review_version, 0) AS review_version,
-                       dp.version AS developer_version, ep.version AS environment_version,
+                       dp.version AS developer_version, dp.role AS developer_role,
+                       ep.version AS environment_version,
                        ep.os_family, ep.client_id, ep.client_version,
                        ep.installed_components_knowledge
                   FROM project p
@@ -56,6 +57,18 @@ public final class OwnerCheckedSnapshotReaderAdapter
         add(values, allowed, "environment.clientId", row.get("client_id"));
         add(values, allowed, "environment.clientVersion", row.get("client_version"));
         add(values, allowed, "developer.version", row.get("developer_version"));
+        add(values, allowed, "developer.role", row.get("developer_role"));
+        int[] responsibilityOrdinal = {0};
+        jdbc.query("""
+            SELECT responsibility.value
+              FROM developer_profile dp,
+                   jsonb_array_elements_text(COALESCE(dp.responsibilities, '[]'::jsonb))
+                       WITH ORDINALITY AS responsibility(value, ordinal)
+             WHERE dp.project_id = ? ORDER BY responsibility.ordinal
+            """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                String key = "developer.responsibility." + responsibilityOrdinal[0]++;
+                add(values, allowed, key, rs.getString(1));
+            }, project);
         jdbc.query("SELECT field_key, ordinal, name, version FROM project_profile_item WHERE project_profile_id = ? ORDER BY ordinal",
             new Object[] { row.get("profile_id") }, (rs, rowNum) -> {
                 String key = "profile.item." + rs.getString("field_key") + "." + rs.getInt("ordinal");
