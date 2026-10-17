@@ -1,15 +1,13 @@
 package com.agentfit.coreapi.integration.ab;
 
-import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.CatalogRecommendationWorkflow;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
-import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter;
+import com.agentfit.coreapi.recommendation.persistence.RecommendationMetadataAssembler;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -17,7 +15,7 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Saves B recommendation metadata only after an A project lock/version recheck. */
+/** Saves B recommendation metadata only while its confirmed A/B input versions remain current. */
 @Component
 public final class JdbcRecommendationStoreAdapter implements RecommendationCreationService.RecommendationStore {
     private final DataSource dataSource;
@@ -37,15 +35,16 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
         return transactions.execute(status -> {
             try {
                 var connection = DataSourceUtils.getConnection(dataSource);
-                long currentVersion;
                 try (var query = connection.prepareStatement("SELECT version FROM project WHERE id = ? FOR UPDATE")) {
                     query.setObject(1, UUID.fromString(snapshot.projectId()));
                     try (var row = query.executeQuery()) {
                         if (!row.next()) throw new RecommendationCreationService.SnapshotChangedException();
-                        currentVersion = row.getLong(1);
+                        if (row.getLong(1) != snapshot.projectVersion()) {
+                            throw new RecommendationCreationService.SnapshotChangedException();
+                        }
                     }
                 }
-                if (currentVersion != snapshot.projectVersion()) {
+                if (!matchesSnapshot(connection, snapshot)) {
                     throw new RecommendationCreationService.SnapshotChangedException();
                 }
                 JdbcRecommendationMetadataWriter.Draft draft = draft(id, basis, result, snapshot);
@@ -57,6 +56,36 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
                 throw new IllegalStateException("recommendation transaction failed", exception);
             }
         });
+    }
+
+    private static boolean matchesSnapshot(java.sql.Connection connection,
+            RecommendationCreationService.OwnerCheckedSnapshot snapshot) throws SQLException {
+        try (var query = connection.prepareStatement("""
+            SELECT pp.id, pp.version, ce.id, COALESCE(pr.review_version, 0),
+                   COALESCE(dp.version, 0), COALESCE(ep.version, 0)
+              FROM project p
+              JOIN project_profile pp ON pp.project_id = p.id AND pp.kind = 'CONFIRMED'
+              JOIN profile_confirmation_event ce ON ce.project_id = p.id
+                   AND ce.confirmed_profile_id = pp.id
+              LEFT JOIN profile_review pr ON pr.id = p.current_review_id
+                   AND pr.target_profile_id = pp.id AND pr.target_profile_version = pp.version
+              LEFT JOIN developer_profile dp ON dp.project_id = p.id
+              LEFT JOIN environment_profile ep ON ep.project_id = p.id
+             WHERE p.id = ?
+             ORDER BY ce.confirmed_at DESC
+             LIMIT 1
+            """)) {
+            query.setObject(1, UUID.fromString(snapshot.projectId()));
+            try (var row = query.executeQuery()) {
+                return row.next()
+                    && row.getObject(1).toString().equals(snapshot.confirmedProfileId())
+                    && row.getLong(2) == snapshot.confirmedProfileVersion()
+                    && row.getObject(3).toString().equals(snapshot.confirmationEventId())
+                    && row.getLong(4) == snapshot.reviewVersion()
+                    && row.getLong(5) == snapshot.developerVersion()
+                    && row.getLong(6) == snapshot.environmentVersion();
+            }
+        }
     }
 
     private static void writeSuccessAudit(java.sql.Connection connection, UUID projectId,
@@ -79,27 +108,26 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
             com.agentfit.coreapi.configuration.preview.PreviewBasis basis,
             CatalogRecommendationWorkflow.Result result,
             RecommendationCreationService.OwnerCheckedSnapshot snapshot) {
-        Map<String, AiCapabilityIntake.Claim> claims = new HashMap<>();
-        for (AiCapabilityIntake.Claim claim : result.capabilities()) claims.put(claim.capabilityKey(), claim);
-        if (!claims.keySet().equals(com.agentfit.coreapi.recommendation.CapabilityKey.keys())) {
-            throw new IllegalArgumentException("recommendation requires all nine capabilities");
+        List<JdbcRecommendationMetadataWriter.Notice> notices = new ArrayList<>();
+        for (String code : result.decision().questionCodes()) {
+            if ("undetermined_capability".equals(code)) {
+                var question = result.clarificationQuestions().stream().findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("AI question required for undetermined Capability"));
+                notices.add(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+                    JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+                    JdbcRecommendationMetadataWriter.QuestionOwner.AI, question.field(), code,
+                    question.reason(), List.of(question.field())));
+            } else if ("pending_conflict".equals(code)) {
+                notices.add(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
+                    JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
+                    JdbcRecommendationMetadataWriter.QuestionOwner.B, "profile.review", code,
+                    "확정된 기획의 충돌 항목을 확인해 주세요.", List.of()));
+            }
         }
-        List<JdbcRecommendationMetadataWriter.Capability> capabilities = claims.values().stream().sorted(java.util.Comparator.comparing(AiCapabilityIntake.Claim::capabilityKey))
-            .map(claim -> new JdbcRecommendationMetadataWriter.Capability(claim.capabilityKey(),
-                JdbcRecommendationMetadataWriter.Necessity.valueOf(claim.need().name()), claim.reason(), claim.sourceFields())).toList();
-        List<JdbcRecommendationMetadataWriter.Item> items = result.items().stream().map(item ->
-            new JdbcRecommendationMetadataWriter.Item(UUID.randomUUID().toString(), item.toolKey(),
-                item.catalogVersion(), item.supportKey(), true, item.name(),
-                JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE)).toList();
-        List<JdbcRecommendationMetadataWriter.Notice> notices = result.clarificationQuestions().stream().map(question ->
-            new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
-                JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
-                JdbcRecommendationMetadataWriter.QuestionOwner.AI, question.field(),
-                "AI_QUESTION", question.reason(), List.of(question.field()))).toList();
-        return new JdbcRecommendationMetadataWriter.Draft(id.toString(), basis, result.decision().status(),
+        return RecommendationMetadataAssembler.assemble(id.toString(), basis, result,
             snapshot.environment() != null && snapshot.environment().complete()
                 ? JdbcRecommendationMetadataWriter.EvidenceLevel.ENVIRONMENT_DECLARED
                 : JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
-            Instant.now(), capabilities, items, notices);
+            Instant.now(), notices, () -> UUID.randomUUID().toString());
     }
 }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.integration.ab.OwnerCheckedSnapshotReaderAdapter;
+import com.agentfit.coreapi.integration.ab.JdbcRecommendationStoreAdapter;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
@@ -62,6 +63,59 @@ class LatestRecommendationV5PostgresTest {
              var statement = connection.createStatement()) {
             statement.execute("DROP SCHEMA " + schema + " CASCADE");
         }
+    }
+
+    @Test
+    void confirmedProfileWithoutOptionalRoleEnvironmentOrReviewIsReadableButDraftIsNot() throws Exception {
+        var dataSource = new DriverManagerDataSource(scopedUrl(), user, password);
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO \"USER\" (id, name) VALUES (?, ?)", userId, "owner");
+        jdbc.update("INSERT INTO project (id, user_id, name, version, current_step, created_at, updated_at) VALUES (?, ?, ?, 1, 'PLANNING', now(), now())",
+            projectId, userId, "demo");
+        jdbc.update("INSERT INTO project_profile (id, project_id, kind, version, project_name, project_type, domain, field_metadata, created_at, updated_at) VALUES (?, ?, 'DRAFT', 1, ?, ?, ?, '{}'::jsonb, now(), now())",
+            profileId, projectId, "draft", "web", "education");
+        var snapshots = new OwnerCheckedSnapshotReaderAdapter(jdbc);
+        assertThrows(com.agentfit.coreapi.global.exception.ProfileNotConfirmedException.class,
+            () -> snapshots.load(projectId.toString()));
+
+        jdbc.update("DELETE FROM project_profile WHERE id = ?", profileId);
+        jdbc.update("INSERT INTO project_profile (id, project_id, kind, version, project_name, project_type, domain, field_metadata, confirmed_by, confirmed_at, created_at, updated_at) VALUES (?, ?, 'CONFIRMED', 1, ?, ?, ?, '{}'::jsonb, ?, now(), now(), now())",
+            profileId, projectId, "confirmed", "web", "education", userId);
+        jdbc.update("INSERT INTO profile_confirmation_event (id, project_id, confirmed_profile_id, confirmed_profile_version, project_version, actor_id, confirmed_at, request_id, profile_snapshot) VALUES (?, ?, ?, 1, 1, ?, now(), ?, '{}'::jsonb)",
+            confirmationId, projectId, profileId, userId, "confirmed-without-b-inputs");
+
+        var snapshot = snapshots.load(projectId.toString());
+        assertEquals(0, snapshot.reviewVersion());
+        assertEquals(0, snapshot.developerVersion());
+        assertEquals(0, snapshot.environmentVersion());
+        assertEquals("confirmed", snapshot.aiSourceValues().get("profile.projectName"));
+        assertEquals("web", snapshot.aiSourceValues().get("profile.projectType"));
+        assertEquals("education", snapshot.aiSourceValues().get("profile.domain"));
+        assertEquals(false, snapshot.environment().complete());
+        assertEquals(null, snapshot.installedToolVersions());
+
+        String hash = SyntheticCatalogBundle.write(catalogDirectory);
+        var service = new RecommendationCreationService(snapshots, input ->
+            new RecommendationCreationService.CapabilityAssessment(
+                CapabilityKey.keys().stream().sorted().map(key ->
+                    new AiCapabilityIntake.Claim(key, AiCapabilityIntake.Need.REQUIRED,
+                        "confirmed project", List.of("profile.projectName"))).toList(), List.of()),
+            () -> new RecommendationCreationService.ApprovedCatalog(catalogDirectory, hash),
+            new JdbcRecommendationStoreAdapter(dataSource));
+        var created = service.create(projectId.toString(),
+            new RecommendationCreationService.ExpectedVersions(1, 0, 0));
+        assertEquals(com.agentfit.coreapi.recommendation.RecommendationDecision.Status.NEEDS_INFORMATION,
+            created.result().decision().status());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation WHERE id = ?",
+            Integer.class, UUID.fromString(created.recommendationId())));
+
+        jdbc.update("INSERT INTO environment_profile (id, project_id, version, source, os_family, client_id, client_version, created_at, updated_at) VALUES (?, ?, 1, 'USER', 'WINDOWS', 'example-client', '1.0', now(), now())",
+            UUID.randomUUID(), projectId);
+        var withUnverifiedInstallState = snapshots.load(projectId.toString());
+        assertEquals(null, withUnverifiedInstallState.installedToolVersions());
+        var second = service.create(projectId.toString(),
+            new RecommendationCreationService.ExpectedVersions(1, 0, 1));
+        assertEquals(List.of("installed_components"), second.result().decision().questionCodes());
     }
 
     @Test

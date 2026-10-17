@@ -62,6 +62,8 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
         }
         return switch (sourcePath) {
             case "profile.projectName" -> "project_name";
+            case "profile.projectType" -> "project_type";
+            case "profile.domain" -> "domain";
             case "developer.version" -> "backend";
             case "environment.osFamily", "environment.clientId", "environment.clientVersion" -> "deployment";
             default -> "unknown";

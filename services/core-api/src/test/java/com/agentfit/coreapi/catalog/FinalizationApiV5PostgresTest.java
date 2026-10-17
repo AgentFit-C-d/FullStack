@@ -104,9 +104,9 @@ class FinalizationApiV5PostgresTest {
                 statement.execute("INSERT INTO developer_profile (id, project_id, version, created_at, updated_at) "
                     + "VALUES ('" + UUID.randomUUID() + "', '" + projectId + "', 1, now(), now())");
                 statement.execute("INSERT INTO environment_profile (id, project_id, version, source, "
-                    + "os_family, client_id, client_version, created_at, updated_at) VALUES ('"
+                    + "os_family, client_id, client_version, installed_components_knowledge, created_at, updated_at) VALUES ('"
                     + UUID.randomUUID() + "', '" + projectId
-                    + "', 1, 'USER', 'WINDOWS', 'example-client', '1.0', now(), now())");
+                    + "', 1, 'USER', 'WINDOWS', 'example-client', '1.0', 'KNOWN', now(), now())");
                 UUID reviewId = UUID.randomUUID();
                 statement.execute("INSERT INTO profile_review (id, project_id, target_profile_id, "
                     + "target_profile_version, review_version, request_id, contract_version, "
