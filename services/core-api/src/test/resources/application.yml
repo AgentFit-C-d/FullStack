@@ -22,6 +22,9 @@ spring:
               - user:email
 
 agentfit:
+  analysis:
+    worker:
+      enabled: false
   auth:
     cookie-secure: false
   hmac:
