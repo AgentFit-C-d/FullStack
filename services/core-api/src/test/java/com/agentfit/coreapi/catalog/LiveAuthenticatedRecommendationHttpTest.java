@@ -162,6 +162,8 @@ class LiveAuthenticatedRecommendationHttpTest {
                 .with(authentication(owner)).with(csrf()).contentType("application/json")
                 .content(previewRequest))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.unmetCapabilityKeys").isArray())
+            .andExpect(jsonPath("$.files[0].content").isString())
             .andReturn();
         var previewJson = mapper.readTree(preview.getResponse().getContentAsString());
         String previewId = previewJson.get("previewId").asText();

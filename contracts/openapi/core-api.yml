@@ -437,7 +437,11 @@ paths:
               $ref: "#/components/schemas/PreviewCreateRequest"
       responses:
         "201":
-          description: Content-free Preview metadata and fingerprint
+          description: Transient Preview files, unmet capability warnings, and saved content-free metadata
+          headers:
+            Cache-Control:
+              description: Transient file content must not be cached.
+              schema: { type: string, enum: [no-store] }
           content:
             application/json:
               schema:
@@ -829,7 +833,7 @@ components:
         clientVersion: { type: string, minLength: 1 }
     PreviewResponse:
       type: object
-      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt]
+      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt, unmetCapabilityKeys, files]
       properties:
         previewId: { type: string, format: uuid }
         recommendationId: { type: string, format: uuid }
@@ -838,6 +842,25 @@ components:
         contentDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+        unmetCapabilityKeys:
+          description: Required capabilities still missing after the selected partial configuration; an empty array means complete coverage.
+          type: array
+          items: { type: string }
+        files:
+          description: Transient generated content and comparison details for user review; these bytes are not stored.
+          type: array
+          items:
+            type: object
+            required: [targetKey, relativePath, action, afterHash, content, comparisonScope]
+            properties:
+              targetKey: { type: string }
+              relativePath: { type: string }
+              action: { type: string, enum: [PROPOSAL, UPDATE] }
+              beforeHash: { type: string, nullable: true }
+              afterHash: { type: string }
+              content: { type: string }
+              diff: { type: string, nullable: true }
+              comparisonScope: { type: string, enum: [EXISTING_UNKNOWN, PROVIDED_FILE] }
         draft:
           nullable: true
           type: object

@@ -12,6 +12,7 @@ import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
+import com.agentfit.coreapi.configuration.preview.PreviewFile;
 import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
 import com.agentfit.coreapi.domain.auth.service.SessionPrincipalResolver;
 import com.agentfit.coreapi.domain.project.service.ProjectOwnershipGuard;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -100,9 +102,11 @@ public class RecommendationController {
                 body.selectedToolKeys(), body.permissionSelections(), body.existingState(),
                 body.providedFiles(), body.generatorVersion()));
         var saved = created.saved();
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ConfigurationPreviewCreatedResponse(
+        return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore())
+            .body(new ConfigurationPreviewCreatedResponse(
             saved.previewId(), body.recommendationId(), saved.fingerprint(), created.preview().selectionDigest(),
-            created.preview().contentDigest(), saved.createdAt(), saved.expiresAt()));
+            created.preview().contentDigest(), saved.createdAt(), saved.expiresAt(),
+            created.coverage().unmetCapabilityKeys(), created.preview().files()));
     }
 
     private AuthenticatedPrincipal principal(HttpServletRequest request) {
@@ -139,5 +143,6 @@ public class RecommendationController {
             List<JdbcRecommendationMetadataWriter.Notice> notices) {}
 
     public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
-            String fingerprint, String selectionDigest, String contentDigest, Instant createdAt, Instant expiresAt) {}
+            String fingerprint, String selectionDigest, String contentDigest, Instant createdAt,
+            Instant expiresAt, List<String> unmetCapabilityKeys, List<PreviewFile> files) {}
 }
