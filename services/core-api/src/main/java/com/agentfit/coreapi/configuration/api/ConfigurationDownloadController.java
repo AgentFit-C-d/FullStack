@@ -7,6 +7,7 @@ import com.agentfit.coreapi.global.exception.UnauthenticatedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,7 +40,8 @@ public class ConfigurationDownloadController {
         ownership.requireOwned(principal, projectId);
         var generated = downloads.download(projectId, approvalId, body.previewId(),
             body.fingerprint(), body.previewRequest(), principal.userUuid());
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/zip"))
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .contentType(MediaType.parseMediaType("application/zip"))
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"agentfit-config.zip\"")
             .header("X-Config-Export-Id", generated.exportId())
             .header("X-Unmet-Capability-Keys", String.join(",", generated.unmetCapabilityKeys()))

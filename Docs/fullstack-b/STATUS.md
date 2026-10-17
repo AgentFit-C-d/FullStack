@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**ZIP 응답 캐시 방지 (2026-10-18):** 설정 ZIP 다운로드 응답에 `Cache-Control: no-store`를 추가했다. 설정 원문은 응답으로만 전달하고 저장하지 않는 기존 원칙을 HTTP 응답에도 적용한다. 누락을 재현한 컨트롤러 테스트가 수정 후 통과했다.
+
 **미리보기 공개 응답 보완 (2026-10-18):** 부분 구성을 만들 때 남는 필수 Capability 키와 생성된 임시 파일 내용·Diff를 `POST /config-previews` 응답에 포함한다. 이 응답은 `Cache-Control: no-store`를 사용한다. 파일 원문·Diff는 DB에 저장하지 않고 승인·다운로드 시 기존과 같이 동일 입력과 지문을 재검증한다. Java 21 Core 전체 테스트와 Core·AI·PostgreSQL 데모 스모크가 통과했다.
 
 **skills.sh 후보 데모 연결 (2026-10-18):** 로컬 Java 17 환경에서 Docker Java 21로 `refresh_skills_candidates.ps1 -Public`을 실행해 실제 후보 2건을 갱신했다(`changed=0`). 데모 Compose는 후보 스냅샷을 Core에 읽기 전용으로 연결하고, 인증된 `GET /api/tool-candidates`는 `UNVERIFIED`로 표시한다. Core·AI health 200, API 경로 등록, 비로그인 401, 인증 형태의 백엔드 후보 조회→합성 Catalog 추천→ZIP 통합 흐름을 확인했다. skills.sh 후보는 실제 추천·설정에 사용하지 않는다. 공식 v1 API는 Vercel OIDC가 없어 실호출하지 않았다.
