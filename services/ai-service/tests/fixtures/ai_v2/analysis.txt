@@ -1,0 +1,3 @@
+project_name: AgentFit
+backend: Spring Boot
+database: PostgreSQL

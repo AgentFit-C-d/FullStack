@@ -26,12 +26,28 @@ spring:
 server:
   port: 8080
 
+springdoc:
+  swagger-ui:
+    csrf:
+      enabled: true
+      cookie-name: XSRF-TOKEN
+      header-name: X-XSRF-TOKEN
+
 agentfit:
   ai-service:
-    url: ${AGENTFIT_AI_SERVICE_URL:http://localhost:8000/internal/v1/analysis}
+    analysis-url: ${AGENTFIT_AI_SERVICE_ANALYSIS_URL:${AGENTFIT_AI_SERVICE_URL:http://localhost:8000/internal/v1/analysis}}
+    needs-url: ${AGENTFIT_AI_SERVICE_NEEDS_URL:http://localhost:8000/internal/v1/skills/needs}
+    rank-url: ${AGENTFIT_AI_SERVICE_RANK_URL:http://localhost:8000/internal/v1/skills/rank}
   analysis:
     timeout-seconds: ${AGENTFIT_ANALYSIS_TIMEOUT_SECONDS:600}
+    worker-poll-interval-ms: ${AGENTFIT_ANALYSIS_WORKER_POLL_INTERVAL_MS:1000}
+    worker-lease-seconds: ${AGENTFIT_ANALYSIS_WORKER_LEASE_SECONDS:180}
     cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_CLEANUP_INTERVAL_SECONDS:10}
+    failure-diagnostic:
+      enabled: ${AGENTFIT_ANALYSIS_FAILURE_DIAGNOSTIC_ENABLED:false}
+      key-id: ${AGENTFIT_ANALYSIS_FAILURE_DIAGNOSTIC_KEY_ID:}
+      key: ${AGENTFIT_ANALYSIS_FAILURE_DIAGNOSTIC_KEY:}
+      cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_FAILURE_DIAGNOSTIC_CLEANUP_INTERVAL_SECONDS:3600}
   auth:
     cookie-secure: ${AGENTFIT_COOKIE_SECURE:true}
   hmac:

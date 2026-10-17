@@ -50,6 +50,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/api/oauth2/authorization/**", "/api/login/oauth2/code/**",
                     "/api/auth/csrf", "/api/auth/get-session").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/auth/logout").authenticated()
                 .anyRequest().authenticated())
             .sessionManagement(session -> session

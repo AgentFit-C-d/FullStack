@@ -193,7 +193,7 @@ class JdbcRecommendationMetadataWriterTest {
         var basis = recommended(UUID.randomUUID()).basis();
         var claims = Arrays.stream(CapabilityKey.values()).map(key ->
             new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.OPTIONAL,
-                "confirmed profile", List.of("profile.features"))).toList();
+                "confirmed profile", List.of("profile.item.features.0"))).toList();
         var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
             basis.catalogHash(), new RecommendationDecision(
                 RecommendationDecision.Status.NO_ADDITIONS_NEEDED, List.of(), List.of(),
@@ -386,7 +386,7 @@ class JdbcRecommendationMetadataWriterTest {
         var basis = recommended(UUID.randomUUID()).basis();
         var claims = Arrays.stream(CapabilityKey.values()).map(key ->
             new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.REQUIRED,
-                "confirmed requirement", List.of("profile.features"))).toList();
+                "confirmed requirement", List.of("profile.item.features.0"))).toList();
         var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
             basis.catalogHash(), new RecommendationDecision(
                 RecommendationDecision.Status.NEEDS_INFORMATION, List.of(),
@@ -415,7 +415,7 @@ class JdbcRecommendationMetadataWriterTest {
         var capabilities = Arrays.stream(CapabilityKey.values()).map(key ->
             new JdbcRecommendationMetadataWriter.Capability(key.key(),
                 JdbcRecommendationMetadataWriter.Necessity.REQUIRED, "confirmed requirement",
-                List.of("profile.features"))).toList();
+                List.of("profile.item.features.0"))).toList();
         return new JdbcRecommendationMetadataWriter.Draft(id.toString(),
             new PreviewBasis(PROJECT.toString(), 1, PROFILE.toString(), 1, EVENT.toString(),
                 0, 0, 1, "test-release", "a".repeat(64)),

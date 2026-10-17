@@ -1,0 +1,6 @@
+{
+  "requestId": "fixture-request-1",
+  "generation": 1,
+  "contractVersion": "v1",
+  "input": {"kind": "text", "documentId": "fixture-document-1", "content": "domain: education", "deadline": "2099-01-01T00:00:00Z"}
+}

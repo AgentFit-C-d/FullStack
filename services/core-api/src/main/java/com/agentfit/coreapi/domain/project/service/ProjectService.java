@@ -85,9 +85,7 @@ public class ProjectService {
         Instant now = Instant.now();
         Project project = new Project(java.util.UUID.randomUUID().toString(), principal.userId(), principal.userUuid(), name, 1L, now, now);
         Project saved = repository.save(project);
-        auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(
-            principal.userId(), saved.id(), "PROJECT_CREATED", "SUCCEEDED", now, null,
-            java.util.Map.of("target", "PROJECT")));
+        recordProjectAudit(principal, saved.id(), "PROJECT_CREATED", now);
         return saved;
     }
 
@@ -102,7 +100,9 @@ public class ProjectService {
         try { com.agentfit.coreapi.domain.project.entity.DeveloperRole.valueOf(normalizedRole); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("Invalid role"); }
         List<String> runtimes = parseRuntimes(rawRuntimes);
         String fingerprint = fingerprint(name, normalizedRole, runtimes, file, inputText);
-        var existing = idempotencyRepository.find(principal.userId(), "PROJECT_CREATE", idempotencyKey);
+        var existing = principal.userUuid() == null
+            ? idempotencyRepository.find(principal.userId(), "PROJECT_CREATE", idempotencyKey)
+            : idempotencyRepository.findByOwnerUuid(principal.userUuid(), "PROJECT_CREATE", idempotencyKey);
         if (existing.isPresent()) {
             if (!existing.get().requestFingerprint().equals(fingerprint)) throw new com.agentfit.coreapi.domain.project.exception.IdempotencyKeyReusedException();
             if (existing.get().projectId() != null) return ownershipGuard.requireOwned(principal, existing.get().projectId());
@@ -110,12 +110,16 @@ public class ProjectService {
         java.time.Instant now = Instant.now();
         String id = java.util.UUID.randomUUID().toString();
         if (existing.isEmpty()) {
-            boolean reserved = idempotencyRepository.reserveIfAbsent(new com.agentfit.coreapi.domain.project.entity.ProjectCreationIdempotency(principal.userId(),"PROJECT_CREATE",idempotencyKey,fingerprint,null,now));
+            boolean reserved = principal.userUuid() == null
+                ? idempotencyRepository.reserveIfAbsent(new com.agentfit.coreapi.domain.project.entity.ProjectCreationIdempotency(principal.userId(),"PROJECT_CREATE",idempotencyKey,fingerprint,null,now))
+                : idempotencyRepository.reserveIfAbsentByOwnerUuid(new com.agentfit.coreapi.domain.project.entity.ProjectCreationIdempotency(principal.userUuid(),"PROJECT_CREATE",idempotencyKey,fingerprint,null,now));
             if (!reserved) {
-                var concurrent = idempotencyRepository.find(principal.userId(), "PROJECT_CREATE", idempotencyKey)
-                        .orElseThrow(() -> new IllegalStateException("Idempotency reservation was not visible"));
-                if (!concurrent.requestFingerprint().equals(fingerprint)) throw new com.agentfit.coreapi.domain.project.exception.IdempotencyKeyReusedException();
-                if (concurrent.projectId() != null) return ownershipGuard.requireOwned(principal, concurrent.projectId());
+                java.util.Optional<com.agentfit.coreapi.domain.project.entity.ProjectCreationIdempotency> concurrent = principal.userUuid() == null
+                    ? idempotencyRepository.find(principal.userId(), "PROJECT_CREATE", idempotencyKey)
+                    : idempotencyRepository.findByOwnerUuid(principal.userUuid(), "PROJECT_CREATE", idempotencyKey);
+                var reservedRequest = concurrent.orElseThrow(() -> new IllegalStateException("Idempotency reservation was not visible"));
+                if (!reservedRequest.requestFingerprint().equals(fingerprint)) throw new com.agentfit.coreapi.domain.project.exception.IdempotencyKeyReusedException();
+                if (reservedRequest.projectId() != null) return ownershipGuard.requireOwned(principal, reservedRequest.projectId());
                 throw new IllegalStateException("Idempotency request is still being created");
             }
         }
@@ -123,8 +127,9 @@ public class ProjectService {
             .withLegacyState("CREATED", normalizedRole, 1L);
         PlanningInput input = inputValidator.validate(id, 1L, file, inputText);
         repository.save(project); runtimeRepository.replace(id, toRuntimes(id, runtimes)); inputRepository.save(input);
-        idempotencyRepository.linkProject(principal.userId(),"PROJECT_CREATE",idempotencyKey,id);
-        auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(principal.userId(),id,"PROJECT_CREATED","SUCCEEDED",now,null,java.util.Map.of("target","PROJECT")));
+        if (principal.userUuid() == null) idempotencyRepository.linkProject(principal.userId(),"PROJECT_CREATE",idempotencyKey,id);
+        else idempotencyRepository.linkProjectByOwnerUuid(principal.userUuid(), "PROJECT_CREATE", idempotencyKey, id);
+        recordProjectAudit(principal, id, "PROJECT_CREATED", now);
         return project;
     }
 
@@ -152,7 +157,7 @@ public class ProjectService {
                     .map(ProjectRuntime::value).toList()
                 : parseRuntimes(request.runtimes());
         long version=locked.version()+1; Instant now=Instant.now(); repository.updateMetadata(projectId,name,role,version,now); runtimeRepository.replace(projectId,toRuntimes(projectId,runtimes));
-        return new Project(projectId,locked.ownerId(),name,version,locked.stage(),locked.analysisGeneration(),locked.reviewGeneration(),locked.createdAt(),now,role,locked.currentInputRevision());
+        return new Project(projectId,locked.ownerId(),name,version,locked.stage(),locked.analysisGeneration(),locked.reviewGeneration(),locked.createdAt(),now,role,locked.currentInputRevision(),locked.ownerUuid());
     }
 
     @Transactional
@@ -210,6 +215,17 @@ public class ProjectService {
             principal.userId(), locked.id(), "PROJECT_DELETED", "SUCCEEDED", Instant.now(), null,
             java.util.Map.of("target", "PROJECT")));
         repository.deleteProjectGraph(locked.id());
+    }
+
+    private void recordProjectAudit(AuthenticatedPrincipal principal, String projectId, String action, Instant now) {
+        if (principal.userUuid() != null) {
+            auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(
+                principal.userUuid(), java.util.UUID.fromString(projectId), action, "SUCCEEDED", now, null,
+                java.util.Map.of("target", "PROJECT")));
+            return;
+        }
+        auditRecorder.record(new com.agentfit.coreapi.domain.audit.entity.AuditEvent(
+            principal.userId(), projectId, action, "SUCCEEDED", now, null, java.util.Map.of("target", "PROJECT")));
     }
 }
 

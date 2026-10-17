@@ -49,7 +49,7 @@ class CoreWorkflowConfigurationTest {
             .withBean(RecommendationCreationService.OwnerCheckedSnapshotReader.class,
                 () -> projectId -> new RecommendationCreationService.OwnerCheckedSnapshot(
                     projectId, 1, "profile-1", 1, "event-1", 0, 0, 1,
-                    Set.of("profile.features"), Map.of("profile.features", "document search"),
+                    Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "document search"),
                     false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()))
             .withBean(RecommendationCreationService.CapabilityAnalyzer.class,
                 () -> snapshot -> new RecommendationCreationService.CapabilityAssessment(
@@ -57,7 +57,7 @@ class CoreWorkflowConfigurationTest {
                         new AiCapabilityIntake.Claim(key,
                             key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                                 : AiCapabilityIntake.Need.OPTIONAL,
-                            "Confirmed profile", List.of("profile.features"))).toList(), List.of()));
+                            "Confirmed profile", List.of("profile.item.features.0"))).toList(), List.of()));
 
         runner.run(context -> assertFalse(context.containsBean("recommendationCreationService")));
         runner.withBean(RecommendationCreationService.RecommendationStore.class,
