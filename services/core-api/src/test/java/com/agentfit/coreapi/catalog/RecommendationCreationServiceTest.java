@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,7 +28,7 @@ class RecommendationCreationServiceTest {
                 assertEquals(Set.of("aiSourceValues"), java.util.Arrays.stream(
                     aiInput.getClass().getRecordComponents()).map(java.lang.reflect.RecordComponent::getName)
                     .collect(java.util.stream.Collectors.toSet()));
-                assertEquals("[\"document search\"]", aiInput.aiSourceValues().get("profile.features"));
+                assertEquals("[\"document search\"]", aiInput.aiSourceValues().get("profile.item.features.0"));
                 return assessment();
             },
             () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
@@ -76,6 +77,23 @@ class RecommendationCreationServiceTest {
     }
 
     @Test
+    void newAiFailureDoesNotReplacePreviouslySuccessfulRecommendation() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory);
+        AtomicReference<String> previousRecommendation = new AtomicReference<>("recommendation-success-1");
+        var service = new RecommendationCreationService(
+            RecommendationCreationServiceTest::snapshot,
+            snapshot -> { throw new IllegalStateException("AI provider timeout"); },
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
+            (snapshot, basis, result) -> {
+                previousRecommendation.set("changed");
+                return "recommendation-failure";
+            });
+
+        assertThrows(IllegalStateException.class, () -> service.create("project-1", expected()));
+        assertEquals("recommendation-success-1", previousRecommendation.get());
+    }
+
+    @Test
     void propagatesAtomicSaveConflictInsteadOfReturningUnstoredRecommendation() throws Exception {
         String approvedHash = SyntheticCatalogBundle.write(directory);
         var service = new RecommendationCreationService(
@@ -97,7 +115,7 @@ class RecommendationCreationServiceTest {
         var service = new RecommendationCreationService(
             projectId -> new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
                 "profile-1", 3, "confirmation-1", 2, 4, 0,
-                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "[\"document search\"]"),
                 false, null, null),
             snapshot -> assessment(),
             () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
@@ -124,7 +142,7 @@ class RecommendationCreationServiceTest {
         var service = new RecommendationCreationService(
             projectId -> new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 0,
                 "profile-1", 3, "confirmation-1", 2, 4, 5,
-                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "[\"document search\"]"),
                 false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()),
             snapshot -> { aiCalls.incrementAndGet(); return assessment(); },
             () -> fail("invalid snapshot must not read Catalog"),
@@ -139,9 +157,19 @@ class RecommendationCreationServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> new RecommendationCreationService.OwnerCheckedSnapshot("project-1", 7,
                 "profile-1", 3, "confirmation-1", 2, 4, 5,
-                Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+                Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "[\"document search\"]"),
                 false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
                 Map.of("example-tool", " ")));
+    }
+
+    @Test
+    void rejectsExcludedPlanningFieldsBeforeTheyCanReachAi() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new RecommendationCreationService.OwnerCheckedSnapshot("project-1", 7,
+                "profile-1", 3, "confirmation-1", 2, 4, 5,
+                Set.of("profile.item.purpose.0"),
+                Map.of("profile.item.purpose.0", "legacy value"), false,
+                new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
     }
 
     @Test
@@ -183,7 +211,7 @@ class RecommendationCreationServiceTest {
     private static RecommendationCreationService.OwnerCheckedSnapshot snapshot(String projectId) {
         return new RecommendationCreationService.OwnerCheckedSnapshot(projectId, 7,
             "profile-1", 3, "confirmation-1", 2, 4, 5,
-            Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"), false,
+            Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "[\"document search\"]"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
     }
 
@@ -196,7 +224,7 @@ class RecommendationCreationServiceTest {
             new AiCapabilityIntake.Claim(key,
                 key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                     : AiCapabilityIntake.Need.OPTIONAL,
-                "Based on confirmed project profile", List.of("profile.features"))).toList();
+                "Based on confirmed project profile", List.of("profile.item.features.0"))).toList();
         return new RecommendationCreationService.CapabilityAssessment(claims, List.of());
     }
 }

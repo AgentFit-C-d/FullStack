@@ -42,10 +42,10 @@ class FullStackBJourneyTest {
         var claims = CapabilityKey.keys().stream().sorted().map(key -> new AiCapabilityIntake.Claim(key,
             key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                 : AiCapabilityIntake.Need.OPTIONAL,
-            "Confirmed profile", List.of("profile.features"))).toList();
+            "Confirmed profile", List.of("profile.item.features.0"))).toList();
         var recommendation = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims, List.of(),
-                Set.of("profile.features"), false, target, Map.of()));
+                Set.of("profile.item.features.0"), false, target, Map.of()));
         assertEquals(RecommendationDecision.Status.RECOMMENDED, recommendation.decision().status());
         StoredRecommendationState storedRecommendation = new StoredRecommendationState("rec-1", basis,
             recommendation.decision().status(), recommendation.decision().toolKeys());

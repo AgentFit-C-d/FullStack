@@ -7,8 +7,6 @@ import java.util.UUID;
 public interface UserAccountRepository {
     Optional<UserAccount> findByGithubUserId(long githubUserId);
 
-    Optional<UserAccount> findById(long id);
-
     default Optional<UserAccount> findByUuid(UUID id) {
         return Optional.empty();
     }

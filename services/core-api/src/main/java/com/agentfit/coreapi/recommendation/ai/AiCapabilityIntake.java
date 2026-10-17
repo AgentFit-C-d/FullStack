@@ -12,6 +12,25 @@ import java.util.Set;
  * A successful HTTP/LLM response and the wire schema must be checked separately by the caller.
  */
 public final class AiCapabilityIntake {
+    private static final Set<String> APPROVED_DIRECT_SOURCE_FIELDS = Set.of(
+        "profile.projectName",
+        "profile.projectType",
+        "profile.domain",
+        "developer.version",
+        "environment.osFamily",
+        "environment.clientId",
+        "environment.clientVersion"
+    );
+    private static final Set<String> APPROVED_PROFILE_ITEM_FIELDS = Set.of(
+        "database",
+        "deployment",
+        "frontend",
+        "backend",
+        "ai",
+        "features",
+        "external_integrations"
+    );
+
     private AiCapabilityIntake() {}
 
     public enum Need { REQUIRED, OPTIONAL, UNDETERMINED }
@@ -45,7 +64,9 @@ public final class AiCapabilityIntake {
         if (claims == null || claims.isEmpty() || questions == null || allowedSourceFields == null) {
             throw invalid();
         }
-        if (allowedSourceFields.stream().anyMatch(AiCapabilityIntake::blank)) throw invalid();
+        if (allowedSourceFields.stream().anyMatch(field -> blank(field) || !isApprovedSourceField(field))) {
+            throw invalid();
+        }
         Set<String> allowed = Set.copyOf(allowedSourceFields);
         if (claims.size() > CapabilityKey.values().length) throw invalid();
 
@@ -84,6 +105,27 @@ public final class AiCapabilityIntake {
             safeQuestions.add(question);
         }
         return new Validated(safeClaims, safeQuestions, required, undetermined);
+    }
+
+    /**
+     * AI may receive only the confirmed planning fields and the separately trusted runtime context.
+     * Every profile item is checked by its field key, so legacy fields such as purpose, target_users,
+     * and constraints cannot become valid merely because a snapshot lists them as allowed.
+     */
+    public static boolean isApprovedSourceField(String field) {
+        if (blank(field)) return false;
+        if (APPROVED_DIRECT_SOURCE_FIELDS.contains(field)) return true;
+
+        String[] parts = field.split("\\.", -1);
+        if (parts.length != 4 || !"profile".equals(parts[0]) || !"item".equals(parts[1])
+            || !APPROVED_PROFILE_ITEM_FIELDS.contains(parts[2])) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(parts[3]) >= 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     private static boolean blank(String value) {

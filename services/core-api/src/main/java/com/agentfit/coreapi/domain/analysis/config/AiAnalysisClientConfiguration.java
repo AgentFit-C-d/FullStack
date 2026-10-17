@@ -3,6 +3,7 @@ package com.agentfit.coreapi.domain.analysis.config;
 import com.agentfit.coreapi.domain.analysis.client.HttpAiAnalysisClient;
 import com.agentfit.coreapi.domain.analysis.service.HmacRequestSigner;
 import com.agentfit.coreapi.domain.analysis.service.HmacKeyRing;
+import com.agentfit.coreapi.domain.analysis.service.AnalysisExecutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,7 +20,15 @@ public class AiAnalysisClientConfiguration {
 
     @Bean
     HttpAiAnalysisClient aiAnalysisClient(ObjectMapper objectMapper, HmacRequestSigner signer,
-            @Value("${agentfit.ai-service.url:http://localhost:8000/internal/v1/analysis}") String url) {
-        return new HttpAiAnalysisClient(HttpClient.newHttpClient(), objectMapper, signer, URI.create(url));
+            @Value("${agentfit.ai-service.analysis-url:http://localhost:8000/internal/v1/analysis}") String analysisUrl,
+            @Value("${agentfit.ai-service.needs-url:http://localhost:8000/internal/v1/skills/needs}") String needsUrl,
+            @Value("${agentfit.ai-service.rank-url:http://localhost:8000/internal/v1/skills/rank}") String rankUrl) {
+        return new HttpAiAnalysisClient(HttpClient.newHttpClient(), objectMapper, signer,
+            URI.create(analysisUrl), URI.create(needsUrl), URI.create(rankUrl));
+    }
+
+    @Bean
+    AnalysisExecutionService analysisExecutionService(HttpAiAnalysisClient client) {
+        return new AnalysisExecutionService(client);
     }
 }

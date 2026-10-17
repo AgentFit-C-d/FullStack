@@ -37,11 +37,17 @@ Prerequisite: Docker Desktop with the Linux engine running. From the repository 
 ```powershell
 Copy-Item .env.docker.example .env.docker
 # Edit .env.docker and set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
-# AGENTFIT_HMAC_CURRENT_KEY_ID, and AGENTFIT_HMAC_CURRENT_SECRET.
+# AGENTFIT_HMAC_CURRENT_KEY_ID, and AGENTFIT_HMAC_CURRENT_SECRET. The AI provider defaults
+# to `deterministic`; set `AGENTFIT_AI_V2_PROVIDER=solar` and `UPSTAGE_API_KEY` only for a
+# deliberate real Solar smoke call. The key remains only in local `.env.docker`.
 docker compose --env-file .env.docker -f infra/compose.fullstack.yaml up --build -d
 ```
 
 Core API and AI service health endpoints are `http://localhost:8080/health` and `http://localhost:8001/health`. PostgreSQL is available on host port `5433` and retains its data in the named Docker volume.
+
+Core sends three HMAC-protected internal routes to the AI service: analysis, needs, and rank.
+The AI service receives transient input only; PostgreSQL, source-document lifetime, user confirmation,
+and final B recommendation remain owned by Core.
 
 Both `infra/postgres/compose.yaml` and `infra/compose.fullstack.yaml` bind host port `5433`; stop one Compose stack before starting the other.
 

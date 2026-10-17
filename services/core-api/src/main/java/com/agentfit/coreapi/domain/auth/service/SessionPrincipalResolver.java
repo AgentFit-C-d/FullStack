@@ -42,22 +42,7 @@ public class SessionPrincipalResolver {
             return Optional.of(new AuthenticatedPrincipal(accountByUuid.get(), expiresAt));
         }
 
-        long userId;
-        try {
-            userId = Long.parseLong(principalName);
-        } catch (NumberFormatException ex) {
-            return Optional.empty();
-        }
-        Optional<UserAccount> account = userAccountRepository.findById(userId);
-        if (account.isEmpty()) {
-            return Optional.empty();
-        }
-
-        HttpSession session = request.getSession(false);
-        Instant expiresAt = session == null ? null
-            : Instant.ofEpochMilli(session.getLastAccessedTime())
-                .plusSeconds(Math.max(0, session.getMaxInactiveInterval()));
-        return Optional.of(new AuthenticatedPrincipal(account.get().id(), account.get().name(), expiresAt));
+        return Optional.empty();
     }
 }
 

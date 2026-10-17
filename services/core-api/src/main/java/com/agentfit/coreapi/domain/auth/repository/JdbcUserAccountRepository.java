@@ -53,7 +53,9 @@ class JdbcUserAccountRepository implements UserAccountRepository {
         int inserted = jdbcTemplate.update(
             "INSERT INTO \"USER\" (id, name, github_user_id, github_login) VALUES (?, ?, ?, ?)",
             id, displayName, githubUserId, githubLogin);
-        if (inserted != 1) throw new IllegalStateException("USER insert did not create exactly one user");
+        if (inserted != 1) {
+            throw new IllegalStateException("USER insert did not create exactly one user");
+        }
         return new UserAccount(id, displayName, githubUserId, githubLogin);
     }
 }

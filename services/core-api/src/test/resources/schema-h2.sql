@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS project (
     current_step VARCHAR(30) NOT NULL,
     analysis_generation BIGINT NOT NULL,
     review_generation BIGINT NOT NULL,
+    developer_role VARCHAR(30) NOT NULL DEFAULT 'BACKEND',
+    current_input_revision BIGINT,
     current_review_id UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL
@@ -45,7 +47,13 @@ CREATE TABLE IF NOT EXISTS environment_auth_readiness (id UUID PRIMARY KEY, envi
 CREATE TABLE IF NOT EXISTS profile_confirmation_event (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id), actor_id UUID NOT NULL REFERENCES "USER"(id));
 CREATE TABLE IF NOT EXISTS profile_review (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), target_profile_id UUID NOT NULL REFERENCES project_profile(id), review_version BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS profile_review_item (id UUID PRIMARY KEY, review_id UUID NOT NULL REFERENCES profile_review(id), candidate_id VARCHAR(100) NOT NULL, model_judgement VARCHAR(50) NOT NULL);
-CREATE TABLE IF NOT EXISTS analysis_failure_diagnostic (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), attempt_id UUID NOT NULL REFERENCES analysis_attempt(id), ciphertext BINARY NOT NULL);
+CREATE TABLE IF NOT EXISTS analysis_failure_diagnostic (
+    id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), attempt_id UUID NOT NULL UNIQUE REFERENCES analysis_attempt(id),
+    received_at TIMESTAMP WITH TIME ZONE NOT NULL, expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    ciphertext BINARY NOT NULL, key_id VARCHAR(100) NOT NULL, byte_size BIGINT NOT NULL,
+    truncated BOOLEAN NOT NULL, redacted BOOLEAN NOT NULL,
+    redaction_policy_version VARCHAR(100), truncation_policy_version VARCHAR(100), created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
 CREATE TABLE IF NOT EXISTS environment_installed_component (id UUID PRIMARY KEY, environment_profile_id UUID NOT NULL REFERENCES environment_profile(id), ordinal INT NOT NULL, name VARCHAR(200) NOT NULL);
 ALTER TABLE project ADD CONSTRAINT IF NOT EXISTS project_current_review_fk FOREIGN KEY (current_review_id) REFERENCES profile_review(id);
 CREATE TABLE IF NOT EXISTS recommendation (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id), confirmation_event_id UUID NOT NULL REFERENCES profile_confirmation_event(id), status VARCHAR(30) NOT NULL);
