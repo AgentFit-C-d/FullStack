@@ -4,6 +4,7 @@ Thumbs.db
 .idea/
 .specify
 .vscode/
+.superpowers/
 
 # Java / Spring
 services/core-api/target/

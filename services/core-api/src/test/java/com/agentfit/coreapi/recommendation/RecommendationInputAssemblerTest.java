@@ -19,9 +19,9 @@ class RecommendationInputAssemblerTest {
                 ? AiCapabilityIntake.Need.REQUIRED : key.equals("cap_browser_verification")
                     ? AiCapabilityIntake.Need.UNDETERMINED : AiCapabilityIntake.Need.OPTIONAL;
             claims.add(new AiCapabilityIntake.Claim(key, need, "기획 근거", need == AiCapabilityIntake.Need.UNDETERMINED
-                ? List.of() : List.of("project.purpose")));
+                ? List.of() : List.of("profile.item.features.0")));
         }
-        var assessment = AiCapabilityIntake.validate(claims, List.of(), Set.of("project.purpose"));
+        var assessment = AiCapabilityIntake.validate(claims, List.of(), Set.of("profile.item.features.0"));
         EnvironmentTarget target = new EnvironmentTarget("WINDOWS", "example-client", "1.0");
         Map<String, String> installed = new HashMap<>();
         installed.put("doc", null);
@@ -42,8 +42,8 @@ class RecommendationInputAssemblerTest {
         assertThrows(IllegalArgumentException.class,
             () -> RecommendationInputAssembler.assemble(null, false, null, null));
         var partial = AiCapabilityIntake.validate(List.of(new AiCapabilityIntake.Claim(
-            "cap_document_reference", AiCapabilityIntake.Need.OPTIONAL, "근거", List.of("project.purpose"))),
-            List.of(), Set.of("project.purpose"));
+            "cap_document_reference", AiCapabilityIntake.Need.OPTIONAL, "근거", List.of("profile.item.features.0"))),
+            List.of(), Set.of("profile.item.features.0"));
         assertThrows(IllegalArgumentException.class,
             () -> RecommendationInputAssembler.assemble(partial, false, null, null));
     }

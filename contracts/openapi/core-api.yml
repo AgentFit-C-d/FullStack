@@ -258,6 +258,109 @@ paths:
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/AnalysisConflict" }
         "429": { $ref: "#/components/responses/AnalysisCapacity" }
+  /api/projects/{projectId}/profile/confirm:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Confirm the structured A DRAFT for B recommendation
+      operationId: confirmProjectProfile
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileConfirmationRequest"
+      responses:
+        "200":
+          description: CONFIRMED Profile created while retaining the DRAFT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileConfirmationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/projects/{projectId}/recommendations:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Create an owner-checked recommendation
+      operationId: createRecommendation
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationCreateRequest"
+      responses:
+        "201":
+          description: Recommendation created with its immutable basis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/RecommendationConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+        "503": { $ref: "#/components/responses/InternalError" }
+  /api/projects/{projectId}/recommendations/latest:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      summary: Read the latest owner-checked recommendation
+      operationId: getLatestRecommendation
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Latest recommendation without an AI call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /api/projects/{projectId}/config-previews:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Create a trusted configuration Preview
+      operationId: createConfigPreview
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewCreateRequest"
+      responses:
+        "201":
+          description: Content-free Preview metadata and fingerprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
 components:
   securitySchemes:
     agentFitSession:
@@ -316,6 +419,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     VersionConflict:
       description: The supplied expected version is no longer current; refresh before retrying
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RecommendationConflict:
+      description: "Error code is `VERSION_CONFLICT` when a supplied version is stale, or `PROFILE_NOT_CONFIRMED` when the user must review and confirm the A DRAFT before requesting B."
       content:
         application/json:
           schema:
@@ -453,6 +562,125 @@ components:
           nullable: true
           type: object
           additionalProperties: true
+    RecommendationCreateRequest:
+      type: object
+      required: [expectedVersions]
+      additionalProperties: false
+      properties:
+        expectedVersions:
+          type: object
+          required: [project, developer, environment]
+          properties:
+            project: { type: integer, minimum: 1 }
+            developer: { type: integer, minimum: 0 }
+            environment: { type: integer, minimum: 0 }
+    ProfileConfirmationRequest:
+      type: object
+      required: [expectedDraftVersion, requestId]
+      additionalProperties: false
+      properties:
+        expectedDraftVersion: { type: integer, minimum: 1 }
+        requestId: { type: string, minLength: 1, maxLength: 100 }
+        projectName: { type: string, nullable: true, maxLength: 200 }
+        projectType: { type: string, nullable: true, maxLength: 200 }
+        domain: { type: string, nullable: true, maxLength: 200 }
+        fieldMetadata: { type: string, nullable: true }
+        items:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: false
+            required: [fieldKey, ordinal, name, source, evidence]
+            properties:
+              fieldKey: { type: string, minLength: 1, maxLength: 40 }
+              ordinal: { type: integer, minimum: 0 }
+              category: { type: string, nullable: true, maxLength: 30 }
+              area: { type: string, nullable: true, maxLength: 40 }
+              name: { type: string, minLength: 1, maxLength: 200 }
+              version: { type: string, nullable: true, maxLength: 50 }
+              source: { type: string, enum: [DOCUMENT, USER] }
+              evidence: { type: string }
+    ProfileConfirmationResponse:
+      type: object
+      required: [projectId, confirmedProfileId, confirmedProfileVersion, confirmationEventId, projectVersion, sourceDraftVersion]
+      properties:
+        projectId: { type: string, format: uuid }
+        confirmedProfileId: { type: string, format: uuid }
+        confirmedProfileVersion: { type: integer, minimum: 1 }
+        confirmationEventId: { type: string, format: uuid }
+        projectVersion: { type: integer, minimum: 0 }
+        sourceDraftVersion: { type: integer, minimum: 1 }
+    RecommendationResponse:
+      type: object
+      required: [recommendationId, status, basis]
+      properties:
+        recommendationId: { type: string, format: uuid }
+        status: { type: string, enum: [RECOMMENDED, NO_ADDITIONS_NEEDED, NEEDS_INFORMATION, NO_COMPATIBLE_TOOLS] }
+        basis:
+          type: object
+          required: [projectId, projectVersion, confirmedProfileId, confirmedProfileVersion, confirmationEventId, reviewVersion, developerVersion, environmentVersion, catalogReleaseId, catalogHash]
+          properties:
+            projectId: { type: string, format: uuid }
+            projectVersion: { type: integer, minimum: 0 }
+            confirmedProfileId: { type: string, format: uuid }
+            confirmedProfileVersion: { type: integer, minimum: 1 }
+            confirmationEventId: { type: string, format: uuid }
+            reviewVersion: { type: integer, minimum: 0 }
+            developerVersion: { type: integer, minimum: 0 }
+            environmentVersion: { type: integer, minimum: 0 }
+            catalogReleaseId: { type: string }
+            catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        capabilities: { type: array, items: { type: object, additionalProperties: true } }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+        notices: { type: array, items: { type: object, additionalProperties: true } }
+    PreviewCreateRequest:
+      type: object
+      required: [basis, recommendationId, target, selectedToolKeys, permissionSelections, existingState, providedFiles, generatorVersion]
+      additionalProperties: false
+      properties:
+        basis:
+          $ref: "#/components/schemas/PreviewBasis"
+        recommendationId: { type: string, format: uuid }
+        target:
+          $ref: "#/components/schemas/EnvironmentTarget"
+        selectedToolKeys: { type: array, items: { type: string }, maxItems: 20 }
+        permissionSelections: { type: array, items: { type: object, additionalProperties: true } }
+        existingState: { type: string, enum: [UNKNOWN, USER_SAYS_EMPTY, PROVIDED] }
+        generatorVersion: { type: string, minLength: 1, maxLength: 100 }
+        providedFiles: { type: array, items: { type: object, additionalProperties: false } }
+    PreviewBasis:
+      type: object
+      required: [projectId, projectVersion, confirmedProfileId, confirmedProfileVersion, confirmationEventId, reviewVersion, developerVersion, environmentVersion, catalogReleaseId, catalogHash]
+      properties:
+        projectId: { type: string, format: uuid }
+        projectVersion: { type: integer, minimum: 1 }
+        confirmedProfileId: { type: string, format: uuid }
+        confirmedProfileVersion: { type: integer, minimum: 1 }
+        confirmationEventId: { type: string, format: uuid }
+        reviewVersion: { type: integer, minimum: 0 }
+        developerVersion: { type: integer, minimum: 0 }
+        environmentVersion: { type: integer, minimum: 0 }
+        catalogReleaseId: { type: string, minLength: 1 }
+        catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+    EnvironmentTarget:
+      type: object
+      required: [osFamily, clientId, clientVersion]
+      properties:
+        osFamily: { type: string, minLength: 1 }
+        clientId: { type: string, minLength: 1 }
+        clientVersion: { type: string, minLength: 1 }
+    PreviewResponse:
+      type: object
+      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt]
+      properties:
+        previewId: { type: string, format: uuid }
+        recommendationId: { type: string, format: uuid }
+        fingerprint: { type: string, pattern: '^[0-9a-f]{64}$' }
+        selectionDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
+        contentDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
         draft:
           nullable: true
           type: object

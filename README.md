@@ -30,6 +30,41 @@ Docs/
 
 현재 기준 런타임은 Java 21 / Spring Boot 3.3.5 및 Python 3.11+ / FastAPI입니다. Maven wrapper는 포함하지 않습니다.
 
+## Docker full-stack development
+
+Prerequisite: Docker Desktop with the Linux engine running. From the repository root, copy the environment template and replace the GitHub OAuth and HMAC placeholders with your local values. `.env.docker` is local and ignored by Git; never commit it or any secrets.
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Edit .env.docker and set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+# AGENTFIT_HMAC_CURRENT_KEY_ID, and AGENTFIT_HMAC_CURRENT_SECRET. The AI provider defaults
+# to `deterministic`; set `AGENTFIT_AI_V2_PROVIDER=solar` and `UPSTAGE_API_KEY` only for a
+# deliberate real Solar smoke call. The key remains only in local `.env.docker`.
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml up --build -d
+```
+
+Core API and AI service health endpoints are `http://localhost:8080/health` and `http://localhost:8001/health`. PostgreSQL is available on host port `5433` and retains its data in the named Docker volume.
+
+Core sends three HMAC-protected internal routes to the AI service: analysis, needs, and rank.
+The AI service receives transient input only; PostgreSQL, source-document lifetime, user confirmation,
+and final B recommendation remain owned by Core.
+
+Both `infra/postgres/compose.yaml` and `infra/compose.fullstack.yaml` bind host port `5433`; stop one Compose stack before starting the other.
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml ps
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml logs -f core-api ai-service postgres
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down
+```
+
+To deliberately delete the full-stack PostgreSQL volume and all its data, run this destructive reset separately:
+
+```powershell
+docker compose --env-file .env.docker -f infra/compose.fullstack.yaml down -v
+```
+
+Run the Core API tests with Docker available, including Testcontainers tests, from `services/core-api` using `mvn -B -ntp test`.
+
 ## Local Run
 
 Prerequisites: JDK 21, Maven, and Python 3.11+. Maven 실행 시 `JAVA_HOME`도 JDK 21을 가리켜야 합니다. 각 서비스는 의존성을 개별 관리합니다.

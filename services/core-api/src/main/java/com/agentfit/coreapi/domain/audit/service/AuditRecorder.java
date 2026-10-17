@@ -49,7 +49,7 @@ public class AuditRecorder {
                     && BLOCKED_KEYS.stream().noneMatch(blocked -> entry.getKey().toLowerCase().contains(blocked.toLowerCase())))
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
         return new AuditEvent(event.actorId(), event.projectId(), event.action(), event.result(),
-            event.occurredAt(), event.reason(), safeMetadata);
+            event.occurredAt(), event.reason(), safeMetadata, event.actorUuid(), event.projectUuid());
     }
 
     @FunctionalInterface

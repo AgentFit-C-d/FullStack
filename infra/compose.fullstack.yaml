@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: agentfit
+      POSTGRES_USER: agentfit
+      POSTGRES_PASSWORD: ${AGENTFIT_LOCAL_DB_PASSWORD:?Set AGENTFIT_LOCAL_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - agentfit_fullstack_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ai-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/ai-service.Dockerfile
+    environment:
+      AGENTFIT_AI_V2_PROVIDER: ${AGENTFIT_AI_V2_PROVIDER:-deterministic}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY:-}
+      AGENTFIT_HMAC_CURRENT_KEY_ID: ${AGENTFIT_HMAC_CURRENT_KEY_ID:?Set AGENTFIT_HMAC_CURRENT_KEY_ID}
+      AGENTFIT_HMAC_CURRENT_SECRET: ${AGENTFIT_HMAC_CURRENT_SECRET:?Set AGENTFIT_HMAC_CURRENT_SECRET}
+      AGENTFIT_HMAC_PREVIOUS_KEY_ID: ${AGENTFIT_HMAC_PREVIOUS_KEY_ID:-}
+      AGENTFIT_HMAC_PREVIOUS_SECRET: ${AGENTFIT_HMAC_PREVIOUS_SECRET:-}
+      AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL: ${AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL:-}
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  core-api:
+    build:
+      context: ..
+      dockerfile: infra/docker/core-api.Dockerfile
+    environment:
+      AGENTFIT_DB_URL: jdbc:postgresql://postgres:5432/agentfit
+      AGENTFIT_DB_USERNAME: agentfit
+      AGENTFIT_DB_PASSWORD: ${AGENTFIT_LOCAL_DB_PASSWORD:?Set AGENTFIT_LOCAL_DB_PASSWORD}
+      AGENTFIT_FLYWAY_ENABLED: "true"
+      AGENTFIT_AI_SERVICE_ANALYSIS_URL: http://ai-service:8001/internal/v1/analysis
+      AGENTFIT_AI_SERVICE_NEEDS_URL: http://ai-service:8001/internal/v1/skills/needs
+      AGENTFIT_AI_SERVICE_RANK_URL: http://ai-service:8001/internal/v1/skills/rank
+      AGENTFIT_COOKIE_SECURE: "false"
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?Set GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?Set GITHUB_CLIENT_SECRET}
+      AGENTFIT_HMAC_CURRENT_KEY_ID: ${AGENTFIT_HMAC_CURRENT_KEY_ID:?Set AGENTFIT_HMAC_CURRENT_KEY_ID}
+      AGENTFIT_HMAC_CURRENT_SECRET: ${AGENTFIT_HMAC_CURRENT_SECRET:?Set AGENTFIT_HMAC_CURRENT_SECRET}
+      AGENTFIT_HMAC_PREVIOUS_KEY_ID: ${AGENTFIT_HMAC_PREVIOUS_KEY_ID:-}
+      AGENTFIT_HMAC_PREVIOUS_SECRET: ${AGENTFIT_HMAC_PREVIOUS_SECRET:-}
+      AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL: ${AGENTFIT_HMAC_PREVIOUS_VALID_UNTIL:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+volumes:
+  agentfit_fullstack_postgres_data:
+    name: agentfit_fullstack_postgres_data

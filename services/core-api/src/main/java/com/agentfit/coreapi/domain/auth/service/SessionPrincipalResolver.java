@@ -1,11 +1,11 @@
 package com.agentfit.coreapi.domain.auth.service;
 
-
-import com.agentfit.coreapi.domain.auth.entity.*;
-import com.agentfit.coreapi.domain.auth.repository.*;
-import com.agentfit.coreapi.domain.auth.service.*;
+import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
+import com.agentfit.coreapi.domain.auth.entity.UserAccount;
+import com.agentfit.coreapi.domain.auth.repository.UserAccountRepository;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -29,22 +29,22 @@ public class SessionPrincipalResolver {
             return Optional.empty();
         }
 
-        long userId;
+        String principalName = authentication.getName();
+        Optional<UserAccount> accountByUuid;
         try {
-            userId = Long.parseLong(authentication.getName());
-        } catch (NumberFormatException ex) {
-            return Optional.empty();
+            accountByUuid = userAccountRepository.findByUuid(UUID.fromString(principalName));
+        } catch (IllegalArgumentException ex) {
+            accountByUuid = Optional.empty();
         }
-        Optional<UserAccount> account = userAccountRepository.findById(userId);
-        if (account.isEmpty()) {
-            return Optional.empty();
+        if (accountByUuid.isPresent()) {
+            HttpSession session = request.getSession(false);
+            Instant expiresAt = session == null ? null
+                : Instant.ofEpochMilli(session.getLastAccessedTime())
+                    .plusSeconds(Math.max(0, session.getMaxInactiveInterval()));
+            return Optional.of(new AuthenticatedPrincipal(accountByUuid.get(), expiresAt));
         }
 
-        HttpSession session = request.getSession(false);
-        Instant expiresAt = session == null ? null
-            : Instant.ofEpochMilli(session.getLastAccessedTime())
-                .plusSeconds(Math.max(0, session.getMaxInactiveInterval()));
-        return Optional.of(new AuthenticatedPrincipal(account.get().id(), account.get().name(), expiresAt));
+        return Optional.empty();
     }
 }
 

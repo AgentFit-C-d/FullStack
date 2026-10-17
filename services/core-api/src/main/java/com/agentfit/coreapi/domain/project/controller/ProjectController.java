@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.domain.project.controller;
 
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.agentfit.coreapi.domain.auth.entity.*;
 import com.agentfit.coreapi.domain.project.dto.request.*;
 import com.agentfit.coreapi.domain.project.dto.response.*;
@@ -38,22 +39,32 @@ import com.agentfit.coreapi.global.exception.UnauthenticatedException;
 
 @RestController
 @RequestMapping("/api/projects")
+@Tag(name = "Projects", description = "Project lifecycle, planning input, and analysis requests")
 public class ProjectController {
     private final ProjectService projectService;
     private final SessionPrincipalResolver principalResolver;
     private final ProjectAnalysisService analysisService;
+    private final ProfileConfirmationService profileConfirmationService;
+    private final ProjectProfileReader profileReader;
 
     @Autowired
-    public ProjectController(ProjectService projectService, SessionPrincipalResolver principalResolver, ObjectProvider<ProjectAnalysisService> analysisService) {
+    public ProjectController(ProjectService projectService, SessionPrincipalResolver principalResolver,
+            ObjectProvider<ProjectAnalysisService> analysisService,
+            ObjectProvider<ProfileConfirmationService> profileConfirmationService,
+            ObjectProvider<ProjectProfileReader> profileReader) {
         this.projectService = projectService;
         this.principalResolver = principalResolver;
         this.analysisService = analysisService.getIfAvailable();
+        this.profileConfirmationService = profileConfirmationService.getIfAvailable();
+        this.profileReader = profileReader.getIfAvailable();
     }
 
     public ProjectController(ProjectService projectService, SessionPrincipalResolver principalResolver) {
         this.projectService = projectService;
         this.principalResolver = principalResolver;
         this.analysisService = null;
+        this.profileConfirmationService = null;
+        this.profileReader = null;
     }
 
     @PostMapping
@@ -84,7 +95,13 @@ public class ProjectController {
     public ProjectDetailResponse get(HttpServletRequest request, @PathVariable String projectId) {
         var principal = principal(request);
         ProjectDetailResponse detail = projectService.detail(principal, projectId);
-        return detail != null ? detail : new ProjectDetailResponse(response(projectService.get(principal, projectId)), null, null, null);
+        ProjectProfileReader.Profiles profiles = profileReader == null
+            ? new ProjectProfileReader.Profiles(null, null) : profileReader.read(projectId);
+        return detail != null
+            ? new ProjectDetailResponse(detail.project(),
+                profiles.confirmed() == null ? detail.confirmed() : profiles.confirmed(),
+                profiles.draft() == null ? detail.draft() : profiles.draft(), detail.latestAttempt())
+            : new ProjectDetailResponse(response(projectService.get(principal, projectId)), profiles.confirmed(), profiles.draft(), null);
     }
 
     @PatchMapping("/{projectId}")
@@ -112,6 +129,18 @@ public class ProjectController {
             @RequestBody AnalysisStartRequest body) {
         var attempt = analysisService.start(principal(request), projectId, body.expectedVersion());
         return ResponseEntity.status(202).body(AnalysisAttemptResponse.from(attempt));
+    }
+
+    @PostMapping("/{projectId}/profile/confirm")
+    public ProfileConfirmationService.Confirmation confirmProfile(HttpServletRequest request,
+            @PathVariable String projectId,
+            @RequestBody ProfileConfirmationService.ConfirmRequest body) {
+        if (profileConfirmationService == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "profile confirmation workflow is unavailable");
+        }
+        return profileConfirmationService.confirm(principal(request), projectId, body);
     }
 
     private AuthenticatedPrincipal principal(HttpServletRequest request) {

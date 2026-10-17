@@ -45,7 +45,7 @@ class PhaseOneBWorkflowTest {
         var catalog = new RecommendationCreationService.ApprovedCatalog(directory, hash);
         var snapshot = new RecommendationCreationService.OwnerCheckedSnapshot(
             "project-1", 7, "profile-1", 3, "event-1", 2, 4, 5,
-            Set.of("profile.features"), Map.of("profile.features", "[\"document search\"]"),
+            Set.of("profile.item.features.0"), Map.of("profile.item.features.0", "[\"document search\"]"),
             false, TARGET, Map.of());
         AtomicReference<StoredRecommendationState> recommendation = new AtomicReference<>();
         var recommendationService = new RecommendationCreationService(
@@ -54,7 +54,7 @@ class PhaseOneBWorkflowTest {
                 CapabilityKey.keys().stream().sorted().map(key -> new AiCapabilityIntake.Claim(
                     key, key.equals("cap_document_reference")
                         ? AiCapabilityIntake.Need.REQUIRED : AiCapabilityIntake.Need.OPTIONAL,
-                    "Confirmed profile", List.of("profile.features"))).toList(), List.of()),
+                    "Confirmed profile", List.of("profile.item.features.0"))).toList(), List.of()),
             () -> catalog,
             (current, basis, result) -> {
                 recommendation.set(new StoredRecommendationState("rec-1", basis,

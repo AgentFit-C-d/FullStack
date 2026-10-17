@@ -17,7 +17,7 @@ class CatalogCandidateValidatorCommandTest {
     void reportsCandidateHashOnlyAfterIntegrityAndSchemaValidation() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = run(directory);
-        assertEquals(0, result.exitCode());
+        assertEquals(0, result.exitCode(), result.stderr());
         assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
         assertTrue(result.stdout().contains(hash));
         assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
@@ -31,7 +31,7 @@ class CatalogCandidateValidatorCommandTest {
         Path candidate = Path.of("..", "..", "catalog-candidates",
             "playwright-mcp-0.0.83-windows-claude-2.1.270");
         var result = run(candidate);
-        assertEquals(0, result.exitCode());
+        assertEquals(0, result.exitCode(), result.stderr());
         assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
         assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
         assertTrue(result.stdout().contains("SUPPORT_NOT_RUN"));

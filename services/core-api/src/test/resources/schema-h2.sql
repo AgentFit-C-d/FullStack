@@ -13,6 +13,69 @@ CREATE UNIQUE INDEX IF NOT EXISTS SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_
 CREATE INDEX IF NOT EXISTS SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
 CREATE INDEX IF NOT EXISTS SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
 
+-- Phase 2 UUID fixture. JSON/array payloads are represented as CLOB/VARCHAR in H2;
+-- PostgreSQL types and full checks remain authoritative in V5 migration.
+CREATE TABLE IF NOT EXISTS "USER" (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    github_user_id BIGINT,
+    github_login VARCHAR(255)
+);
+CREATE TABLE IF NOT EXISTS project (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES "USER"(id),
+    name VARCHAR(200) NOT NULL,
+    version BIGINT NOT NULL,
+    current_step VARCHAR(30) NOT NULL,
+    analysis_generation BIGINT NOT NULL,
+    review_generation BIGINT NOT NULL,
+    developer_role VARCHAR(30) NOT NULL DEFAULT 'BACKEND',
+    current_input_revision BIGINT,
+    current_review_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+CREATE TABLE IF NOT EXISTS project_profile (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), kind VARCHAR(20) NOT NULL, version BIGINT NOT NULL, field_metadata CLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS project_profile_item (id UUID PRIMARY KEY, project_profile_id UUID NOT NULL REFERENCES project_profile(id), field_key VARCHAR(40) NOT NULL, ordinal INT NOT NULL, evidence CLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS project_profile_gap (id UUID PRIMARY KEY, project_profile_id UUID NOT NULL REFERENCES project_profile(id), target_draft_version BIGINT NOT NULL, type VARCHAR(30) NOT NULL, message CLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS document_summary (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), kind VARCHAR(30) NOT NULL, byte_size BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS analysis_attempt (
+    id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), request_id VARCHAR(100) NOT NULL,
+    contract_version VARCHAR(50) NOT NULL, generation BIGINT NOT NULL, status VARCHAR(30) NOT NULL,
+    error_code VARCHAR(50), started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    deadline_at TIMESTAMP WITH TIME ZONE NOT NULL, finished_at TIMESTAMP WITH TIME ZONE,
+    owner_id UUID, input_revision BIGINT, expected_project_version BIGINT, expected_basis VARCHAR(100),
+    execution_token UUID, claimed_at TIMESTAMP WITH TIME ZONE, lease_expires_at TIMESTAMP WITH TIME ZONE,
+    result_draft_id UUID, result_draft_version BIGINT,
+    UNIQUE (project_id, generation), UNIQUE (request_id)
+);
+CREATE TABLE IF NOT EXISTS developer_profile (id UUID PRIMARY KEY, project_id UUID NOT NULL UNIQUE REFERENCES project(id), version BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS environment_profile (id UUID PRIMARY KEY, project_id UUID NOT NULL UNIQUE REFERENCES project(id), version BIGINT NOT NULL, source VARCHAR(30) NOT NULL);
+CREATE TABLE IF NOT EXISTS environment_runtime (id UUID PRIMARY KEY, environment_profile_id UUID NOT NULL REFERENCES environment_profile(id), name VARCHAR(200) NOT NULL);
+CREATE TABLE IF NOT EXISTS environment_auth_readiness (id UUID PRIMARY KEY, environment_profile_id UUID NOT NULL REFERENCES environment_profile(id), service_id VARCHAR(200) NOT NULL, state VARCHAR(30) NOT NULL);
+CREATE TABLE IF NOT EXISTS profile_confirmation_event (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id), actor_id UUID NOT NULL REFERENCES "USER"(id));
+CREATE TABLE IF NOT EXISTS profile_review (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), target_profile_id UUID NOT NULL REFERENCES project_profile(id), review_version BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS profile_review_item (id UUID PRIMARY KEY, review_id UUID NOT NULL REFERENCES profile_review(id), candidate_id VARCHAR(100) NOT NULL, model_judgement VARCHAR(50) NOT NULL);
+CREATE TABLE IF NOT EXISTS analysis_failure_diagnostic (
+    id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), attempt_id UUID NOT NULL UNIQUE REFERENCES analysis_attempt(id),
+    received_at TIMESTAMP WITH TIME ZONE NOT NULL, expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    ciphertext BINARY NOT NULL, key_id VARCHAR(100) NOT NULL, byte_size BIGINT NOT NULL,
+    truncated BOOLEAN NOT NULL, redacted BOOLEAN NOT NULL,
+    redaction_policy_version VARCHAR(100), truncation_policy_version VARCHAR(100), created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+CREATE TABLE IF NOT EXISTS environment_installed_component (id UUID PRIMARY KEY, environment_profile_id UUID NOT NULL REFERENCES environment_profile(id), ordinal INT NOT NULL, name VARCHAR(200) NOT NULL);
+ALTER TABLE project ADD CONSTRAINT IF NOT EXISTS project_current_review_fk FOREIGN KEY (current_review_id) REFERENCES profile_review(id);
+CREATE TABLE IF NOT EXISTS recommendation (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), confirmed_profile_id UUID NOT NULL REFERENCES project_profile(id), confirmation_event_id UUID NOT NULL REFERENCES profile_confirmation_event(id), status VARCHAR(30) NOT NULL);
+CREATE TABLE IF NOT EXISTS recommendation_capability (recommendation_id UUID NOT NULL REFERENCES recommendation(id), capability_key VARCHAR(100) NOT NULL, necessity VARCHAR(20) NOT NULL, PRIMARY KEY (recommendation_id, capability_key));
+CREATE TABLE IF NOT EXISTS recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID NOT NULL REFERENCES recommendation(id), tool_key VARCHAR(100) NOT NULL);
+CREATE TABLE IF NOT EXISTS recommendation_notice (id UUID PRIMARY KEY, recommendation_id UUID NOT NULL REFERENCES recommendation(id), type VARCHAR(20) NOT NULL, code VARCHAR(100) NOT NULL);
+CREATE TABLE IF NOT EXISTS config_preview (id UUID PRIMARY KEY, recommendation_id UUID NOT NULL REFERENCES recommendation(id), fingerprint CHAR(64) NOT NULL);
+CREATE TABLE IF NOT EXISTS config_selection (id UUID PRIMARY KEY, preview_id UUID NOT NULL REFERENCES config_preview(id), recommendation_item_id UUID NOT NULL REFERENCES recommendation_item(id));
+CREATE TABLE IF NOT EXISTS config_permission_selection (selection_id UUID NOT NULL REFERENCES config_selection(id), mapping_key VARCHAR(100) NOT NULL, policy VARCHAR(30) NOT NULL, PRIMARY KEY (selection_id, mapping_key));
+CREATE TABLE IF NOT EXISTS config_preview_file (id UUID PRIMARY KEY, preview_id UUID NOT NULL REFERENCES config_preview(id), relative_path VARCHAR(200) NOT NULL);
+CREATE TABLE IF NOT EXISTS config_export (id UUID PRIMARY KEY, preview_id UUID NOT NULL REFERENCES config_preview(id), fingerprint CHAR(64) NOT NULL);
+CREATE TABLE IF NOT EXISTS audit_event (id UUID PRIMARY KEY, project_id UUID REFERENCES project(id), actor_id UUID REFERENCES "USER"(id), event VARCHAR(100) NOT NULL, outcome VARCHAR(30) NOT NULL, occurred_at TIMESTAMP WITH TIME ZONE NOT NULL);
+
 CREATE TABLE IF NOT EXISTS SPRING_SESSION_ATTRIBUTES (
     SESSION_PRIMARY_ID CHAR(36) NOT NULL,
     ATTRIBUTE_NAME VARCHAR(200) NOT NULL,

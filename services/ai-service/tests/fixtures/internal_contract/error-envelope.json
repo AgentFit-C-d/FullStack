@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INTERNAL_AUTH_FAILED",
+    "message": "AI internal request failed.",
+    "requestId": "fixture-request-1"
+  }
+}

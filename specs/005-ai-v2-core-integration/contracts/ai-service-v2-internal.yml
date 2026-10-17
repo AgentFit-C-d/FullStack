@@ -1,0 +1,181 @@
+openapi: 3.0.3
+info:
+  title: AgentFit AI v2 internal contract delta
+  version: 1.0.0-draft
+  description: Planning artifact. Implementation merges this into contracts/openapi/ai-service.yml.
+paths:
+  /internal/v1/analysis:
+    post:
+      summary: Analyze one Core-authorized transient document
+      security: [{ AgentFitHmac: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalysisRequest' }
+      responses:
+        '200': { description: Structured analysis proposal, content: { application/json: { schema: { $ref: '#/components/schemas/AnalysisResponse' } } } }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/InternalAuthFailed' }
+        '503': { $ref: '#/components/responses/AiUnavailable' }
+  /internal/v1/skills/needs:
+    post:
+      summary: Derive needs and B Capability claims from a confirmed snapshot
+      security: [{ AgentFitHmac: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NeedsRequest' }
+      responses:
+        '200': { description: Claims and questions for B validation, content: { application/json: { schema: { $ref: '#/components/schemas/CapabilityResponse' } } } }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/InternalAuthFailed' }
+        '503': { $ref: '#/components/responses/AiUnavailable' }
+  /internal/v1/skills/rank:
+    post:
+      summary: Score supplied Skill candidates without changing final recommendations
+      security: [{ AgentFitHmac: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RankRequest' }
+      responses:
+        '200': { description: Stateless candidate scores, content: { application/json: { schema: { $ref: '#/components/schemas/RankResponse' } } } }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/InternalAuthFailed' }
+        '503': { $ref: '#/components/responses/AiUnavailable' }
+components:
+  securitySchemes:
+    AgentFitHmac:
+      type: apiKey
+      in: header
+      name: X-AgentFit-Signature
+      description: Requires X-AgentFit-Key-Id, X-AgentFit-Timestamp, X-AgentFit-Signature; canonical input is METHOD, PATH, timestamp, requestId, generation, contractVersion, SHA-256(body), LF-separated.
+  schemas:
+    RequestContext:
+      type: object
+      additionalProperties: false
+      required: [requestId, generation, contractVersion, deadline]
+      properties:
+        requestId: { type: string, minLength: 1 }
+        generation: { type: integer, minimum: 1 }
+        contractVersion: { type: string, minLength: 1 }
+        deadline: { type: string, format: date-time }
+    AnalysisRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [input]
+          properties:
+            input: { type: object, description: Transient document projection; no storage URI, browser credential, or user authority. }
+    AnalysisResponse:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [result]
+          properties:
+            result: { type: object, description: Structured proposal without raw document or provider response. }
+    NeedsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [input]
+          properties:
+            input:
+              type: object
+              required: [confirmedFields, allowedSourceFields]
+              properties:
+                confirmedFields:
+                  type: object
+                  additionalProperties: { type: string }
+                  description: Keys must use the same canonical allow-list as allowedSourceFields; Core rejects every other key before this request is signed.
+                allowedSourceFields:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items:
+                    type: string
+                    pattern: '^(profile\.(projectName|projectType|domain)|profile\.item\.(database|deployment|frontend|backend|ai|features|external_integrations)\.[0-9]+|developer\.version|environment\.(osFamily|clientId|clientVersion))$'
+    CapabilityResponse:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [result]
+          properties:
+            result:
+              type: object
+              additionalProperties: false
+              required: [claims, questions]
+              properties:
+                claims: { type: array, minItems: 1, maxItems: 9, items: { $ref: '#/components/schemas/CapabilityClaim' } }
+                questions: { type: array, items: { $ref: '#/components/schemas/Question' } }
+    CapabilityClaim:
+      type: object
+      additionalProperties: false
+      required: [capabilityKey, need, reason, sourceFields]
+      properties:
+        capabilityKey: { type: string, enum: [cap_document_reference, cap_repository_navigation, cap_code_review, cap_test_authoring, cap_test_execution, cap_browser_verification, cap_api_verification, cap_database_schema_inspection, cap_ai_evaluation] }
+        need: { type: string, enum: [REQUIRED, OPTIONAL, UNDETERMINED] }
+        reason: { type: string, minLength: 1 }
+        sourceFields: { type: array, uniqueItems: true, items: { type: string } }
+    Question:
+      type: object
+      additionalProperties: false
+      required: [field, reason]
+      properties:
+        field: { type: string }
+        reason: { type: string, minLength: 1 }
+    RankRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [input]
+          properties:
+            input:
+              type: object
+              required: [needs, candidates]
+              properties:
+                needs: { type: array, maxItems: 6, items: { $ref: '#/components/schemas/Need' } }
+                candidates: { type: array, maxItems: 15, items: { $ref: '#/components/schemas/Candidate' } }
+    Need:
+      type: object
+      required: [id, name, query, sourceFields]
+      properties:
+        id: { type: string, pattern: '^n[1-6]$' }
+        name: { type: string }
+        query: { type: string }
+        sourceFields: { type: array, minItems: 1, items: { type: string } }
+    Candidate:
+      type: object
+      required: [id, name, content]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        content: { type: string, maxLength: 6000 }
+    RankResponse:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - type: object
+          required: [result]
+          properties:
+            result:
+              type: object
+              required: [matches]
+              properties:
+                matches:
+                  type: array
+                  maxItems: 15
+                  items:
+                    type: object
+                    required: [candidateId, needIds, score, reason]
+                    properties:
+                      candidateId: { type: string }
+                      needIds: { type: array, minItems: 1, items: { type: string } }
+                      score: { type: integer, minimum: 0, maximum: 100 }
+                      reason: { type: string }
+  responses:
+    InvalidRequest: { description: Invalid context, input limit, or response contract. }
+    InternalAuthFailed: { description: HMAC, timestamp, or replay validation failed without revealing cause. }
+    AiUnavailable: { description: AI did not accept or complete processing; Core records a separate failure outcome. }
