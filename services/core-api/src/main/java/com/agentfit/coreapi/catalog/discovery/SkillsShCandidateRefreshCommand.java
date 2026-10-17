@@ -18,6 +18,9 @@ public final class SkillsShCandidateRefreshCommand {
             usage(err);
             return 2;
         }
+        if (args.length == 4) {
+            return run(args, out, err, SkillsShCandidateCollector.publicExperimental());
+        }
         String token = tokenSupplier.get();
         if (token == null || token.isBlank()) {
             err.println("CANDIDATE_REFRESH_FAILED: credential unavailable");
@@ -41,7 +44,8 @@ public final class SkillsShCandidateRefreshCommand {
         try {
             var changed = new SkillsShCandidateRefresh(collector)
                 .refresh(args[0], limit, Path.of(args[2]));
-            out.printf("CANDIDATES_STAGED changed=%d; CATALOG_NOT_APPROVED%n", changed.size());
+            out.printf("CANDIDATES_STAGED changed=%d; CATALOG_NOT_APPROVED%s%n", changed.size(),
+                args.length == 4 ? "; EXPERIMENTAL_PUBLIC_API" : "");
             return 0;
         } catch (SkillsShCandidateCollector.DiscoveryException
             | SkillsShCandidateSnapshot.InvalidSnapshotException
@@ -52,7 +56,9 @@ public final class SkillsShCandidateRefreshCommand {
     }
 
     private static boolean validArguments(String[] args) {
-        if (args == null || args.length != 3 || args[0] == null || args[1] == null
+        if (args == null || (args.length != 3 && args.length != 4)
+            || (args.length == 4 && !"--public".equals(args[3]))
+            || args[0] == null || args[1] == null
             || args[2] == null || args[0].strip().length() < 2 || args[0].length() > 100
             || args[2].isBlank()) return false;
         try {
@@ -64,6 +70,6 @@ public final class SkillsShCandidateRefreshCommand {
     }
 
     private static void usage(PrintStream err) {
-        err.println("USAGE: SkillsShCandidateRefreshCommand <query> <limit:1-20> <snapshot-path>");
+        err.println("USAGE: SkillsShCandidateRefreshCommand <query> <limit:1-20> <snapshot-path> [--public]");
     }
 }

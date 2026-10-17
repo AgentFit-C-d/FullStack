@@ -2,7 +2,7 @@
 
 ## 목적과 현재 범위
 
-skills.sh의 [공식 API](https://www.skills.sh/docs/api)에서 Skill을 검색하고 상세 응답의 해시를 확인하여 **검토 후보**로 저장한다. 후보는 검증된 Catalog 릴리스가 아니다. 현재 추천·Preview는 승인된 Catalog 파일만 읽는다. MCP 디렉터리 연동은 보류한다.
+skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 실험적 공개 경로에서 Skill을 검색하고 상세 응답의 해시를 확인하여 **검토 후보**로 저장한다. 후보는 검증된 Catalog 릴리스가 아니다. 현재 추천·Preview는 승인된 Catalog 파일만 읽는다. MCP 디렉터리 연동은 보류한다.
 
 ## 처리 흐름
 
@@ -17,7 +17,7 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api)에서 Skill을 검색�
 
 ## 로컬 후보 갱신 명령
 
-`SkillsShCandidateRefreshCommand`는 기존 수집기와 스냅샷 갱신기를 연결하는 **관리자 로컬 실행 진입점**이다. `services/core-api`에서 실행하며, 연동된 Vercel 프로젝트가 발급한 유효한 `VERCEL_OIDC_TOKEN`을 프로세스 환경에서 제공해야 한다. 토큰을 명령 인자나 저장 파일에 넣지 않는다.
+`SkillsShCandidateRefreshCommand`는 수집기와 스냅샷 갱신기를 연결하는 **관리자 로컬 실행 진입점**이다. `services/core-api`에서 실행한다. 기본 공식 API 모드에는 연동된 Vercel 프로젝트가 발급한 유효한 `VERCEL_OIDC_TOKEN`이 필요하다. 토큰을 명령 인자나 저장 파일에 넣지 않는다. `--public` 모드는 토큰 없이 실험적 공개 경로를 사용한다.
 
 ```powershell
 mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsShCandidateRefreshCommand' '-Dspring-boot.run.arguments=react 20 ../../catalog-candidates/skills-sh-candidates.json' spring-boot:run
@@ -37,7 +37,8 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsS
 ## 아직 필요한 연결
 
 - 2026-10-10 [skills.sh 공식 API 문서](https://www.skills.sh/docs/api)를 재확인했다. 검색·상세 경로, `Authorization: Bearer` 형식, 검색 `data`와 상세 `id`/`source`/`hash`는 현재 수집 코드의 가정과 맞는다. 상세 `hash`는 스냅샷이 없으면 `null`일 수 있으므로 현재 코드는 해당 후보를 거부한다. 이 확인은 문서 계약 점검이며 실서버 호출 성공이나 Catalog 검증은 아니다.
-- 2026-10-17 읽기 전용 실서버 확인: 토큰 없는 `GET /api/v1/skills/search?q=react&limit=2`는 HTTP 401, `GET /api/search?q=react&limit=2`는 HTTP 200과 검색 결과 2건을 반환했다. 후자는 CLI가 사용하는 비공식 경로이며 응답도 공식 v1과 다르다(`skills` 배열). 현재 B 수집기는 **공식 v1 + Vercel OIDC 토큰**만 사용하므로 토큰 없는 환경에서 실제 후보 갱신은 성공하지 않는다. 비공식 경로 결과를 승인 Catalog로 자동 승격하지 않는다.
+- 2026-10-17 읽기 전용 실서버 확인: 토큰 없는 `GET /api/v1/skills/search?q=react&limit=2`는 HTTP 401, `GET /api/search?q=react&limit=2`는 HTTP 200과 검색 결과 2건을 반환했다. 후자는 CLI가 사용하는 비공식 경로이며 응답도 공식 v1과 다르다(`skills` 배열). 기본 수집 명령은 **공식 v1 + Vercel OIDC 토큰**을 사용한다. 비공식 경로 결과를 승인 Catalog로 자동 승격하지 않는다.
+- 인증 토큰이 없는 로컬 후보 조사에는 마지막 인자 `--public`을 명시할 수 있다. 이 모드는 비공식 `/api/search`와 `/api/download/{id}`에서 후보 ID·이름·출처·콘텐츠 해시만 수집하고 `EXPERIMENTAL_PUBLIC_API`를 출력한다. 예: `mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsShCandidateRefreshCommand' '-Dspring-boot.run.arguments=react 2 ../../catalog-candidates/skills-sh-candidates.json --public' spring-boot:run`. API 형식·가용성은 보장되지 않으며 결과는 검토 대기 스냅샷에만 저장된다. 실제 검증과 독립 승인 없이는 추천에 쓰이지 않는다.
 - 공식 인증 방식은 **Vercel 프로젝트 OIDC 토큰**이다. 배포 대상이 아직 정해지지 않아 Spring Boot 서버에서 이 토큰을 안전하게 발급·전달·갱신할 방법은 미확정이다. 일반 사용자 로그인 토큰이나 임의의 고정 API 키로 대체하지 않는다. 이 작업에서는 실서버 호출을 하지 않았다.
 - 로컬 관리용 갱신·선별 명령과 별도 결정 파일은 추가됐지만, 서버의 보호된 수집 API·배치, 인증된 검토자/관리 UI·DB 승인 기록, 검증된 Catalog 릴리스 생성 절차는 미구현이다.
 - API 응답에는 AgentFit의 OS·Client 버전 호환성, 권한, 의존성·충돌 검증 결과가 없다. 해시 변경은 재검토 신호이지 품질·보안 검증이 아니다.
