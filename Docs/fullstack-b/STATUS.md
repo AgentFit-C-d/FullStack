@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**skills.sh 후보 데모 연결 (2026-10-18):** 로컬 Java 17 환경에서 Docker Java 21로 `refresh_skills_candidates.ps1 -Public`을 실행해 실제 후보 2건을 갱신했다(`changed=0`). 데모 Compose는 후보 스냅샷을 Core에 읽기 전용으로 연결하고, 인증된 `GET /api/tool-candidates`는 `UNVERIFIED`로 표시한다. Core·AI health 200, API 경로 등록, 비로그인 401, 인증 형태의 백엔드 후보 조회→합성 Catalog 추천→ZIP 통합 흐름을 확인했다. skills.sh 후보는 실제 추천·설정에 사용하지 않는다. 공식 v1 API는 Vercel OIDC가 없어 실호출하지 않았다.
+
 **B 공개 API 통합 검증 (2026-10-18):** A DRAFT 확정 뒤 B의 개발자 프로필 PUT·환경 프로필 PUT·입력 GET·승인 Catalog GET을 Spring Security 필터와 A 소유권 검사로 호출했다. 반환된 입력 버전으로 추천 POST를 수행해 FastAPI `needs` → PostgreSQL 추천 저장 → 미리보기·승인·ZIP 다운로드까지 통과했다. 테스트 인증과 합성 Catalog를 사용하며, 실제 GitHub 콜백·Solar 문서 분석·프론트 화면·실제 승인 도구를 입증하지 않는다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).
 
 **Phase 3 데모 연결 점검 (2026-10-17):** Java 21 Core → FastAPI HMAC needs → B 추천 판정과 PostgreSQL 저장을 합성 Catalog로 검증했다. Spring Security 필터, OAuth 형태의 테스트 인증, CSRF, A UUID 소유권 조회를 거쳐 A DRAFT 사용자 확정 → B 추천 POST/최신 GET → 설정 미리보기 POST → 승인 POST → ZIP 다운로드 POST까지 격리 DB에서 통과했다. 이 백엔드 경로는 `tools/run_phase3_demo_smoke.ps1`로 재현할 수 있다. Java 21 빌더의 전체 Core 테스트, OAuth 시작 경로의 GitHub 302, Core·AI health 200, skills.sh 공개 후보 2건 수집도 확인했다. 실제 GitHub 콜백·브라우저 세션, A 분석 Worker부터 한 번에 이어지는 시연, Solar 실호출, 검증·승인 Catalog, 프론트 화면 연결은 아직 별도 검증이 필요하다. 테스트 중 A의 실패 진단 만료 삭제 작업에서 PostgreSQL `Instant` 바인딩 오류 로그가 발견돼 A 측 수정이 필요하다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).

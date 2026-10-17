@@ -447,6 +447,39 @@ paths:
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
         "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/tool-candidates:
+    get:
+      summary: Read staged skills.sh research candidates
+      description: Candidates are unverified and are never used by recommendation or configuration generation.
+      operationId: getSkillCandidates
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Staged discovery candidates, explicitly marked unverified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source, verificationStatus, candidates]
+                properties:
+                  source: { type: string, enum: [skills.sh] }
+                  verificationStatus: { type: string, enum: [UNVERIFIED] }
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      required: [externalId, name, source, sourceUrl, contentHash, observedAt]
+                      properties:
+                        externalId: { type: string }
+                        name: { type: string }
+                        source: { type: string }
+                        sourceUrl: { type: string, format: uri }
+                        contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+                        observedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "503":
+          description: Candidate snapshot is absent or invalid
 components:
   securitySchemes:
     agentFitSession:

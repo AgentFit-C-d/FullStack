@@ -44,6 +44,8 @@ class LiveAuthenticatedRecommendationHttpTest {
     private static final String DB_PASSWORD = System.getenv().getOrDefault("AGENTFIT_TEST_POSTGRES_PASSWORD", "agentfit-local-only");
     private static final String SCHEMA = "b_secure_" + UUID.randomUUID().toString().replace("-", "");
     private static final Path CATALOG = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
+    private static final Path CANDIDATES = Path.of("..", "..", "catalog-candidates", "skills-sh-candidates.json")
+        .toAbsolutePath().normalize();
     private static final String CATALOG_HASH = "453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6";
 
     @Autowired MockMvc mvc;
@@ -75,6 +77,7 @@ class LiveAuthenticatedRecommendationHttpTest {
         registry.add("agentfit.ai-service.rank-url", () -> System.getenv("AGENTFIT_LIVE_AI_URL") + "/internal/v1/skills/rank");
         registry.add("agentfit.catalog.directory", () -> CATALOG.toString());
         registry.add("agentfit.catalog.approved-hash", () -> CATALOG_HASH);
+        registry.add("agentfit.skills-sh.snapshot-path", () -> CANDIDATES.toString());
         registry.add("agentfit.analysis.worker-poll-interval-ms", () -> "60000");
     }
 
@@ -124,6 +127,10 @@ class LiveAuthenticatedRecommendationHttpTest {
         mvc.perform(get("/api/tool-catalog").with(authentication(owner)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].key").value("demo-all-capabilities-skill"));
+        mvc.perform(get("/api/tool-candidates").with(authentication(owner)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.verificationStatus").value("UNVERIFIED"))
+            .andExpect(jsonPath("$.candidates[0].externalId").exists());
         String path = "/api/projects/" + project + "/recommendations";
         mvc.perform(post(path).with(ownerAuth).contentType("application/json")
                 .content("{\"expectedVersions\":{\"project\":2,\"developer\":1,\"environment\":1}}"))

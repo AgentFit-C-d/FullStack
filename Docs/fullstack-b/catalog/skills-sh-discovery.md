@@ -25,6 +25,8 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 �
 
 성공 시 변경·신규 후보 수와 `CATALOG_NOT_APPROVED`를 출력한다. 인증·API·스냅샷 오류면 실패하고 이전 파일을 유지한다. 이 명령은 제품 Catalog를 생성·승인하거나 추천에 연결하지 않는다. 실제 OIDC 토큰을 이용한 실서버 호출은 아직 검증하지 않았다.
 
+로컬 Java가 21 미만이면 같은 명령이 Docker의 Java 21 빌더를 사용한다. Docker Desktop이 필요하다. 데모 Compose는 후보 디렉터리를 Core에 읽기 전용으로 연결한다. 로그인한 사용자는 `GET /api/tool-candidates`에서 `source=skills.sh`, `verificationStatus=UNVERIFIED`인 스냅샷 목록을 조회할 수 있다. 파일이 없거나 손상되면 503이며, 승인 Catalog API·추천·Preview·ZIP과는 독립이다.
+
 후보를 확인하고 로컬 선별 결과를 기록할 때는 같은 디렉터리에서 아래 명령을 사용한다. `shortlist`와 `reject`의 `<external-id>`는 `list`가 출력한 ID를 그대로 사용한다. 생성된 두 JSON 파일은 Git에서 제외한다.
 
 ```powershell
