@@ -1,6 +1,6 @@
 # Full Stack B current status
 
-**Phase 2 갱신 (2026-10-16):** A Phase 2가 들어간 `origin/main` 기준 B UUID JDBC 저장 경계를 수정했고, A Flyway V1–V5를 적용한 독립 PostgreSQL에서 B 추천→Preview→승인→이력/보고→삭제 및 rollback을 검증했다. B 소유 승인·ZIP 다운로드·사용자 적용 보고 API를 A의 인증·소유권 검사에 연결했고, 합성 Catalog 기반 PostgreSQL 및 Controller 테스트를 통과했다. 다만 실제 A UUID 소유권 HTTP 조회는 500 오류가 재현돼 브라우저 시연이 막혀 있다. 실제 AI 응답과 승인 Catalog도 미완이다. [검증 범위와 담당](integration/phase2-demo-readiness.md). 아래 B01–B12 체크 표시는 이 통합 검증만으로 올리지 않는다.
+**Phase 2 갱신 (2026-10-17):** A Phase 2가 들어간 `origin/main` 기준으로 B UUID JDBC 저장 경계를 수정했다. PostgreSQL V5에서 추천→Preview→승인→ZIP 이력/보고→삭제와 rollback을 검증했다. B 소유 최신 추천·설정 생성 이력·승인 Catalog 조회, 승인·ZIP 다운로드·사용자 적용 보고 API를 연결했다. 다만 실제 A 소유권 HTTP 조회는 UUID 바인딩 오류로 500이 재현됐고, GitHub 로그인 경로도 UUID 스키마와 맞지 않는다. 실제 AI Capability 응답과 검증·승인된 Claude Code Catalog 역시 미완이다. [검증 범위와 담당](integration/phase2-demo-readiness.md). 아래 B01–B12 체크 표시는 이 통합 검증만으로 올리지 않는다.
 
 Source: `Docs/AgentFit_AB_1차통합_개발기준.pdf` (sections 7–12) and the B PRD in `D:/capstone/Docs/team-prds/full-stack-b/PRD.md`.
 
