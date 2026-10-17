@@ -1,6 +1,11 @@
 package com.agentfit.coreapi.recommendation.controller;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.agentfit.coreapi.catalog.CatalogPreviewRequest;
+import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
 import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
@@ -12,11 +17,14 @@ import com.agentfit.coreapi.domain.auth.service.SessionPrincipalResolver;
 import com.agentfit.coreapi.domain.project.service.ProjectOwnershipGuard;
 import com.agentfit.coreapi.global.exception.UnauthenticatedException;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.RecommendationDecision;
+import com.agentfit.coreapi.recommendation.RecommendationReadModel;
+import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
+import com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter;
 import com.agentfit.coreapi.recommendation.selection.PermissionSelection;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 /** A's authenticated boundary around the unchanged B recommendation/Preview services. */
 @RestController
 @RequestMapping("/api/projects/{projectId}")
+@Tag(name = "Recommendations", description = "Recommendation generation, retrieval, and configuration previews")
 public class RecommendationController {
     private final SessionPrincipalResolver principals;
     private final ProjectOwnershipGuard ownership;
@@ -50,7 +59,10 @@ public class RecommendationController {
     }
 
     @PostMapping("/recommendations")
-    public ResponseEntity<Map<String, Object>> createRecommendation(HttpServletRequest request,
+    @ApiResponse(responseCode = "201", description = "Recommendation created",
+        content = @Content(mediaType = "application/json",
+            schema = @Schema(implementation = RecommendationCreatedResponse.class)))
+    public ResponseEntity<RecommendationCreatedResponse> createRecommendation(HttpServletRequest request,
             @PathVariable String projectId, @RequestBody RecommendationRequest body) {
         AuthenticatedPrincipal principal = principal(request);
         ownership.requireOwned(principal, projectId);
@@ -62,19 +74,24 @@ public class RecommendationController {
     }
 
     @GetMapping("/recommendations/latest")
-    public Map<String, Object> latest(HttpServletRequest request, @PathVariable String projectId) {
+    @ApiResponse(responseCode = "200", description = "Latest recommendation",
+        content = @Content(mediaType = "application/json",
+            schema = @Schema(implementation = RecommendationLatestResponse.class)))
+    public RecommendationLatestResponse latest(HttpServletRequest request, @PathVariable String projectId) {
         AuthenticatedPrincipal principal = principal(request);
         ownership.requireOwned(principal, projectId);
         var snapshot = required(latest, "latest recommendation workflow").latest(projectId);
         if (snapshot == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "recommendation not found");
-        return Map.of("recommendationId", snapshot.summary().recommendationId(),
-            "status", snapshot.summary().status().name(), "validity", snapshot.summary().validity().name(),
-            "basis", snapshot.summary().basis(), "items", snapshot.catalogItems(),
-            "capabilities", snapshot.capabilities(), "notices", snapshot.notices());
+        return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
+            snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
+            snapshot.catalogItems(), snapshot.capabilities(), snapshot.notices());
     }
 
     @PostMapping("/config-previews")
-    public ResponseEntity<Map<String, Object>> createPreview(HttpServletRequest request,
+    @ApiResponse(responseCode = "201", description = "Configuration preview created",
+        content = @Content(mediaType = "application/json",
+            schema = @Schema(implementation = ConfigurationPreviewCreatedResponse.class)))
+    public ResponseEntity<ConfigurationPreviewCreatedResponse> createPreview(HttpServletRequest request,
             @PathVariable String projectId, @RequestBody PreviewRequest body) {
         AuthenticatedPrincipal principal = principal(request);
         ownership.requireOwned(principal, projectId);
@@ -83,11 +100,9 @@ public class RecommendationController {
                 body.selectedToolKeys(), body.permissionSelections(), body.existingState(),
                 body.providedFiles(), body.generatorVersion()));
         var saved = created.saved();
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-            "previewId", saved.previewId(), "recommendationId", body.recommendationId(),
-            "fingerprint", saved.fingerprint(), "selectionDigest", created.preview().selectionDigest(),
-            "contentDigest", created.preview().contentDigest(), "createdAt", saved.createdAt(),
-            "expiresAt", saved.expiresAt()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ConfigurationPreviewCreatedResponse(
+            saved.previewId(), body.recommendationId(), saved.fingerprint(), created.preview().selectionDigest(),
+            created.preview().contentDigest(), saved.createdAt(), saved.expiresAt()));
     }
 
     private AuthenticatedPrincipal principal(HttpServletRequest request) {
@@ -100,12 +115,10 @@ public class RecommendationController {
         return value;
     }
 
-    private static Map<String, Object> recommendationResponse(RecommendationCreationService.Created created) {
+    private static RecommendationCreatedResponse recommendationResponse(RecommendationCreationService.Created created) {
         var result = created.result();
-        return Map.of("recommendationId", created.recommendationId(),
-            "status", result.decision().status().name(), "basis", created.basis(),
-            "capabilities", result.capabilities(), "items", result.items(),
-            "notices", result.clarificationQuestions());
+        return new RecommendationCreatedResponse(created.recommendationId(), result.decision().status(),
+            created.basis(), result.capabilities(), result.items(), result.clarificationQuestions());
     }
 
     public record ExpectedVersions(long project, long developer, long environment) {}
@@ -114,4 +127,17 @@ public class RecommendationController {
     public record PreviewRequest(PreviewBasis basis, String recommendationId, EnvironmentTarget target,
             List<String> selectedToolKeys, List<PermissionSelection> permissionSelections,
             ExistingState existingState, List<PreviewInputFile> providedFiles, String generatorVersion) {}
+
+    public record RecommendationCreatedResponse(String recommendationId, RecommendationDecision.Status status,
+            PreviewBasis basis, List<AiCapabilityIntake.Claim> capabilities,
+            List<CatalogRecommendationDetails.Item> items, List<AiCapabilityIntake.Question> notices) {}
+
+    public record RecommendationLatestResponse(String recommendationId, RecommendationDecision.Status status,
+            RecommendationReadModel.Validity validity, PreviewBasis basis,
+            List<CatalogRecommendationDetails.Item> items,
+            List<JdbcRecommendationMetadataWriter.Capability> capabilities,
+            List<JdbcRecommendationMetadataWriter.Notice> notices) {}
+
+    public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
+            String fingerprint, String selectionDigest, String contentDigest, Instant createdAt, Instant expiresAt) {}
 }

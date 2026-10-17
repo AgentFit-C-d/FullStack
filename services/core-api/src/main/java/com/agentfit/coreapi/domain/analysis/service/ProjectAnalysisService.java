@@ -18,6 +18,7 @@ import com.agentfit.coreapi.domain.audit.entity.AuditEvent;
 
 @Service
 public class ProjectAnalysisService {
+    private static final long AI_V2_MAX_SECONDS = 178L;
     private final ProjectRepository projects; private final AnalysisAttemptRepository attempts;
     private final AnalysisAdmissionRepository admission; private final PlanningInputRepository inputs;
     private final Clock clock; private final long timeoutSeconds;
@@ -28,16 +29,26 @@ public class ProjectAnalysisService {
     @Transactional
     public AnalysisAttempt start(AuthenticatedPrincipal principal,String projectId,long expectedVersion) {
         if(principal==null) throw new UnauthenticatedException();
-        var project=projects.findByIdAndOwnerId(projectId,principal.userId()).orElseThrow(ProjectNotFoundException::new);
+        var project = principal.userUuid() == null
+            ? projects.findByIdAndOwnerId(projectId, principal.userId()).orElseThrow(ProjectNotFoundException::new)
+            : projects.findByIdAndOwnerUuid(projectId, principal.userUuid()).orElseThrow(ProjectNotFoundException::new);
         var locked=projects.findByIdForUpdate(projectId).orElse(project);
         if(locked.version()!=expectedVersion) throw new VersionConflictException(expectedVersion,locked.version());
         if(inputs.findCurrent(projectId).isEmpty()) throw new IllegalArgumentException("Planning input is required");
         if(attempts.findProcessingByProjectId(projectId).isPresent()) throw new AnalysisAlreadyProcessingException();
-        if(attempts.findProcessingByOwnerId(principal.userId()).isPresent()) throw new AnalysisCapacityExceededException(ErrorCode.ANALYSIS_USER_LIMIT_REACHED);
+        boolean userHasProcessing = principal.userUuid() == null
+            ? attempts.findProcessingByOwnerId(principal.userId()).isPresent()
+            : attempts.findProcessingByOwnerUuid(principal.userUuid()).isPresent();
+        if(userHasProcessing) throw new AnalysisCapacityExceededException(ErrorCode.ANALYSIS_USER_LIMIT_REACHED);
         var slot=admission.lock(); if(slot.activeCount()>=2) throw new AnalysisCapacityExceededException(ErrorCode.ANALYSIS_SERVER_LIMIT_REACHED);
         admission.increment(); Instant now=Instant.now(clock); long generation=locked.analysisGeneration()+1;
-        AnalysisAttempt attempt=new AnalysisAttempt(0,projectId,UUID.randomUUID().toString(),generation,"1.0","PROCESSING",now.plusSeconds(timeoutSeconds),now,null,principal.userId(),locked.currentInputRevision(),null);
-        AnalysisAttempt saved=attempts.start(attempt); projects.markAnalysisStarted(projectId,generation,locked.version()+1,now); audit.record(new AuditEvent(principal.userId(),projectId,"ANALYSIS_STARTED","SUCCEEDED",now,null,java.util.Map.of("state","PROCESSING"))); return saved;
+        long executionSeconds = Math.min(timeoutSeconds, AI_V2_MAX_SECONDS);
+        if (executionSeconds < 1) throw new IllegalArgumentException("analysis timeout must be positive");
+        AnalysisAttempt attempt=new AnalysisAttempt(UUID.randomUUID().toString(),projectId,UUID.randomUUID().toString(),generation,"1.0","PROCESSING",now.plusSeconds(executionSeconds),now,null,principal.userUuid(),locked.currentInputRevision(),null,null,null,null,locked.version()+1,"planning-input:" + locked.currentInputRevision());
+        AnalysisAttempt saved=attempts.start(attempt); projects.markAnalysisStarted(projectId,generation,locked.version()+1,now);
+        if (principal.userUuid() != null) audit.record(new AuditEvent(principal.userUuid(), UUID.fromString(projectId), "ANALYSIS_STARTED", "SUCCEEDED", now, null, java.util.Map.of("state", "PROCESSING")));
+        else audit.record(new AuditEvent(principal.userId(),projectId,"ANALYSIS_STARTED","SUCCEEDED",now,null,java.util.Map.of("state","PROCESSING")));
+        return saved;
     }
     @Transactional
     public void timeout(AnalysisAttempt attempt) { complete(attempt, "FAILED", "TIMEOUT", "ANALYSIS_TIMEOUT"); }
@@ -53,7 +64,8 @@ public class ProjectAnalysisService {
         if (attempts.transitionToTerminal(attempt.id(), terminalState, errorCode, now)) {
             if (attempt.inputRevision()!=null) inputs.scrub(attempt.projectId(), attempt.inputRevision());
             admission.lock(); admission.decrement();
-            audit.record(new AuditEvent(attempt.ownerId()==null?0:attempt.ownerId(), attempt.projectId(), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
+            if (attempt.ownerUuid() != null) audit.record(new AuditEvent(attempt.ownerUuid(), UUID.fromString(attempt.projectId()), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
+            else audit.record(new AuditEvent(0L, attempt.projectId(), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
         }
     }
 }

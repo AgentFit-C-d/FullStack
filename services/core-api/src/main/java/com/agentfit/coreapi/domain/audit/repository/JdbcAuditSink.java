@@ -18,7 +18,7 @@ public class JdbcAuditSink implements AuditSink {
     @Override
     public void accept(AuditEvent event) {
         if (event.actorUuid() != null && event.projectUuid() != null) {
-            jdbc.update("INSERT INTO audit_event (id, actor_id, project_id, action, result, occurred_at, reason) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            jdbc.update("INSERT INTO audit_event (id, actor_id, project_id, event, outcome, occurred_at, reason_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 java.util.UUID.randomUUID(), event.actorUuid(), event.projectUuid(), event.action(), event.result(),
                 Timestamp.from(event.occurredAt()), event.reason());
             return;

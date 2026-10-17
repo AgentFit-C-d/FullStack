@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -23,23 +24,28 @@ public final class OwnerCheckedSnapshotReaderAdapter
     @Override
     public RecommendationCreationService.OwnerCheckedSnapshot load(String projectId) {
         UUID project = uuid(projectId);
-        Map<String, Object> row = jdbc.queryForMap("""
-            SELECT p.version AS project_version, p.name AS project_name,
-                   pp.id AS profile_id, pp.version AS profile_version,
-                   ce.id AS confirmation_event_id, COALESCE(pr.review_version, 0) AS review_version,
-                   dp.version AS developer_version, ep.version AS environment_version,
-                   ep.os_family, ep.client_id, ep.client_version, p.current_review_id
-              FROM project p
-              JOIN project_profile pp ON pp.project_id = p.id AND pp.kind = 'CONFIRMED'
-              JOIN profile_confirmation_event ce ON ce.project_id = p.id
-                   AND ce.confirmed_profile_id = pp.id
-              JOIN developer_profile dp ON dp.project_id = p.id
-              JOIN environment_profile ep ON ep.project_id = p.id
-              LEFT JOIN profile_review pr ON pr.id = p.current_review_id
-             WHERE p.id = ?
-             ORDER BY ce.confirmed_at DESC
-             LIMIT 1
-            """, project);
+        Map<String, Object> row;
+        try {
+            row = jdbc.queryForMap("""
+                SELECT p.version AS project_version, p.name AS project_name,
+                       pp.id AS profile_id, pp.version AS profile_version,
+                       ce.id AS confirmation_event_id, COALESCE(pr.review_version, 0) AS review_version,
+                       dp.version AS developer_version, ep.version AS environment_version,
+                       ep.os_family, ep.client_id, ep.client_version, p.current_review_id
+                  FROM project p
+                  JOIN project_profile pp ON pp.project_id = p.id AND pp.kind = 'CONFIRMED'
+                  JOIN profile_confirmation_event ce ON ce.project_id = p.id
+                       AND ce.confirmed_profile_id = pp.id
+                  JOIN developer_profile dp ON dp.project_id = p.id
+                  JOIN environment_profile ep ON ep.project_id = p.id
+                  LEFT JOIN profile_review pr ON pr.id = p.current_review_id
+                 WHERE p.id = ?
+                 ORDER BY ce.confirmed_at DESC
+                 LIMIT 1
+                """, project);
+        } catch (EmptyResultDataAccessException ex) {
+            throw new com.agentfit.coreapi.global.exception.ProfileNotConfirmedException();
+        }
         Set<String> allowed = new HashSet<>();
         Map<String, String> values = new HashMap<>();
         add(values, allowed, "profile.projectName", row.get("project_name"));

@@ -29,7 +29,7 @@
 - [x] Functional requirements have acceptance coverage
 - [x] User stories cover the primary flows
 - [x] Success criteria describe the intended outcome
-- [x] The initial scope excludes Skill needs/ranking integration
+ - [x] The initial scope includes Skill needs integration and rank contract/scoring/isolation; rank-driven final recommendation mapping remains out of scope pending B owner approval
 
 ## Notes
 

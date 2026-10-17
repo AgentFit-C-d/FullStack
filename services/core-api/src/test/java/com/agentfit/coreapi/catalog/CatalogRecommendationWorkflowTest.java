@@ -53,7 +53,7 @@ class CatalogRecommendationWorkflowTest {
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogRecommendationWorkflow.evaluate(directory, "f".repeat(64), request()));
         var incomplete = new CatalogRecommendationWorkflow.Request(
-            request().claims().subList(0, 1), List.of(), Set.of("profile.features"),
+            request().claims().subList(0, 1), List.of(), Set.of("profile.item.features.0"),
             false, new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
         assertThrows(IllegalArgumentException.class,
             () -> CatalogRecommendationWorkflow.evaluate(directory, approvedHash, incomplete));
@@ -66,9 +66,9 @@ class CatalogRecommendationWorkflowTest {
             claim.capabilityKey().equals("cap_document_reference")
                 ? new AiCapabilityIntake.Claim(claim.capabilityKey(), AiCapabilityIntake.Need.UNDETERMINED,
                     "Need project context", List.of()) : claim).toList();
-        var question = new AiCapabilityIntake.Question("profile.features", "What documents are needed?");
+        var question = new AiCapabilityIntake.Question("profile.item.features.0", "What documents are needed?");
         var input = new CatalogRecommendationWorkflow.Request(claims, List.of(question),
-            Set.of("profile.features"), false,
+            Set.of("profile.item.features.0"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
         var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input);
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, outcome.decision().status());
@@ -82,7 +82,7 @@ class CatalogRecommendationWorkflowTest {
         Map<String, String> installed = new HashMap<>();
         installed.put("example-tool", null);
         var input = new CatalogRecommendationWorkflow.Request(request().claims(), List.of(),
-            Set.of("profile.features"), false,
+            Set.of("profile.item.features.0"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), installed);
         var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input);
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, outcome.decision().status());
@@ -95,7 +95,7 @@ class CatalogRecommendationWorkflowTest {
         var claims = new ArrayList<>(request().claims());
         claims.set(0, null);
         var input = new CatalogRecommendationWorkflow.Request(claims, List.of(),
-            Set.of("profile.features"), false,
+            Set.of("profile.item.features.0"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
         assertThrows(IllegalArgumentException.class,
             () -> CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input));
@@ -129,7 +129,7 @@ class CatalogRecommendationWorkflowTest {
     void recommendedAdditionWithInstalledDependencyCanReachPreview() throws Exception {
         String hash = SyntheticCatalogBundle.writeWithInstalledDependency(directory);
         var input = new CatalogRecommendationWorkflow.Request(request().claims(), List.of(),
-            Set.of("profile.features"), false,
+            Set.of("profile.item.features.0"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
             Map.of("runtime", "1.0"));
         var outcome = CatalogRecommendationWorkflow.evaluate(directory, hash, input);
@@ -154,9 +154,9 @@ class CatalogRecommendationWorkflowTest {
             new AiCapabilityIntake.Claim(key,
                 key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                     : AiCapabilityIntake.Need.OPTIONAL,
-                "Based on confirmed project profile", List.of("profile.features"))).toList();
+                "Based on confirmed project profile", List.of("profile.item.features.0"))).toList();
         return new CatalogRecommendationWorkflow.Request(claims, List.of(),
-            Set.of("profile.features"), false,
+            Set.of("profile.item.features.0"), false,
             new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
     }
 

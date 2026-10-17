@@ -14,11 +14,17 @@
 
 ### Session 2026-10-16
 
-- Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: 분석 중 임시 보관만 하고, 분석 결과가 저장되면 원문은 폐기한다.
+- Q: 이번 AI v2 연결에 실제 문서 저장·조회 기능까지 포함할까요? → A: PDF·Markdown·직접 입력 원문과 전체 추출문은 분석 처리의 terminal 상태 직후 폐기하고, 구조화된 A DRAFT만 남긴다.
 - Q: A 분석과 B 추천은 한 번에 실행할까요, 별도 단계로 실행할까요? → A: A 분석을 먼저 완료·저장한 뒤 사용자가 별도의 추천 API를 호출한다.
 - Q: B 추천 전에 A 분석 결과를 누가 확정할까요? → A: 사용자가 분석 결과를 확인하고 직접 확정한다.
 - Q: 정상적인 추천 상태와 AI·연동 실패를 구분할까요? → A: 구분한다. `NEEDS_INFORMATION`과 `NO_COMPATIBLE_TOOLS`는 정상적인 추천 결과이고, AI·계약·저장 실패는 별도 실패로 처리한다.
 - Q: AI가 판단 불가를 반환한 경우와 응답 자체가 깨진 경우를 어떻게 구분할까요? → A: `UNDETERMINED`와 질문이 있는 유효 응답은 `NEEDS_INFORMATION`으로 처리하고, 필수 필드 누락·알 수 없는 Capability ID·형식 오류·호출 실패는 `FAILED`로 처리한다.
+- Q: B가 AI v2의 `needs`와 `rank`를 호출할 때, 우리 HMAC 내부 API를 두 개 추가할까요? → A: 기존 분석 API를 유지하고 HMAC 기반 `POST /internal/v1/skills/needs`, `POST /internal/v1/skills/rank` 내부 API를 추가한다.
+- Q: 1차 통합에서 `rank`를 B 최종 추천에 반영할까요? → A: B 담당자가 결정한다. 그 결정 전에는 `rank` 결과를 B 최종 추천에 반영하지 않는다.
+
+### Session 2026-10-17
+
+- Q: 분석 결과를 확정하지 않은 A DRAFT와 원문의 수명은 어떻게 할까요? → A: 원문은 사용자 확정 여부와 무관하게 분석 terminal 상태 뒤 보관하지 않는다. A DRAFT는 시간 제한 없이 남고, 사용자가 나중에 수정·확정해 CONFIRMED Profile과 확인 이벤트를 만든 뒤에만 B 추천을 요청할 수 있다.
 
 ## User Scenarios & Testing
 
@@ -82,25 +88,44 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **FR-005**: The system MUST reject invalid, expired, tampered, replayed, malformed, or deadline-exceeded requests.
 - **FR-006**: Provider failures and invalid AI results MUST NOT create a successful analysis result.
 - **FR-007**: Project ownership, source-input authorization, lease state, budget decisions, and persistence MUST remain controlled by the existing backend.
-- **FR-008**: The system MUST NOT log or persist raw source documents, secrets, provider credentials, or raw provider responses.
+- **FR-008**: The system MUST NOT log or persist normal raw source documents, full extracted text, secrets, provider credentials, or normal raw provider responses. Failure-diagnostic storage MUST be disabled by default. Only when explicitly enabled may an actually received final-analysis failure response be kept as one encrypted diagnostic record per attempt for no more than seven days; it MUST NOT be copied to ordinary logs, DTOs, or Audit records.
 - **FR-009**: The integration MUST support deterministic synthetic testing without requiring a paid provider call.
-- **FR-010**: The integration MUST connect AI v2's needs and candidate-ranking capabilities to the existing B capability assessment flow through an adapter; those provider-specific endpoints MUST NOT become public FullStack endpoints.
+- **FR-010**: The integration MUST connect AI v2's needs capability to the existing B capability assessment flow through an adapter. Core MUST send only the baseline planning fields (`project_name`, `project_type`, `domain`, `database`, `deployment`, `frontend`, `backend`, `ai`, `features`, `external_integrations`) and separately trusted runtime context. Any other profile field, including `purpose`, `target_users`, `constraints`, or an alias, MUST be rejected even if a snapshot incorrectly lists it as allowed.
 - **FR-011**: The integration MUST reuse AI v2 analysis logic without importing its Express API, Bearer authentication, web layer, or deployment-specific configuration.
-- **FR-012**: The system MUST NOT retain raw source documents after the one-time analysis flow completes; transient document content MUST be discarded after the result is saved or the analysis fails.
-- **FR-013**: The system MUST retain the structured analysis result and necessary audit metadata without retaining the original document content.
+- **FR-012**: The system MUST discard PDF, Markdown, and direct-text source content plus full extracted text when an analysis reaches a terminal state, regardless of whether the user later confirms the result; no 24-hour confirmation retention rule applies.
+- **FR-013**: The system MUST retain the structured A DRAFT result and necessary audit metadata without retaining the original document content. Confirming a DRAFT MUST create the CONFIRMED Profile, immutable confirmation event, and confirmation Audit record in one database transaction without automatically deleting the DRAFT. If any part fails, the confirmation state change and its Audit record MUST roll back together.
 - **FR-014**: B recommendation creation MUST be a separate operation that requires a completed, user-confirmed A analysis result; an incomplete, failed, stale, or unconfirmed result MUST be rejected.
+- **FR-014a**: A recommendation request without a CONFIRMED Profile MUST return HTTP 409 with error code `PROFILE_NOT_CONFIRMED`. The response MUST NOT contain the raw source, the full DRAFT, or an AI raw response; it MUST only direct the user to review and confirm the A DRAFT.
 - **FR-015**: B MUST return `NEEDS_INFORMATION` when decision-changing information is unresolved, with no recommendation items and one or more clarification questions.
 - **FR-016**: B MUST return `NO_COMPATIBLE_TOOLS` when information is sufficient but no verified tool combination satisfies all required capabilities, with no recommendation items and a reason.
 - **FR-017**: AI provider failure, timeout, parsing failure, invalid identifier, contract mismatch, version conflict, and persistence failure MUST be represented as a separate failure outcome and MUST NOT be converted into `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS`, or an apparently successful empty recommendation.
 - **FR-018**: A failed new recommendation MUST preserve the last successful recommendation and its basis.
 - **FR-019**: A valid AI response with `UNDETERMINED` capability claims and clarification questions MUST be processed as `NEEDS_INFORMATION`; missing required fields, unknown capability IDs, duplicate capability IDs, or malformed response data MUST be processed as `FAILED`.
+- **FR-020**: The system MUST preserve `POST /internal/v1/analysis` and add HMAC-protected, Core API-only `POST /internal/v1/skills/needs` and `POST /internal/v1/skills/rank` endpoints for B's separate recommendation operation.
+- **FR-021**: Until the B owner approves a mapping and decision rule for AI v2 ranking, `rank` output MUST NOT affect B's final recommendation, recommendation status, or persisted recommendation items.
 
 ### Key Entities
 
 - **Analysis Request**: The approved, authenticated request context and input reference for one analysis attempt.
 - **Analysis Result**: The validated profile, evidence, model metadata, status, and request context returned to the existing product flow.
 - **Provider Failure**: A normalized failure category that prevents a successful analysis result from being produced.
-- **Transient Analysis Input**: Document content held only for the duration of one approved analysis request and not retained as a document record.
+- **Transient Analysis Input**: PDF, Markdown, or direct-text content held only until its analysis reaches a terminal state and not retained as a document record.
+- **Failure Diagnostic**: At most one encrypted, actually received final-analysis failure response per attempt, deleted within seven days; it is not a normal analysis result and never contains a source document.
+- **Internal Skill Assessment Endpoints**: HMAC-protected AI service endpoints callable only by the Core API to derive needs and rank catalog candidates; they are not frontend-facing endpoints.
+
+### AI Source-Field Projection
+
+| Baseline planning field | Core-to-AI source path |
+|---|---|
+| `project_name` | `profile.projectName` |
+| `project_type` | `profile.projectType` |
+| `domain` | `profile.domain` |
+| `database`, `deployment`, `frontend`, `backend`, `ai`, `features`, `external_integrations` | `profile.item.<field_key>.<ordinal>` |
+
+The only separately trusted runtime paths are `developer.version`,
+`environment.osFamily`, `environment.clientId`, and `environment.clientVersion`.
+`purpose`, `target_users`, `constraints`, aliases, and every non-listed
+`field_key` are invalid even if a snapshot declares them as allowed.
 
 ## Success Criteria
 
@@ -111,7 +136,7 @@ The product team can deploy the AI v2 analysis capability without moving project
 - **SC-003**: 100% of provider or evidence-validation failures leave no new successful analysis result.
 - **SC-004**: Existing analysis callers require no endpoint or authentication change.
 - **SC-005**: Automated tests cover request mapping, response mapping, B capability mapping, authentication failures, provider failures, deadline handling, and sensitive-data exclusion.
-- **SC-006**: Tests verify that raw source content is removed after analysis completion or failure and is not retained in the database, ordinary logs, or durable service storage.
+- **SC-006**: Tests verify that PDF, Markdown, direct-text source content, and full extracted text are removed at analysis terminal state and are not retained in the database, ordinary logs, or durable service storage; failure diagnostics are disabled by default and, only if enabled, are encrypted, bounded to one actually received response, and deleted within seven days.
 - **SC-007**: A valid AI capability assessment reaches B's existing recommendation engine without changing B's capability keys, validation rules, or public recommendation API.
 - **SC-008**: A recommendation request cannot create a B recommendation before a completed and user-confirmed A result exists.
 - **SC-009**: Tests distinguish `NEEDS_INFORMATION`, `NO_COMPATIBLE_TOOLS`, and integration failure outcomes, including preservation of the last successful recommendation after a failed new attempt.
@@ -120,6 +145,6 @@ The product team can deploy the AI v2 analysis capability without moving project
 
 - FullStack remains the authority for project ownership, private input access, budget reservation, leases, and persistence.
 - The AI v2 repository is used as the source of reusable analysis logic, not as a replacement for the FullStack service boundary.
-- Raw source documents are retained only for the one-time analysis operation; the structured result and audit metadata remain after the source is removed.
+- Raw source documents are retained only until the analysis reaches a terminal state; the structured A DRAFT and audit metadata remain after the source is removed. A DRAFT may be confirmed later without any source re-read, and B rejects the request until that confirmation exists.
 - Paid provider calls are enabled only in explicitly configured environments; tests use deterministic providers or test doubles.
-- AI v2's needs/rank behavior is used internally to produce B's existing capability claims and questions; the public API remains FullStack's recommendation API.
+- AI v2's needs behavior is used internally to produce B's existing capability claims and questions; the public API remains FullStack's recommendation API. Whether AI v2 rank output affects B's final recommendation is deferred to the B owner.

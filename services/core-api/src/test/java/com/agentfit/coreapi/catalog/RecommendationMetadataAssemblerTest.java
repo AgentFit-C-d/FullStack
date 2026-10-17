@@ -33,7 +33,7 @@ class RecommendationMetadataAssemblerTest {
         assertEquals(JdbcRecommendationMetadataWriter.Necessity.REQUIRED,
             draft.capabilities().stream().filter(c -> c.key().equals("cap_document_reference"))
                 .findFirst().orElseThrow().necessity());
-        assertEquals(List.of("profile.features"), draft.capabilities().getFirst().inputRefs());
+        assertEquals(List.of("profile.item.features.0"), draft.capabilities().getFirst().inputRefs());
         assertEquals(1, draft.items().size());
         var item = draft.items().getFirst();
         assertEquals("example-tool", item.toolKey());
@@ -65,7 +65,7 @@ class RecommendationMetadataAssemblerTest {
     void keepsNeedsInformationFreeOfRecommendedItems() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var request = new CatalogRecommendationWorkflow.Request(claims(), List.of(),
-            Set.of("profile.features"), false, null, null);
+            Set.of("profile.item.features.0"), false, null, null);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash, request);
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, result.decision().status());
         var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
@@ -85,7 +85,7 @@ class RecommendationMetadataAssemblerTest {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(), List.of(),
-                Set.of("profile.features"), false, null, null));
+                Set.of("profile.item.features.0"), false, null, null));
         assertEquals(List.of("environment_target", "installed_components"),
             result.decision().questionCodes());
         var duplicateQuestion = new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
@@ -104,7 +104,7 @@ class RecommendationMetadataAssemblerTest {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(), List.of(),
-                Set.of("profile.features"), false,
+                Set.of("profile.item.features.0"), false,
                 new EnvironmentTarget("WINDOWS", "example-client", "1.0"),
                 java.util.Collections.singletonMap("example-tool", null)));
 
@@ -124,7 +124,7 @@ class RecommendationMetadataAssemblerTest {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(null), List.of(),
-                Set.of("profile.features"), false,
+                Set.of("profile.item.features.0"), false,
                 new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
 
         var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
@@ -145,7 +145,7 @@ class RecommendationMetadataAssemblerTest {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims("cap_ai_evaluation"), List.of(),
-                Set.of("profile.features"), false,
+                Set.of("profile.item.features.0"), false,
                 new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
 
         var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
@@ -160,7 +160,7 @@ class RecommendationMetadataAssemblerTest {
     private CatalogRecommendationWorkflow.Result recommendation(String hash) {
         return CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims(), List.of(),
-                Set.of("profile.features"), false,
+                Set.of("profile.item.features.0"), false,
                 new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
     }
 
@@ -172,7 +172,7 @@ class RecommendationMetadataAssemblerTest {
         return CapabilityKey.keys().stream().sorted().map(key -> new AiCapabilityIntake.Claim(key,
             key.equals(requiredKey) ? AiCapabilityIntake.Need.REQUIRED
                 : AiCapabilityIntake.Need.OPTIONAL,
-            "Confirmed profile requirement", List.of("profile.features"))).toList();
+            "Confirmed profile requirement", List.of("profile.item.features.0"))).toList();
     }
 
     private static PreviewBasis basis(String hash) {

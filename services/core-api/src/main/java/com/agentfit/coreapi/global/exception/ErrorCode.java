@@ -9,6 +9,7 @@ public enum ErrorCode {
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "Project not found"),
     INVALID_INPUT(HttpStatus.UNPROCESSABLE_ENTITY, "Request validation failed"),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "The project changed; reload and retry"),
+    PROFILE_NOT_CONFIRMED(HttpStatus.CONFLICT, "Review and confirm the A draft before requesting recommendations"),
     ANALYSIS_ALREADY_PROCESSING(HttpStatus.CONFLICT, "Analysis is already processing"),
     IDEMPOTENCY_KEY_REUSED(HttpStatus.CONFLICT, "Idempotency-Key was already used for another request"),
     ANALYSIS_ACTIVE_PROJECT_DELETE_FORBIDDEN(HttpStatus.CONFLICT, "Cannot delete a project while analysis is processing"),

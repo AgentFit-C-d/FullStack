@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -10,12 +11,12 @@ from app.main import app
 from app.settings import HmacKeyRing, SettingsError
 
 
-def signed_headers(body: bytes, *, key_id: str = "test-current", secret: str = "test-secret", timestamp: int | None = None):
+def signed_headers(body: bytes, *, path: str = "/internal/v1/analysis", key_id: str = "test-current", secret: str = "test-secret", timestamp: int | None = None):
     timestamp = int(time.time()) if timestamp is None else timestamp
     payload = json.loads(body)
     canonical = "\n".join([
         "POST",
-        "/internal/v1/analysis",
+        path,
         str(timestamp),
         payload["requestId"],
         str(payload["generation"]),
@@ -37,16 +38,22 @@ def payload(request_id: str = "r-1") -> bytes:
         "requestId": request_id,
         "generation": 1,
         "contractVersion": "v1",
-        "input": {"fixture": "contract"},
+        "input": {
+            "kind": "markdown",
+            "documentId": f"doc-{request_id}",
+            "content": "project_name: AgentFit\nfeatures: recommendation",
+            "deadline": (datetime.now(timezone.utc) + timedelta(seconds=30)).isoformat().replace("+00:00", "Z"),
+        },
     }, separators=(",", ":")).encode()
 
 
-def test_valid_hmac_returns_contract_double():
+def test_valid_hmac_returns_structured_analysis():
     body = payload()
     with TestClient(app) as client:
         response = client.post("/internal/v1/analysis", content=body, headers=signed_headers(body))
     assert response.status_code == 200
-    assert response.json()["result"]["kind"] == "CONTRACT_TEST_DOUBLE"
+    assert response.json()["result"]["profile"]["project_name"] == "AgentFit"
+    assert "content" not in response.json()["result"]
 
 
 def test_body_tampering_and_expired_timestamp_are_indistinguishable_auth_failures():

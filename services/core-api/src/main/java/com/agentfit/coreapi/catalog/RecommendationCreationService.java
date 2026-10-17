@@ -66,6 +66,9 @@ public final class RecommendationCreationService {
             if (!allowedSourceFields.containsAll(aiSourceValues.keySet())) {
                 throw new IllegalArgumentException("AI source values contain an unapproved field");
             }
+            if (allowedSourceFields.stream().anyMatch(field -> !AiCapabilityIntake.isApprovedSourceField(field))) {
+                throw new IllegalArgumentException("AI source values contain a prohibited field");
+            }
             if (installedToolVersions != null && installedToolVersions.entrySet().stream()
                 .anyMatch(entry -> blank(entry.getKey())
                     || entry.getValue() != null && entry.getValue().isBlank())) {
