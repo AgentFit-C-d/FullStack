@@ -1,6 +1,6 @@
 # Full Stack B current status
 
-**Phase 3 데모 연결 점검 (2026-10-17):** Docker의 Java 21 Core 설정 Bean → FastAPI HMAC needs → B 추천 판정 라이브 스모크가 합성 Catalog로 통과했다. OAuth 시작 경로의 GitHub 302, Core·AI health 200, skills.sh 공개 후보 2건 수집도 확인했다. 실제 로그인 완료부터 PostgreSQL 저장까지의 전체 HTTP 시연, Solar 실호출, 검증·승인 Catalog는 아직 별도 검증이 필요하다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).
+**Phase 3 데모 연결 점검 (2026-10-17):** Java 21 Core → FastAPI HMAC needs → B 추천 판정과 PostgreSQL 저장을 합성 Catalog로 검증했다. 모의 소유자 세션의 추천 POST → 최신 GET → 미리보기 POST도 격리 DB에서 통과했다. OAuth 시작 경로의 GitHub 302, Core·AI health 200, skills.sh 공개 후보 2건 수집을 확인했다. 실제 GitHub 로그인 완료 세션의 전체 HTTP 시연, Solar 실호출, 검증·승인 Catalog는 아직 별도 검증이 필요하다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).
 
 **`develop` 병합 갱신 (2026-10-17):** A의 분석 Worker·DRAFT 확정 경로와 AI v2 needs/rank 내부 호출 코드를 B Phase 2 브랜치에 병합했다. 충돌 해소 후 Core API 511개 테스트(실패·오류 0, 건너뜀 58), AI 27개 테스트, B의 로컬 PostgreSQL 최신 추천·최종화 통합 테스트를 통과했다. 건너뛴 테스트와 실제 Solar 호출·승인 Catalog를 이용한 종단 시연은 별도 검증이 필요하다. 아래 기존 Phase 1 체크리스트와 과거 연동 제한 문장은 당시 기록이며 현재 병합 상태를 뜻하지 않는다.
 
