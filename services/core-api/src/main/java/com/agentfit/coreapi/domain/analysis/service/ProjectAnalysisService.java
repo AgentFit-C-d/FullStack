@@ -64,8 +64,14 @@ public class ProjectAnalysisService {
         if (attempts.transitionToTerminal(attempt.id(), terminalState, errorCode, now)) {
             if (attempt.inputRevision()!=null) inputs.scrub(attempt.projectId(), attempt.inputRevision());
             admission.lock(); admission.decrement();
-            if (attempt.ownerUuid() != null) audit.record(new AuditEvent(attempt.ownerUuid(), UUID.fromString(attempt.projectId()), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
-            else audit.record(new AuditEvent(0L, attempt.projectId(), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
+            UUID projectUuid = uuidOrNull(attempt.projectId());
+            if (attempt.ownerUuid() != null && projectUuid != null) audit.record(new AuditEvent(attempt.ownerUuid(), projectUuid, auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
+            else audit.record(new AuditEvent(attempt.ownerId() == null ? 0L : attempt.ownerId(), attempt.projectId(), auditAction, "SUCCEEDED", now, errorCode, java.util.Map.of("state", terminalState)));
         }
+    }
+
+    private UUID uuidOrNull(String value) {
+        try { return UUID.fromString(value); }
+        catch (IllegalArgumentException ignored) { return null; }
     }
 }

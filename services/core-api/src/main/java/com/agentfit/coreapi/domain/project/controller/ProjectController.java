@@ -98,7 +98,9 @@ public class ProjectController {
         ProjectProfileReader.Profiles profiles = profileReader == null
             ? new ProjectProfileReader.Profiles(null, null) : profileReader.read(projectId);
         return detail != null
-            ? new ProjectDetailResponse(detail.project(), profiles.confirmed(), profiles.draft(), detail.latestAttempt())
+            ? new ProjectDetailResponse(detail.project(),
+                profiles.confirmed() == null ? detail.confirmed() : profiles.confirmed(),
+                profiles.draft() == null ? detail.draft() : profiles.draft(), detail.latestAttempt())
             : new ProjectDetailResponse(response(projectService.get(principal, projectId)), profiles.confirmed(), profiles.draft(), null);
     }
 

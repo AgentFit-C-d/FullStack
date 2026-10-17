@@ -8,11 +8,13 @@ import java.time.Clock;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /** Polls one Core-owned analysis attempt. Claiming happens before, and terminal persistence after, the AI call. */
 @Component
+@ConditionalOnProperty(name = "agentfit.analysis.worker.enabled", havingValue = "true", matchIfMissing = true)
 public class AnalysisWorker {
     private final AnalysisAttemptRepository attempts;
     private final PlanningInputRepository inputs;

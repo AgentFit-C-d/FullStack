@@ -39,7 +39,16 @@ CREATE TABLE IF NOT EXISTS project_profile (id UUID PRIMARY KEY, project_id UUID
 CREATE TABLE IF NOT EXISTS project_profile_item (id UUID PRIMARY KEY, project_profile_id UUID NOT NULL REFERENCES project_profile(id), field_key VARCHAR(40) NOT NULL, ordinal INT NOT NULL, evidence CLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS project_profile_gap (id UUID PRIMARY KEY, project_profile_id UUID NOT NULL REFERENCES project_profile(id), target_draft_version BIGINT NOT NULL, type VARCHAR(30) NOT NULL, message CLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS document_summary (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), kind VARCHAR(30) NOT NULL, byte_size BIGINT NOT NULL);
-CREATE TABLE IF NOT EXISTS analysis_attempt (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), request_id VARCHAR(100) NOT NULL, contract_version VARCHAR(50) NOT NULL, generation BIGINT NOT NULL, status VARCHAR(30) NOT NULL);
+CREATE TABLE IF NOT EXISTS analysis_attempt (
+    id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES project(id), request_id VARCHAR(100) NOT NULL,
+    contract_version VARCHAR(50) NOT NULL, generation BIGINT NOT NULL, status VARCHAR(30) NOT NULL,
+    error_code VARCHAR(50), started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    deadline_at TIMESTAMP WITH TIME ZONE NOT NULL, finished_at TIMESTAMP WITH TIME ZONE,
+    owner_id UUID, input_revision BIGINT, expected_project_version BIGINT, expected_basis VARCHAR(100),
+    execution_token UUID, claimed_at TIMESTAMP WITH TIME ZONE, lease_expires_at TIMESTAMP WITH TIME ZONE,
+    result_draft_id UUID, result_draft_version BIGINT,
+    UNIQUE (project_id, generation), UNIQUE (request_id)
+);
 CREATE TABLE IF NOT EXISTS developer_profile (id UUID PRIMARY KEY, project_id UUID NOT NULL UNIQUE REFERENCES project(id), version BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS environment_profile (id UUID PRIMARY KEY, project_id UUID NOT NULL UNIQUE REFERENCES project(id), version BIGINT NOT NULL, source VARCHAR(30) NOT NULL);
 CREATE TABLE IF NOT EXISTS environment_runtime (id UUID PRIMARY KEY, environment_profile_id UUID NOT NULL REFERENCES environment_profile(id), name VARCHAR(200) NOT NULL);

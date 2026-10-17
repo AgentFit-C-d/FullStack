@@ -43,6 +43,7 @@ class JdbcAnalysisAttemptV5UuidTest {
                 error_code VARCHAR(50), started_at TIMESTAMP WITH TIME ZONE NOT NULL,
                 deadline_at TIMESTAMP WITH TIME ZONE NOT NULL, finished_at TIMESTAMP WITH TIME ZONE,
                 owner_id UUID REFERENCES \"USER\"(id), input_revision BIGINT,
+                expected_project_version BIGINT, expected_basis VARCHAR(100),
                 UNIQUE (project_id, generation), UNIQUE (request_id))
             """);
         return jdbc;
