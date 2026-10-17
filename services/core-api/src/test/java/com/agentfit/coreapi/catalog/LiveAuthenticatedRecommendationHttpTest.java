@@ -132,6 +132,11 @@ class LiveAuthenticatedRecommendationHttpTest {
             .andExpect(jsonPath("$.verificationStatus").value("UNVERIFIED"))
             .andExpect(jsonPath("$.candidates[0].externalId").exists());
         String path = "/api/projects/" + project + "/recommendations";
+        mvc.perform(post(projectPath + "/config-previews")
+                .with(authentication(owner)).with(csrf()).contentType("application/json")
+                .content(new byte[1_048_577]))
+            .andExpect(status().is(413))
+            .andExpect(jsonPath("$.error.code").value("PAYLOAD_TOO_LARGE"));
         mvc.perform(post(path).with(ownerAuth).contentType("application/json")
                 .content("{\"expectedVersions\":{\"project\":2,\"developer\":1,\"environment\":1}}"))
             .andExpect(status().isForbidden());

@@ -450,6 +450,8 @@ paths:
         "403": { $ref: "#/components/responses/CsrfRejected" }
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
+        "413":
+          description: Preview JSON body exceeds 1 MiB and is not processed
         "422": { $ref: "#/components/responses/InvalidInput" }
   /api/tool-candidates:
     get:

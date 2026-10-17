@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**설정 입력 HTTP 한도 (2026-10-18):** 미리보기·ZIP 다운로드 POST의 JSON 본문을 각각 1 MiB로 제한한다. Content-Length가 없거나 실제보다 작아도 읽기 한도로 413 `PAYLOAD_TOO_LARGE`를 반환하며, 경계값 요청은 원본 bytes를 컨트롤러에 전달한다. 필터 단위 테스트, 인증된 Core·AI·PostgreSQL 데모 스모크, Java 21 Core 전체 테스트가 통과했다.
+
 **데모 산출물 안내 (2026-10-18):** 합성 카탈로그에 `README.md` 안내를 추가해 미리보기와 ZIP에 설정 예시 및 설치 금지·미검증 범위가 함께 나타나게 했다. 새 카탈로그 무결성 해시를 데모 설정에 고정했다. 미리보기와 ZIP의 두 파일 bytes 일치, Java 21 Core 전체 테스트, Catalog manifest 테스트, Core·AI·PostgreSQL 데모 스모크가 통과했다. 실제 Claude Code 적용 절차는 아직 검증·승인된 Catalog가 없어 제공하지 않는다.
 
 **ZIP 응답 캐시 방지 (2026-10-18):** 설정 ZIP 다운로드 응답에 `Cache-Control: no-store`를 추가했다. 설정 원문은 응답으로만 전달하고 저장하지 않는 기존 원칙을 HTTP 응답에도 적용한다. 누락을 재현한 컨트롤러 테스트가 수정 후 통과했다.

@@ -17,6 +17,8 @@ Swagger UI는 `http://localhost:8080/swagger-ui/index.html`, GitHub 로그인 �
 
 설정 미리보기 `POST /api/projects/{projectId}/config-previews`의 응답은 생성된 파일의 `content`·`diff`와 미충족 필수 Capability `unmetCapabilityKeys`를 함께 반환합니다. 부분 구성도 검토·승인할 수 있지만 경고를 표시해야 합니다. 설정 원문과 Diff는 응답에서만 전달되며 DB에는 저장하지 않습니다. 승인 뒤 다운로드를 다시 요청할 때는 동일한 미리보기 입력을 재제출해야 합니다.
 
+미리보기 생성과 ZIP 다운로드 요청의 JSON 본문은 각각 최대 1 MiB(1,048,576 bytes)입니다. 초과 요청은 생성 로직에 도달하기 전에 HTTP 413 `PAYLOAD_TOO_LARGE`로 거부하며 내용을 잘라 사용하지 않습니다.
+
 기존 로컬 PostgreSQL(5433)과 충돌하지 않도록 데모 Compose의 PostgreSQL은 호스트 5434에 노출합니다. Compose를 실행할 때 기존 `.env.docker` 값 또는 필수 환경 변수(DB 비밀번호, HMAC 키, GitHub OAuth 설정)가 필요합니다. 실행 명령: `docker compose -f infra/compose.fullstack.yaml -f infra/compose.demo.yaml up -d --build`. 종료 명령: 같은 `-f` 인자를 사용해 `down`을 실행합니다. 데모 DB 볼륨은 유지됩니다.
 
 AI의 실제 needs 응답이 모든 Capability를 미정으로 판단하면 추천 결과는 `NEEDS_INFORMATION`이 정상입니다. `RECOMMENDED`를 시연하려면 AI 계약에 따른 충분한 기획 정보 또는 명시적인 테스트 응답이 필요합니다. 이 카탈로그는 AI 판단을 조작하지 않습니다.
