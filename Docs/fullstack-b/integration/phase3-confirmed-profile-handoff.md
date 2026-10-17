@@ -14,6 +14,7 @@
 
 - 2026-10-17 로컬 Docker에서 Core API·FastAPI·PostgreSQL의 기동과 `/health` 200을 확인했다. 실제 Core의 Spring AI 클라이언트 Bean으로 HMAC `needs` 호출 → B Capability 변환 → 합성 Catalog 판정까지 Java 21 라이브 스모크가 통과했다. Java HTTP 클라이언트의 기본 h2c 업그레이드에서는 FastAPI가 요청 본문을 빈 값으로 받아 401을 반환했고, Core의 AI 전용 클라이언트를 HTTP/1.1로 고정해 해결했다. 이 테스트는 Solar 제공자 API 호출이나 DB 저장을 포함하지 않는다.
 - 준비된 로컬 OAuth 설정으로 `GET /api/oauth2/authorization/github`의 GitHub 302 리디렉션을 확인했다. 실제 사용자 로그인 완료·세션 기반 전체 HTTP 흐름은 아직 검증하지 않았다. 설정값과 비밀키는 문서나 로그에 기록하지 않는다.
+- 2026-10-17 추가 라이브 통합 테스트에서 격리된 PostgreSQL V1–V6 스키마의 CONFIRMED Profile과 환경 입력을 읽어 실제 FastAPI `needs`를 호출했다. 합성 Catalog로 `RECOMMENDED`를 판정한 뒤 추천 본문, Capability 9건, 추천 도구 1건, 성공 감사 이벤트가 한 DB에 저장됨을 확인했다. 테스트는 `AGENTFIT_LIVE_AI_URL`과 `AGENTFIT_TEST_POSTGRES_URL`이 모두 있을 때만 실행하며 테스트 스키마를 삭제한다. 이는 인증된 브라우저 HTTP 시연이나 Solar 호출을 증명하지 않는다.
 
 - B 입력 API: `GET /api/projects/{projectId}/recommendation-inputs`, `PUT /api/projects/{projectId}/developer-profile`, `PUT /api/projects/{projectId}/environment-profile`. A 세션·소유권 검사를 통과해야 하며 CONFIRMED Profile 이전에는 저장하지 않는다. 최초 `expectedVersion`은 0이고 응답 버전으로 다음 수정·추천 요청을 만든다. 설치 상태의 `installedComponentsKnown=false`는 미확인이고 `true`와 빈 배열은 설치 도구가 없다고 사용자가 선언한 상태다.
 - PostgreSQL V1–V6 마이그레이션에서 DRAFT 차단, CONFIRMED 직후 미입력 상태의 `NEEDS_INFORMATION` 저장, 개발자·환경 입력의 낙관적 버전 검사와 재조회, 환경 설치 상태 UNKNOWN 판정을 검증한다. 로컬 HMAC HTTP 테스트는 AI needs 요청 필드를 검증한다. 테스트 Catalog는 합성 데이터다.
