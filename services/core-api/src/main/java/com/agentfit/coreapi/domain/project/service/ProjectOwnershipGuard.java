@@ -29,6 +29,7 @@ public class ProjectOwnershipGuard {
         if (principal.userUuid() != null) {
             return repository.findByIdAndOwnerUuid(projectId, principal.userUuid())
                 .orElseThrow(ProjectNotFoundException::new);
+        }
         return repository.findByIdAndOwnerId(projectId, principal.userId())
             .orElseThrow(ProjectNotFoundException::new);
     }

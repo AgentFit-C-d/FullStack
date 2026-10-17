@@ -1,6 +1,6 @@
 package com.agentfit.coreapi.domain.project.repository;
 
-
+import com.agentfit.coreapi.domain.project.entity.Project;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +18,8 @@ public interface ProjectRepository {
 
     default Optional<Project> findByIdAndOwnerUuid(String id, UUID ownerUuid) {
         return Optional.empty();
+    }
+
     default Optional<Project> findByIdForUpdate(String id) {
         return Optional.empty();
     }
