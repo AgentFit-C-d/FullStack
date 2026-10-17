@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**`develop` 병합 갱신 (2026-10-17):** A의 분석 Worker·DRAFT 확정 경로와 AI v2 needs/rank 내부 호출 코드를 B Phase 2 브랜치에 병합했다. 충돌 해소 후 Core API 511개 테스트(실패·오류 0, 건너뜀 58), AI 27개 테스트, B의 로컬 PostgreSQL 최신 추천·최종화 통합 테스트를 통과했다. 건너뛴 테스트와 실제 Solar 호출·승인 Catalog를 이용한 종단 시연은 별도 검증이 필요하다. 아래 기존 Phase 1 체크리스트와 과거 연동 제한 문장은 당시 기록이며 현재 병합 상태를 뜻하지 않는다.
+
 **Phase 2 갱신 (2026-10-17):** A Phase 2가 들어간 `origin/main` 기준으로 B UUID JDBC 저장 경계를 수정했다. PostgreSQL V5에서 추천→Preview→승인→ZIP 이력/보고→삭제와 rollback을 검증했다. B 소유 최신 추천·설정 생성 이력·승인 Catalog 조회, 승인·ZIP 다운로드·사용자 적용 보고 API를 연결했다. 다만 실제 A 소유권 HTTP 조회는 UUID 바인딩 오류로 500이 재현됐고, GitHub 로그인 경로도 UUID 스키마와 맞지 않는다. 실제 AI Capability 응답과 검증·승인된 Claude Code Catalog 역시 미완이다. [검증 범위와 담당](integration/phase2-demo-readiness.md). 아래 B01–B12 체크 표시는 이 통합 검증만으로 올리지 않는다.
 
 Source: `Docs/AgentFit_AB_1차통합_개발기준.pdf` (sections 7–12) and the B PRD in `D:/capstone/Docs/team-prds/full-stack-b/PRD.md`.

@@ -42,7 +42,10 @@ public final class AgentFitOAuth2User implements OAuth2User, Serializable {
 
     @Override
     public String getName() {
-        return account.uuid() == null ? Long.toString(account.id()) : account.uuid().toString();
+        if (account.uuid() == null) {
+            throw new IllegalStateException("V5 OAuth principal requires a UUID user id");
+        }
+        return account.uuid().toString();
     }
 
     private static final class ListCopy {

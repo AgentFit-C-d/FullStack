@@ -36,17 +36,67 @@ paths:
               $ref: "#/components/schemas/AnalysisRequest"
       responses:
         "200":
-          description: Contract test-double result for the requested A6 context; Core API must still revalidate its A6 and project state before persistence.
+          description: Structured analysis proposal only. Core API must revalidate ownership, generation, deadline, and project state before persistence.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AnalysisResponse"
+              $ref: "#/components/schemas/AnalysisResponse"
         "400":
           $ref: "#/components/responses/InvalidAnalysisRequest"
         "401":
           $ref: "#/components/responses/InternalAuthFailed"
         "503":
           $ref: "#/components/responses/TemporarilyUnavailable"
+  /internal/v1/skills/needs:
+    post:
+      summary: Derive bounded skill needs from confirmed facts
+      operationId: processSkillNeeds
+      parameters:
+        - $ref: "#/components/parameters/AgentFitKeyId"
+        - $ref: "#/components/parameters/AgentFitTimestamp"
+        - $ref: "#/components/parameters/AgentFitSignature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillNeedsRequest"
+      responses:
+        "200":
+          description: At most six needs and the existing nine Capability assessment entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillNeedsResponse"
+        "400":
+          $ref: "#/components/responses/InvalidSkillRequest"
+        "401":
+          $ref: "#/components/responses/InternalAuthFailed"
+  /internal/v1/skills/rank:
+    post:
+      summary: Score supplied skill candidates without changing Core recommendation state
+      operationId: processSkillRank
+      parameters:
+        - $ref: "#/components/parameters/AgentFitKeyId"
+        - $ref: "#/components/parameters/AgentFitTimestamp"
+        - $ref: "#/components/parameters/AgentFitSignature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillRankRequest"
+      responses:
+        "200":
+          description: Candidate scores only. This response is not a recommendation decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillRankResponse"
+        "400":
+          $ref: "#/components/responses/InvalidSkillRequest"
+        "401":
+          $ref: "#/components/responses/InternalAuthFailed"
 components:
   parameters:
     AgentFitKeyId:
@@ -102,6 +152,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/InternalErrorResponse"
+    InvalidSkillRequest:
+      description: Needs or rank input is malformed or exceeds its bounded limits.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InternalErrorResponse"
   schemas:
     HealthResponse:
       type: object
@@ -131,9 +187,29 @@ components:
           minLength: 1
           description: Version of this analysis DTO contract.
         input:
-          type: object
-          additionalProperties: true
-          description: AI analysis input. Detailed model semantics are owned by a later AI feature.
+          $ref: "#/components/schemas/AnalysisInput"
+    AnalysisInput:
+      type: object
+      required: [kind, documentId, deadline]
+      additionalProperties: false
+      oneOf:
+        - required: [content]
+        - required: [contentBase64]
+      properties:
+        kind:
+          type: string
+          enum: [pdf, markdown, text]
+        documentId:
+          type: string
+        content:
+          type: string
+          description: Transient UTF-8 document content. It is never returned or persisted by AI Service.
+        contentBase64:
+          type: string
+          description: Alternative base64 representation for binary PDF input.
+        deadline:
+          type: string
+          format: date-time
     AnalysisResponse:
       type: object
       required: [requestId, generation, contractVersion, result]
@@ -148,13 +224,99 @@ components:
           type: string
         result:
           type: object
-          required: [kind]
           additionalProperties: false
-          description: Contract-only test-double result. A future AI contract version replaces this with model-specific semantics.
+          description: Structured AI v2 analysis proposal; raw document and provider response are excluded.
           properties:
-            kind:
+            schemaVersion:
               type: string
-              enum: [CONTRACT_TEST_DOUBLE]
+            profile:
+              type: object
+            fieldStates:
+              type: object
+            candidates:
+              type: array
+            questions:
+              type: array
+            safeWarnings:
+              type: array
+            modelMetadata:
+              type: object
+    SkillNeedsRequest:
+      type: object
+      required: [requestId, generation, contractVersion, input]
+      additionalProperties: false
+      properties:
+        requestId: {type: string}
+        generation: {type: integer, minimum: 1}
+        contractVersion: {type: string}
+        input:
+          type: object
+          required: [facts]
+          additionalProperties: false
+          properties:
+            facts:
+              type: array
+              maxItems: 100
+              items:
+                $ref: "#/components/schemas/ConfirmedFact"
+            deadline:
+              type: string
+              format: date-time
+    SkillNeedsResponse:
+      type: object
+      required: [requestId, generation, contractVersion, result]
+      properties:
+        requestId: {type: string}
+        generation: {type: integer}
+        contractVersion: {type: string}
+        result:
+          type: object
+          required: [needs, claims, questions]
+    ConfirmedFact:
+      type: object
+      required: [id, field, value]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: Core-approved canonical source path.
+          pattern: '^(profile\.(projectName|projectType|domain)|profile\.item\.(database|deployment|frontend|backend|ai|features|external_integrations)\.[0-9]+|developer\.version|environment\.(osFamily|clientId|clientVersion))$'
+        field:
+          type: string
+        value:
+          oneOf:
+            - type: string
+            - type: array
+              items: {type: string}
+    SkillRankRequest:
+      type: object
+      required: [requestId, generation, contractVersion, input]
+      additionalProperties: false
+      properties:
+        requestId: {type: string}
+        generation: {type: integer, minimum: 1}
+        contractVersion: {type: string}
+        input:
+          type: object
+          required: [needs, candidates]
+          additionalProperties: false
+          properties:
+            needs:
+              type: array
+              maxItems: 6
+            candidates:
+              type: array
+              maxItems: 15
+    SkillRankResponse:
+      type: object
+      required: [requestId, generation, contractVersion, result]
+      properties:
+        requestId: {type: string}
+        generation: {type: integer}
+        contractVersion: {type: string}
+        result:
+          type: object
+          required: [matches]
     InternalErrorResponse:
       type: object
       required: [error]

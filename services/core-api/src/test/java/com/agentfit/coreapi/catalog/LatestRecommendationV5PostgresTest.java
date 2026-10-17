@@ -104,10 +104,10 @@ class LatestRecommendationV5PostgresTest {
                 new AiCapabilityIntake.Claim(key,
                     key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                         : AiCapabilityIntake.Need.OPTIONAL,
-                    "confirmed requirement", List.of("profile.features"))).toList();
+                    "confirmed requirement", List.of("profile.item.features.0"))).toList();
             var result = CatalogRecommendationWorkflow.evaluate(catalogDirectory, hash,
                 new CatalogRecommendationWorkflow.Request(claims, List.of(),
-                    Set.of("profile.features"), false,
+                    Set.of("profile.item.features.0"), false,
                     new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of()));
             var basis = new PreviewBasis(projectId.toString(), 1, profileId.toString(), 1,
                 confirmationId.toString(), 0, 1, 1, catalog.release().releaseId(), hash);

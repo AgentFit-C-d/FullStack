@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS project (
     analysis_generation BIGINT NOT NULL,
     review_generation BIGINT NOT NULL,
     current_review_id UUID,
+    developer_role VARCHAR(30) NOT NULL DEFAULT 'BACKEND',
+    current_input_revision BIGINT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );

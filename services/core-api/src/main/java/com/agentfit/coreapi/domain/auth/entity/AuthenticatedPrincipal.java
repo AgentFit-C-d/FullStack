@@ -1,9 +1,5 @@
 package com.agentfit.coreapi.domain.auth.entity;
 
-
-import com.agentfit.coreapi.domain.auth.entity.*;
-import com.agentfit.coreapi.domain.auth.repository.*;
-import com.agentfit.coreapi.domain.auth.service.*;
 import java.time.Instant;
 import java.util.UUID;
 

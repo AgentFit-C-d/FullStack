@@ -133,10 +133,10 @@ class RecommendationLatestDetailsServiceTest {
             new AiCapabilityIntake.Claim(key,
                 key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
                     : AiCapabilityIntake.Need.OPTIONAL,
-                "confirmed requirement", List.of("profile.features"))).toList();
+                "confirmed requirement", List.of("profile.item.features.0"))).toList();
         var result = CatalogRecommendationWorkflow.evaluate(directory, hash,
             new CatalogRecommendationWorkflow.Request(claims, List.of(),
-                Set.of("profile.features"), false, TARGET, Map.of()));
+                Set.of("profile.item.features.0"), false, TARGET, Map.of()));
         var basis = new PreviewBasis("11111111-1111-1111-1111-111111111111", 1,
             "22222222-2222-2222-2222-222222222222", 1,
             "33333333-3333-3333-3333-333333333333", 0, 0, 1,

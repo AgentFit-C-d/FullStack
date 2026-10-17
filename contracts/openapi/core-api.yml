@@ -258,6 +258,34 @@ paths:
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/AnalysisConflict" }
         "429": { $ref: "#/components/responses/AnalysisCapacity" }
+  /api/projects/{projectId}/profile/confirm:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Confirm the structured A DRAFT for B recommendation
+      operationId: confirmProjectProfile
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileConfirmationRequest"
+      responses:
+        "200":
+          description: CONFIRMED Profile created while retaining the DRAFT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileConfirmationResponse"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
   /api/projects/{projectId}/recommendations:
     parameters:
       - $ref: "#/components/parameters/ProjectId"
@@ -284,7 +312,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/CsrfRejected" }
         "404": { $ref: "#/components/responses/ProjectNotFound" }
-        "409": { $ref: "#/components/responses/VersionConflict" }
+        "409": { $ref: "#/components/responses/RecommendationConflict" }
         "422": { $ref: "#/components/responses/InvalidInput" }
         "503": { $ref: "#/components/responses/InternalError" }
   /api/projects/{projectId}/recommendations/latest:
@@ -391,6 +419,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     VersionConflict:
       description: The supplied expected version is no longer current; refresh before retrying
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RecommendationConflict:
+      description: "Error code is `VERSION_CONFLICT` when a supplied version is stale, or `PROFILE_NOT_CONFIRMED` when the user must review and confirm the A DRAFT before requesting B."
       content:
         application/json:
           schema:
@@ -540,6 +574,43 @@ components:
             project: { type: integer, minimum: 1 }
             developer: { type: integer, minimum: 0 }
             environment: { type: integer, minimum: 0 }
+    ProfileConfirmationRequest:
+      type: object
+      required: [expectedDraftVersion, requestId]
+      additionalProperties: false
+      properties:
+        expectedDraftVersion: { type: integer, minimum: 1 }
+        requestId: { type: string, minLength: 1, maxLength: 100 }
+        projectName: { type: string, nullable: true, maxLength: 200 }
+        projectType: { type: string, nullable: true, maxLength: 200 }
+        domain: { type: string, nullable: true, maxLength: 200 }
+        fieldMetadata: { type: string, nullable: true }
+        items:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: false
+            required: [fieldKey, ordinal, name, source, evidence]
+            properties:
+              fieldKey: { type: string, minLength: 1, maxLength: 40 }
+              ordinal: { type: integer, minimum: 0 }
+              category: { type: string, nullable: true, maxLength: 30 }
+              area: { type: string, nullable: true, maxLength: 40 }
+              name: { type: string, minLength: 1, maxLength: 200 }
+              version: { type: string, nullable: true, maxLength: 50 }
+              source: { type: string, enum: [DOCUMENT, USER] }
+              evidence: { type: string }
+    ProfileConfirmationResponse:
+      type: object
+      required: [projectId, confirmedProfileId, confirmedProfileVersion, confirmationEventId, projectVersion, sourceDraftVersion]
+      properties:
+        projectId: { type: string, format: uuid }
+        confirmedProfileId: { type: string, format: uuid }
+        confirmedProfileVersion: { type: integer, minimum: 1 }
+        confirmationEventId: { type: string, format: uuid }
+        projectVersion: { type: integer, minimum: 0 }
+        sourceDraftVersion: { type: integer, minimum: 1 }
     RecommendationResponse:
       type: object
       required: [recommendationId, status, basis]
