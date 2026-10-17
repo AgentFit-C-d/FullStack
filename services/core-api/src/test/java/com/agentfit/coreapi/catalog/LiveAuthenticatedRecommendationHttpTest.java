@@ -3,12 +3,12 @@ package com.agentfit.coreapi.catalog;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.agentfit.coreapi.domain.auth.entity.AgentFitOAuth2User;
 import com.agentfit.coreapi.domain.auth.entity.UserAccount;
-import com.agentfit.coreapi.integration.ab.RecommendationInputsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Path;
 import java.sql.DriverManager;
@@ -48,7 +48,6 @@ class LiveAuthenticatedRecommendationHttpTest {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
-    @Autowired RecommendationInputsService inputs;
     @Autowired ObjectMapper mapper;
 
     @BeforeAll
@@ -106,16 +105,31 @@ class LiveAuthenticatedRecommendationHttpTest {
                 .content("{\"expectedDraftVersion\":1,\"requestId\":\"secure-http-demo\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.projectVersion").value(2));
-        org.junit.jupiter.api.Assertions.assertEquals(1, inputs.saveEnvironment(project.toString(), 0,
-            "WINDOWS", "demo-claude-code", "demo-1", true, List.of()));
-
         var ownerAuth = authentication(owner);
+        String projectPath = "/api/projects/" + project;
+        mvc.perform(put(projectPath + "/developer-profile")
+                .with(ownerAuth).with(csrf()).contentType("application/json")
+                .content("{\"expectedVersion\":0,\"role\":\"backend\",\"responsibilities\":[\"API integration\"]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.version").value(1));
+        mvc.perform(put(projectPath + "/environment-profile")
+                .with(authentication(owner)).with(csrf()).contentType("application/json")
+                .content("{\"expectedVersion\":0,\"osFamily\":\"WINDOWS\",\"clientId\":\"demo-claude-code\",\"clientVersion\":\"demo-1\",\"installedComponentsKnown\":true,\"installedComponents\":[]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.version").value(1));
+        mvc.perform(get(projectPath + "/recommendation-inputs").with(authentication(owner)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.developer.role").value("backend"))
+            .andExpect(jsonPath("$.environment.clientId").value("demo-claude-code"));
+        mvc.perform(get("/api/tool-catalog").with(authentication(owner)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].key").value("demo-all-capabilities-skill"));
         String path = "/api/projects/" + project + "/recommendations";
         mvc.perform(post(path).with(ownerAuth).contentType("application/json")
-                .content("{\"expectedVersions\":{\"project\":2,\"developer\":0,\"environment\":1}}"))
+                .content("{\"expectedVersions\":{\"project\":2,\"developer\":1,\"environment\":1}}"))
             .andExpect(status().isForbidden());
         var created = mvc.perform(post(path).with(authentication(owner)).with(csrf()).contentType("application/json")
-                .content("{\"expectedVersions\":{\"project\":2,\"developer\":0,\"environment\":1}}"))
+                .content("{\"expectedVersions\":{\"project\":2,\"developer\":1,\"environment\":1}}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("RECOMMENDED"))
             .andReturn();
