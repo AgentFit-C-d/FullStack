@@ -1,0 +1,8 @@
+# Local synthetic Catalog demonstration only. Never use as verified tool evidence.
+services:
+  core-api:
+    environment:
+      AGENTFIT_CATALOG_DIRECTORY: /opt/agentfit/demo-catalog
+      AGENTFIT_CATALOG_APPROVED_HASH: 453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6
+    volumes:
+      - ../demo/catalog-synthetic:/opt/agentfit/demo-catalog:ro

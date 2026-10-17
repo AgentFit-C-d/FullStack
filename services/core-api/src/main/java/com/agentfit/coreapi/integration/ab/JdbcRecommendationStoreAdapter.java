@@ -111,12 +111,14 @@ public final class JdbcRecommendationStoreAdapter implements RecommendationCreat
         List<JdbcRecommendationMetadataWriter.Notice> notices = new ArrayList<>();
         for (String code : result.decision().questionCodes()) {
             if ("undetermined_capability".equals(code)) {
-                var question = result.clarificationQuestions().stream().findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("AI question required for undetermined Capability"));
+                var question = result.clarificationQuestions().stream().findFirst();
                 notices.add(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
                     JdbcRecommendationMetadataWriter.NoticeType.QUESTION,
-                    JdbcRecommendationMetadataWriter.QuestionOwner.AI, question.field(), code,
-                    question.reason(), List.of(question.field())));
+                    question.isPresent() ? JdbcRecommendationMetadataWriter.QuestionOwner.AI
+                        : JdbcRecommendationMetadataWriter.QuestionOwner.B,
+                    question.map(q -> q.field()).orElse("profile.details"), code,
+                    question.map(q -> q.reason()).orElse("필요한 기능을 판단할 기획 정보를 입력해 주세요."),
+                    question.map(q -> List.of(q.field())).orElseGet(List::of)));
             } else if ("pending_conflict".equals(code)) {
                 notices.add(new JdbcRecommendationMetadataWriter.Notice(UUID.randomUUID().toString(),
                     JdbcRecommendationMetadataWriter.NoticeType.QUESTION,

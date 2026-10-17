@@ -56,10 +56,21 @@ class JdbcRecommendationStoreTransactionTest {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation WHERE id = ?", Integer.class, UUID.fromString(recommendationId)));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_event WHERE project_id = ? AND event = 'RECOMMENDATION_CREATED'", Integer.class, projectId));
 
+        var undecided = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
+            new RecommendationDecision(RecommendationDecision.Status.NEEDS_INFORMATION,
+                List.of(), List.of("undetermined_capability"), List.of()),
+            CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(key,
+                AiCapabilityIntake.Need.UNDETERMINED, "insufficient facts", List.of())).toList(),
+            List.of(), List.of());
+        String undecidedId = new JdbcRecommendationStoreAdapter(dataSource)
+            .saveIfUnchanged(snapshot, basis, undecided);
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
+            Integer.class, UUID.fromString(undecidedId)));
+
         jdbc.update("UPDATE environment_profile SET version = 2 WHERE project_id = ?", projectId);
         assertThrows(RecommendationCreationService.SnapshotChangedException.class,
             () -> new JdbcRecommendationStoreAdapter(dataSource).saveIfUnchanged(snapshot, basis, result));
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation", Integer.class));
     }
 
     private static void seedSnapshot(JdbcTemplate jdbc, UUID projectId, PreviewBasis basis) {

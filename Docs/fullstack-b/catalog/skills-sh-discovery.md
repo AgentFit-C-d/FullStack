@@ -37,6 +37,7 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsS
 ## 아직 필요한 연결
 
 - 2026-10-10 [skills.sh 공식 API 문서](https://www.skills.sh/docs/api)를 재확인했다. 검색·상세 경로, `Authorization: Bearer` 형식, 검색 `data`와 상세 `id`/`source`/`hash`는 현재 수집 코드의 가정과 맞는다. 상세 `hash`는 스냅샷이 없으면 `null`일 수 있으므로 현재 코드는 해당 후보를 거부한다. 이 확인은 문서 계약 점검이며 실서버 호출 성공이나 Catalog 검증은 아니다.
+- 2026-10-17 읽기 전용 실서버 확인: 토큰 없는 `GET /api/v1/skills/search?q=react&limit=2`는 HTTP 401, `GET /api/search?q=react&limit=2`는 HTTP 200과 검색 결과 2건을 반환했다. 후자는 CLI가 사용하는 비공식 경로이며 응답도 공식 v1과 다르다(`skills` 배열). 현재 B 수집기는 **공식 v1 + Vercel OIDC 토큰**만 사용하므로 토큰 없는 환경에서 실제 후보 갱신은 성공하지 않는다. 비공식 경로 결과를 승인 Catalog로 자동 승격하지 않는다.
 - 공식 인증 방식은 **Vercel 프로젝트 OIDC 토큰**이다. 배포 대상이 아직 정해지지 않아 Spring Boot 서버에서 이 토큰을 안전하게 발급·전달·갱신할 방법은 미확정이다. 일반 사용자 로그인 토큰이나 임의의 고정 API 키로 대체하지 않는다. 이 작업에서는 실서버 호출을 하지 않았다.
 - 로컬 관리용 갱신·선별 명령과 별도 결정 파일은 추가됐지만, 서버의 보호된 수집 API·배치, 인증된 검토자/관리 UI·DB 승인 기록, 검증된 Catalog 릴리스 생성 절차는 미구현이다.
 - API 응답에는 AgentFit의 OS·Client 버전 호환성, 권한, 의존성·충돌 검증 결과가 없다. 해시 변경은 재검토 신호이지 품질·보안 검증이 아니다.

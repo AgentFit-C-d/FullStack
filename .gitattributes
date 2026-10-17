@@ -1,0 +1,2 @@
+# Catalog hashes cover exact bytes; Git must not change line endings on checkout.
+demo/catalog-synthetic/** -text
