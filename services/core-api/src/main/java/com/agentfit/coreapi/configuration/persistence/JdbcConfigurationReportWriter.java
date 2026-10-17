@@ -13,14 +13,14 @@ import java.util.UUID;
 /** Updates B9's latest USER statement; A must append the historical Audit event in this transaction. */
 public final class JdbcConfigurationReportWriter {
     public ConfigurationHistoryReadModel.UserReport save(Connection transaction, String exportId,
-        long actorId, String reportId, ConfigurationUserReport.Accepted accepted) throws SQLException {
+        UUID actorId, String reportId, ConfigurationUserReport.Accepted accepted) throws SQLException {
         Objects.requireNonNull(transaction);
         Objects.requireNonNull(accepted);
         if (transaction.getAutoCommit()) {
             throw new IllegalArgumentException("report requires a caller-owned transaction");
         }
         UUID export = uuid(exportId);
-        if (actorId <= 0) throw new IllegalArgumentException("invalid authenticated actor ID");
+        if (actorId == null) throw new IllegalArgumentException("invalid authenticated actor ID");
         UUID report = uuid(reportId);
         if (accepted.reportedAt() == null || accepted.reportedState() == null
             || accepted.reportedState() == ConfigurationUserReport.ReportedState.APPLIED
@@ -48,7 +48,7 @@ public final class JdbcConfigurationReportWriter {
             update.setObject(1, report);
             update.setString(2, accepted.reportedState().name());
             update.setString(3, accepted.reasonCode() == null ? null : accepted.reasonCode().name());
-            update.setLong(4, actorId);
+            update.setObject(4, actorId);
             update.setTimestamp(5, Timestamp.from(accepted.reportedAt()));
             update.setObject(6, export);
             if (update.executeUpdate() != 1) {

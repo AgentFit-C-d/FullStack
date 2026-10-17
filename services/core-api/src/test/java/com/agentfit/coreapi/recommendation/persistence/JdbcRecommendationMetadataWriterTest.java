@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** B1-B4 are created in A's transaction; temporary A parent tables are rolled back. */
 @EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
 class JdbcRecommendationMetadataWriterTest {
-    private static final String PROJECT = "project-1";
+    private static final String PROJECT = "11111111-1111-4111-8111-111111111111";
     private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private Connection connection;
@@ -43,7 +43,7 @@ class JdbcRecommendationMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA " + schema);
             statement.execute("SET LOCAL search_path TO " + schema);
-            statement.execute("CREATE TABLE project (id VARCHAR(36) PRIMARY KEY)");
+            statement.execute("CREATE TABLE project (id UUID PRIMARY KEY)");
             statement.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY)");
             statement.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY)");
             try (var stream = getClass().getResourceAsStream("/db/postgresql/b-schema.sql")) {
@@ -193,7 +193,7 @@ class JdbcRecommendationMetadataWriterTest {
         var basis = recommended(UUID.randomUUID()).basis();
         var claims = Arrays.stream(CapabilityKey.values()).map(key ->
             new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.OPTIONAL,
-                "confirmed profile", List.of("profile.item.features.0"))).toList();
+                "confirmed profile", List.of("profile.features"))).toList();
         var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
             basis.catalogHash(), new RecommendationDecision(
                 RecommendationDecision.Status.NO_ADDITIONS_NEEDED, List.of(), List.of(),
@@ -386,7 +386,7 @@ class JdbcRecommendationMetadataWriterTest {
         var basis = recommended(UUID.randomUUID()).basis();
         var claims = Arrays.stream(CapabilityKey.values()).map(key ->
             new AiCapabilityIntake.Claim(key.key(), AiCapabilityIntake.Need.REQUIRED,
-                "confirmed requirement", List.of("profile.item.features.0"))).toList();
+                "confirmed requirement", List.of("profile.features"))).toList();
         var result = new CatalogRecommendationWorkflow.Result(basis.catalogReleaseId(),
             basis.catalogHash(), new RecommendationDecision(
                 RecommendationDecision.Status.NEEDS_INFORMATION, List.of(),
@@ -415,7 +415,7 @@ class JdbcRecommendationMetadataWriterTest {
         var capabilities = Arrays.stream(CapabilityKey.values()).map(key ->
             new JdbcRecommendationMetadataWriter.Capability(key.key(),
                 JdbcRecommendationMetadataWriter.Necessity.REQUIRED, "confirmed requirement",
-                List.of("profile.item.features.0"))).toList();
+                List.of("profile.features"))).toList();
         return new JdbcRecommendationMetadataWriter.Draft(id.toString(),
             new PreviewBasis(PROJECT.toString(), 1, PROFILE.toString(), 1, EVENT.toString(),
                 0, 0, 1, "test-release", "a".repeat(64)),

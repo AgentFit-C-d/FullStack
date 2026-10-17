@@ -35,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Opt-in real PostgreSQL test: no A tables or test data survive the rollback. */
 @EnabledIfEnvironmentVariable(named = "AGENTFIT_TEST_POSTGRES_URL", matches = ".+")
 class JdbcPreviewMetadataWriterTest {
-    private static final String PROJECT = "project-1";
+    private static final String PROJECT = "11111111-1111-4111-8111-111111111111";
+    private static final UUID ACTOR = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     private static final UUID PROFILE = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID EVENT = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final UUID RECOMMENDATION = UUID.fromString("44444444-4444-4444-4444-444444444444");
@@ -53,7 +54,7 @@ class JdbcPreviewMetadataWriterTest {
         try (Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA " + schema);
             statement.execute("SET LOCAL search_path TO " + schema);
-            statement.execute("CREATE TABLE project (id VARCHAR(36) PRIMARY KEY)");
+            statement.execute("CREATE TABLE project (id UUID PRIMARY KEY)");
             statement.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY)");
             statement.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY)");
             try (var stream = getClass().getResourceAsStream("/db/postgresql/b-schema.sql")) {
@@ -246,7 +247,7 @@ class JdbcPreviewMetadataWriterTest {
     @Test
     void storesApprovalOnlyOnceAgainstExactPreviewFingerprint() throws Exception {
         UUID previewId = UUID.randomUUID();
-        long actorId = 42L;
+        UUID actorId = ACTOR;
         Instant createdAt = Instant.parse("2026-10-11T05:00:00Z");
         Instant expiresAt = createdAt.plusSeconds(600);
         var preview = new JdbcPreviewMetadataWriter().write(connection, previewId.toString(),
@@ -256,7 +257,7 @@ class JdbcPreviewMetadataWriterTest {
             createdAt.plusSeconds(300));
 
         assertThrows(IllegalArgumentException.class,
-            () -> new JdbcPreviewApprovalWriter().approve(connection, 0L, preview, issued));
+            () -> new JdbcPreviewApprovalWriter().approve(connection, null, preview, issued));
 
         var saved = new JdbcPreviewApprovalWriter().approve(connection, actorId,
             preview, issued);
@@ -268,7 +269,7 @@ class JdbcPreviewMetadataWriterTest {
                      + "FROM config_preview WHERE id = '" + previewId + "'")) {
             assertTrue(row.next());
             assertEquals(UUID.fromString(issued.approvalId()), row.getObject(1, UUID.class));
-            assertEquals(actorId, row.getLong(2));
+            assertEquals(actorId, row.getObject(2, UUID.class));
             assertEquals(issued.approvedAt(), row.getTimestamp(3).toInstant());
             assertEquals(issued.expiresAt(), row.getTimestamp(4).toInstant());
         }
@@ -292,7 +293,7 @@ class JdbcPreviewMetadataWriterTest {
 
         assertThrows(IllegalStateException.class,
             () -> new JdbcPreviewApprovalWriter().approve(connection,
-                42L, preview, approval));
+                ACTOR, preview, approval));
         try (Statement statement = connection.createStatement();
              ResultSet row = statement.executeQuery("SELECT approval_id FROM config_preview")) {
             assertTrue(row.next());
@@ -315,7 +316,7 @@ class JdbcPreviewMetadataWriterTest {
 
         var issued = new StoredApprovalState(UUID.randomUUID().toString(), previewId.toString(),
             preview.fingerprint(), createdAt.plusSeconds(60), createdAt.plusSeconds(300));
-        new JdbcPreviewApprovalWriter().approve(connection, 42L,
+        new JdbcPreviewApprovalWriter().approve(connection, ACTOR,
             preview, issued);
 
         var approved = reader.byApprovalId(connection, PROJECT.toString(), issued.approvalId());
@@ -433,7 +434,7 @@ class JdbcPreviewMetadataWriterTest {
     void storesOnlyLatestUserStatementAfterExport() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());
-        long actorId = 42L;
+        UUID actorId = ACTOR;
         UUID reportId = UUID.randomUUID();
         Instant reportedAt = fixture.generated().history().createdAt().plusSeconds(5);
         var accepted = ConfigurationUserReport.accept(
@@ -442,7 +443,7 @@ class JdbcPreviewMetadataWriterTest {
 
         assertThrows(IllegalArgumentException.class,
             () -> new JdbcConfigurationReportWriter().save(connection,
-                fixture.generationId().toString(), 0L, reportId.toString(), accepted));
+                fixture.generationId().toString(), null, reportId.toString(), accepted));
 
         var saved = new JdbcConfigurationReportWriter().save(connection,
             fixture.generationId().toString(), actorId, reportId.toString(), accepted);
@@ -457,7 +458,7 @@ class JdbcPreviewMetadataWriterTest {
             assertEquals(reportId, row.getObject(1, UUID.class));
             assertEquals("FAILED", row.getString(2));
             assertEquals("COPY_FAILED", row.getString(3));
-            assertEquals(actorId, row.getLong(4));
+            assertEquals(actorId, row.getObject(4, UUID.class));
             assertEquals(reportedAt, row.getTimestamp(5).toInstant());
         }
     }
@@ -471,7 +472,7 @@ class JdbcPreviewMetadataWriterTest {
             Clock.fixed(fixture.generated().history().createdAt().minusSeconds(1), ZoneOffset.UTC));
 
         assertThrows(IllegalArgumentException.class, () -> new JdbcConfigurationReportWriter().save(
-            connection, fixture.generationId().toString(), 42L,
+            connection, fixture.generationId().toString(), ACTOR,
             UUID.randomUUID().toString(), accepted));
         try (Statement statement = connection.createStatement();
              ResultSet row = statement.executeQuery("SELECT latest_report_id FROM config_export")) {
@@ -489,17 +490,17 @@ class JdbcPreviewMetadataWriterTest {
         var first = ConfigurationUserReport.accept(
             new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
                 ConfigurationUserReport.ReasonCode.UNKNOWN), Clock.fixed(firstTime, ZoneOffset.UTC));
-        writer.save(connection, fixture.generationId().toString(), 42L,
+        writer.save(connection, fixture.generationId().toString(), ACTOR,
             UUID.randomUUID().toString(), first);
         UUID latestId = UUID.randomUUID();
         var latest = ConfigurationUserReport.accept(
             new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
             Clock.fixed(firstTime.plusSeconds(1), ZoneOffset.UTC));
-        writer.save(connection, fixture.generationId().toString(), 42L,
+        writer.save(connection, fixture.generationId().toString(), ACTOR,
             latestId.toString(), latest);
 
         assertThrows(IllegalArgumentException.class, () -> writer.save(connection,
-            fixture.generationId().toString(), 42L, UUID.randomUUID().toString(), first));
+            fixture.generationId().toString(), ACTOR, UUID.randomUUID().toString(), first));
         try (Statement statement = connection.createStatement();
              ResultSet row = statement.executeQuery(
                  "SELECT latest_report_id, reported_state, reason_code FROM config_export")) {
@@ -518,7 +519,7 @@ class JdbcPreviewMetadataWriterTest {
             new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.APPLIED, null),
             Clock.fixed(fixture.generated().history().createdAt().plusSeconds(1), ZoneOffset.UTC));
         new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
-            42L, UUID.randomUUID().toString(), accepted);
+            ACTOR, UUID.randomUUID().toString(), accepted);
 
         var deleter = new JdbcProjectBDataDeleter();
         assertEquals(0, deleter.delete(connection, UUID.randomUUID().toString()));
@@ -627,7 +628,7 @@ class JdbcPreviewMetadataWriterTest {
             Clock.fixed(fixture.generated().history().createdAt().plusSeconds(5), ZoneOffset.UTC));
         UUID reportId = UUID.randomUUID();
         new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
-            42L, reportId.toString(), accepted);
+            ACTOR, reportId.toString(), accepted);
 
         var stored = new JdbcConfigurationHistoryReader().find(connection,
             PROJECT.toString(), fixture.generationId().toString());
@@ -651,7 +652,7 @@ class JdbcPreviewMetadataWriterTest {
                 null), Clock.fixed(fixture.generated().history().createdAt().plusSeconds(1),
                 ZoneOffset.UTC));
         new JdbcConfigurationReportWriter().save(connection, fixture.generationId().toString(),
-            42L, UUID.randomUUID().toString(), accepted);
+            ACTOR, UUID.randomUUID().toString(), accepted);
 
         try (Statement statement = connection.createStatement()) {
             SQLException rejected = assertThrows(SQLException.class, () -> statement.executeUpdate(
@@ -752,7 +753,7 @@ class JdbcPreviewMetadataWriterTest {
             new ConfigurationUserReport.Submission(ConfigurationUserReport.ReportedState.FAILED,
                 ConfigurationUserReport.ReasonCode.UNKNOWN),
             Clock.fixed(generatedAt.plusSeconds(5), ZoneOffset.UTC));
-        writer.save(connection, fixture.generationId().toString(), 42L,
+        writer.save(connection, fixture.generationId().toString(), ACTOR,
             latestReportId.toString(), latest);
 
         try (Connection competing = secondConnection()) {
@@ -761,7 +762,7 @@ class JdbcPreviewMetadataWriterTest {
             }
             SQLException locked = assertThrows(SQLException.class,
                 () -> writer.save(competing, fixture.generationId().toString(),
-                    42L, UUID.randomUUID().toString(), older));
+                    ACTOR, UUID.randomUUID().toString(), older));
             assertEquals("55P03", locked.getSQLState());
 
             competing.rollback();
@@ -770,7 +771,7 @@ class JdbcPreviewMetadataWriterTest {
             setSearchPath(competing);
             assertThrows(IllegalArgumentException.class,
                 () -> writer.save(competing, fixture.generationId().toString(),
-                    42L, UUID.randomUUID().toString(), older));
+                    ACTOR, UUID.randomUUID().toString(), older));
             competing.rollback();
             var stored = new JdbcConfigurationHistoryReader().find(connection,
                 PROJECT.toString(), fixture.generationId().toString());
@@ -846,7 +847,7 @@ class JdbcPreviewMetadataWriterTest {
             draft, now.minusSeconds(120), now.plusSeconds(600));
         var approval = new StoredApprovalState(UUID.randomUUID().toString(),
             previewId.toString(), preview.fingerprint(), now.minusSeconds(60), now.plusSeconds(300));
-        new JdbcPreviewApprovalWriter().approve(connection, 42L, preview, approval);
+        new JdbcPreviewApprovalWriter().approve(connection, ACTOR, preview, approval);
         var generated = ApprovedConfigurationGenerator.generate(preview, approval, basis(),
             approval.approvalId(), previewId.toString(), preview.fingerprint(), input,
             generationId.toString(), Clock.fixed(now, ZoneOffset.UTC));

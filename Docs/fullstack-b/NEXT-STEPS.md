@@ -1,6 +1,6 @@
 # 풀스택 B 다음 작업과 인계 경계
 
-> 현재 기준: A와 B Phase 1 소스는 `origin/develop`에 병합됐다. 그러나 A snapshot·AI adapter·공개 API·통합 DB migration은 아직 연결하지 않았다. 작업 전 [A/B 병합 연계 현황](../ab-integration-status.md)과 아래 순서를 함께 확인한다.
+> 2026-10-17 `develop` 병합 메모: A 분석 Worker·Profile 확정과 AI v2 needs/rank 코드가 현재 B 브랜치에 들어왔다. 아래 표와 "A·AI 코드 없이" 절은 이전 인계 계획을 보존한 기록이다. 현재 남은 핵심 검증은 실제 Solar 응답, 승인 Catalog, 인증 세션부터 추천·미리보기·승인·다운로드까지의 종단 실행이다.
 
 [현재 체크리스트](STATUS.md)의 미완료 항목을 실제 연결 순서로 묶었다. 앞 단계에 필요한 A·AI 입력이 준비되기 전에는 공개 API나 실제 설정 다운로드를 완료로 표시하지 않는다.
 [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)에 현재 B 코드가 요구하는 필드와 팀 합의가 필요한 쟁점을 정리했다. 이 제안은 확정 계약이 아니다. 1차 실제 Catalog는 Claude Code부터 검증하고 Codex는 후속으로 둔다.
