@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.catalog;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.EnvironmentTarget;
@@ -13,7 +14,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class DemoCatalogWorkflowTest {
-    private static final String HASH = "453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6";
+    private static final String HASH = "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f";
 
     @Test
     void syntheticDemoCatalogRecommendsOnlyForMatchingTargetAndCompleteAiClaims() {
@@ -40,5 +41,17 @@ class DemoCatalogWorkflowTest {
                 new EnvironmentTarget("WINDOWS", "demo-claude-code", "demo-1"), Map.of()));
 
         assertEquals(RecommendationDecision.Status.NEEDS_INFORMATION, result.decision().status());
+    }
+
+    @Test
+    void syntheticDownloadIncludesAReviewableDoNotInstallGuide() {
+        Path catalog = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
+        var files = CatalogStaticTemplateRenderer.render(catalog, HASH,
+            Set.of("demo-all-capabilities-skill"));
+
+        assertEquals(Set.of("config/demo.txt", "README.md"), files.stream()
+            .map(file -> file.relativePath()).collect(java.util.stream.Collectors.toSet()));
+        assertTrue(files.stream().filter(file -> file.relativePath().equals("README.md"))
+            .findFirst().orElseThrow().content().contains("Do not install"));
     }
 }

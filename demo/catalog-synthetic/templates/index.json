@@ -1,1 +1,1 @@
-{"schemaVersion":1,"items":[{"toolKey":"demo-all-capabilities-skill","targetKey":"main","relativePath":"config/demo.txt","sourcePath":"templates/main.txt"}]}
+{"schemaVersion":1,"items":[{"toolKey":"demo-all-capabilities-skill","targetKey":"main","relativePath":"config/demo.txt","sourcePath":"templates/main.txt"},{"toolKey":"demo-all-capabilities-skill","targetKey":"guide","relativePath":"README.md","sourcePath":"guides/demo-readme.md"}]}

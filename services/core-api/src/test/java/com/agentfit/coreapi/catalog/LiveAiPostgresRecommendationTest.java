@@ -99,7 +99,7 @@ class LiveAiPostgresRecommendationTest {
                 var catalog = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
                 var snapshots = new OwnerCheckedSnapshotReaderAdapter(jdbc);
                 var approved = new ServerConfiguredCatalogReader(catalog,
-                    "453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6");
+                    "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f");
                 var service = new RecommendationCreationService(
                     snapshots,
                     new AiCapabilityAnalyzerAdapter(context.getBean(HttpAiAnalysisClient.class), new ObjectMapper()),

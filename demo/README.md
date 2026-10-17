@@ -2,6 +2,8 @@
 
 `catalog-synthetic`은 B 추천·미리보기·승인·다운로드 경로를 연결 시연하기 위한 **가짜 데이터**입니다. `PASS`와 근거 URL도 시연용 값이며 Claude Code 또는 도구의 실제 호환성을 검증했다는 뜻이 아닙니다. 생성된 설정은 설치하지 마세요.
 
+데모 카탈로그의 Preview와 ZIP에는 `config/demo.txt`와 `README.md`가 함께 들어갑니다. `README.md`는 실제 설치 지침이 아니라 설치 금지, 인증·연결·검증 미수행, 데모 종료 후 삭제를 알리는 안내입니다. 두 파일의 내용은 승인 전 Preview에 표시한 것과 ZIP에서 같아야 합니다. 안내 파일 추가로 데모 카탈로그 해시가 변경되어 Compose와 테스트의 고정 해시도 함께 갱신했습니다.
+
 `infra/compose.demo.yaml`을 기본 Compose 파일 뒤에 지정할 때만 이 카탈로그가 로드됩니다. 환경 입력은 `WINDOWS` / `demo-claude-code` / `demo-1`을 사용합니다. 일반 `infra/compose.fullstack.yaml`에는 이 카탈로그를 연결하지 않습니다.
 
 실제 skills.sh 데이터는 별도 **미검증 후보 목록**으로 수집합니다. 로컬 Java가 21 미만이어도 Docker의 Java 21 빌더로 아래 명령이 실행됩니다. 로그인한 사용자는 `GET /api/tool-candidates`에서 후보를 볼 수 있지만, 추천·ZIP에는 이 후보가 들어가지 않습니다. 공식 API는 Vercel OIDC 토큰이 필요하며, `-Public`은 가용성이 보장되지 않는 실험적 공개 경로입니다.

@@ -16,7 +16,7 @@ class ServerConfiguredCatalogReaderTest {
     @Test
     void demoCatalogIsReadableOnlyWithItsExplicitHash() {
         Path demo = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
-        String hash = "453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6";
+        String hash = "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f";
         assertEquals(hash, new ServerConfiguredCatalogReader(demo, hash).current().approvedHash());
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> new ServerConfiguredCatalogReader(demo, "a".repeat(64)).current());

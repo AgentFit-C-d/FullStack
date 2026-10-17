@@ -46,7 +46,7 @@ class LiveAuthenticatedRecommendationHttpTest {
     private static final Path CATALOG = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
     private static final Path CANDIDATES = Path.of("..", "..", "catalog-candidates", "skills-sh-candidates.json")
         .toAbsolutePath().normalize();
-    private static final String CATALOG_HASH = "453860c7e6d0be7871813e185ca52259bba774426318ced7451efe2b53aee2d6";
+    private static final String CATALOG_HASH = "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f";
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -186,11 +186,17 @@ class LiveAuthenticatedRecommendationHttpTest {
         org.junit.jupiter.api.Assertions.assertEquals(0x50, download.getResponse().getContentAsByteArray()[0]);
         org.junit.jupiter.api.Assertions.assertEquals(0x4b, download.getResponse().getContentAsByteArray()[1]);
         try (var zip = new ZipInputStream(new ByteArrayInputStream(download.getResponse().getContentAsByteArray()))) {
-            var entry = zip.getNextEntry();
-            org.junit.jupiter.api.Assertions.assertNotNull(entry);
-            org.junit.jupiter.api.Assertions.assertEquals("config/demo.txt", entry.getName());
-            org.junit.jupiter.api.Assertions.assertTrue(new String(zip.readAllBytes(), StandardCharsets.UTF_8)
-                .contains("DEMO ONLY"));
+            Map<String, String> extracted = new java.util.HashMap<>();
+            for (var entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+                extracted.put(entry.getName(), new String(zip.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            org.junit.jupiter.api.Assertions.assertEquals(
+                java.util.Set.of("config/demo.txt", "README.md"), extracted.keySet());
+            for (var file : previewJson.get("files")) {
+                org.junit.jupiter.api.Assertions.assertEquals(file.get("content").asText(),
+                    extracted.get(file.get("relativePath").asText()));
+            }
+            org.junit.jupiter.api.Assertions.assertTrue(extracted.get("README.md").contains("Do not install"));
         }
     }
 
