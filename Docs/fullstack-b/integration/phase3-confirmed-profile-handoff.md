@@ -12,6 +12,9 @@
 
 ## 검증 범위와 남은 연결
 
+- 2026-10-17 로컬 Docker에서 Core API·FastAPI·PostgreSQL의 기동과 `/health` 200을 확인했다. 실제 Core의 Spring AI 클라이언트 Bean으로 HMAC `needs` 호출 → B Capability 변환 → 합성 Catalog 판정까지 Java 21 라이브 스모크가 통과했다. Java HTTP 클라이언트의 기본 h2c 업그레이드에서는 FastAPI가 요청 본문을 빈 값으로 받아 401을 반환했고, Core의 AI 전용 클라이언트를 HTTP/1.1로 고정해 해결했다. 이 테스트는 Solar 제공자 API 호출이나 DB 저장을 포함하지 않는다.
+- 준비된 로컬 OAuth 설정으로 `GET /api/oauth2/authorization/github`의 GitHub 302 리디렉션을 확인했다. 실제 사용자 로그인 완료·세션 기반 전체 HTTP 흐름은 아직 검증하지 않았다. 설정값과 비밀키는 문서나 로그에 기록하지 않는다.
+
 - B 입력 API: `GET /api/projects/{projectId}/recommendation-inputs`, `PUT /api/projects/{projectId}/developer-profile`, `PUT /api/projects/{projectId}/environment-profile`. A 세션·소유권 검사를 통과해야 하며 CONFIRMED Profile 이전에는 저장하지 않는다. 최초 `expectedVersion`은 0이고 응답 버전으로 다음 수정·추천 요청을 만든다. 설치 상태의 `installedComponentsKnown=false`는 미확인이고 `true`와 빈 배열은 설치 도구가 없다고 사용자가 선언한 상태다.
 - PostgreSQL V1–V6 마이그레이션에서 DRAFT 차단, CONFIRMED 직후 미입력 상태의 `NEEDS_INFORMATION` 저장, 개발자·환경 입력의 낙관적 버전 검사와 재조회, 환경 설치 상태 UNKNOWN 판정을 검증한다. 로컬 HMAC HTTP 테스트는 AI needs 요청 필드를 검증한다. 테스트 Catalog는 합성 데이터다.
 - 실제 A 확인 API → B 추천 HTTP API의 한 번에 이어지는 시연, Solar 실호출, 첫 Claude Code Catalog의 독립 검증·승인, 프론트 입력 화면 연결은 별도 작업이다. 현재 확인되지 않은 Catalog를 실제 지원 도구로 표시하지 않는다.
