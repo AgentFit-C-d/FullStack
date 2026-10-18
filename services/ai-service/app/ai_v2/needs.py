@@ -19,6 +19,7 @@ def build_needs(facts: list[dict[str, Any]]) -> dict[str, Any]:
     if not isinstance(facts, list) or len(facts) > 100:
         raise ValueError("INVALID_SKILL_REQUEST")
     needs: list[dict[str, Any]] = []
+    evidence: list[tuple[str, str]] = []
     for fact in facts:
         if not isinstance(fact, dict) or not isinstance(fact.get("id"), str) or not fact["id"]:
             raise ValueError("INVALID_SKILL_REQUEST")
@@ -30,25 +31,25 @@ def build_needs(facts: list[dict[str, Any]]) -> dict[str, Any]:
             continue
         values = value if isinstance(value, list) else [value]
         for part in values:
-            if len(needs) >= 6:
-                break
             text = str(part).strip()
             if not text:
                 continue
-            needs.append({
-                "id": f"n{len(needs) + 1}",
-                "name": text[:100],
-                "query": _query_for(field, text),
-                "sourceFields": [fact["id"]],
-            })
+            evidence.append((fact["id"], text))
+            if len(needs) < 6:
+                needs.append({
+                    "id": f"n{len(needs) + 1}",
+                    "name": text[:100],
+                    "query": _query_for(field, text),
+                    "sourceFields": [fact["id"]],
+                })
     claims = []
     for key in CAPABILITY_KEYS:
-        related = [need["id"] for need in needs if _related(key, need["name"])]
+        related = list(dict.fromkeys(field_id for field_id, text in evidence if _related(key, text)))
         claims.append({
             "capabilityKey": key,
             "need": "REQUIRED" if related else "UNDETERMINED",
             "reason": "확인된 사실에서 필요한 작업입니다." if related else "판단할 수 있는 확인 사실이 부족합니다.",
-            "sourceFields": [field for need in needs if need["id"] in related for field in need["sourceFields"]],
+            "sourceFields": related,
         })
     unresolved = {claim["capabilityKey"] for claim in claims if claim["need"] == "UNDETERMINED"}
     question_fields = {fact["id"] for fact in facts if fact.get("id")}
@@ -70,7 +71,7 @@ def _related(capability: str, name: str) -> bool:
     mapping = {
         "cap_document_reference": ("문서", "document"),
         "cap_repository_navigation": ("repo", "코드", "repository"),
-        "cap_code_review": ("검토", "review"),
+        "cap_code_review": ("검토", "리뷰", "review"),
         "cap_test_authoring": ("테스트", "test"),
         "cap_test_execution": ("테스트", "test"),
         "cap_browser_verification": ("브라우저", "browser"),
