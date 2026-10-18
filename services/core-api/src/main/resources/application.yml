@@ -34,6 +34,8 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 agentfit:
+  skills-sh:
+    snapshot-path: ${AGENTFIT_SKILLS_SH_SNAPSHOT_PATH:}
   ai-service:
     analysis-url: ${AGENTFIT_AI_SERVICE_ANALYSIS_URL:${AGENTFIT_AI_SERVICE_URL:http://localhost:8000/internal/v1/analysis}}
     needs-url: ${AGENTFIT_AI_SERVICE_NEEDS_URL:http://localhost:8000/internal/v1/skills/needs}

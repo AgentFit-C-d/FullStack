@@ -31,9 +31,16 @@ public final class SkillsShCandidateCollector {
     private final URI baseUri;
     private final Supplier<String> tokenSupplier;
     private final Clock clock;
+    private final boolean publicExperimental;
 
     public SkillsShCandidateCollector(Transport transport, URI baseUri,
                                       Supplier<String> tokenSupplier, Clock clock) {
+        this(transport, baseUri, tokenSupplier, clock, false);
+    }
+
+    private SkillsShCandidateCollector(Transport transport, URI baseUri,
+                                       Supplier<String> tokenSupplier, Clock clock,
+                                       boolean publicExperimental) {
         if (transport == null || baseUri == null || tokenSupplier == null || clock == null
             || !("https".equals(baseUri.getScheme()) && "skills.sh".equals(baseUri.getHost())
                 || "http".equals(baseUri.getScheme()) && "127.0.0.1".equals(baseUri.getHost()))
@@ -45,6 +52,26 @@ public final class SkillsShCandidateCollector {
         this.baseUri = baseUri;
         this.tokenSupplier = tokenSupplier;
         this.clock = clock;
+        this.publicExperimental = publicExperimental;
+    }
+
+    /** Undocumented public endpoints: discovery only; no Catalog approval or stability guarantee. */
+    public static SkillsShCandidateCollector publicExperimental() {
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NEVER).build();
+        Transport transport = (uri, ignored) -> {
+            HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(8))
+                .header("Accept", "application/json").GET().build();
+            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            try (InputStream body = response.body()) {
+                return new Response(response.statusCode(), body.readNBytes(MAX_BODY_BYTES + 1));
+            }
+        };
+        return publicExperimental(transport, URI.create("https://skills.sh"), Clock.systemUTC());
+    }
+
+    static SkillsShCandidateCollector publicExperimental(Transport transport, URI baseUri, Clock clock) {
+        return new SkillsShCandidateCollector(transport, baseUri, () -> "", clock, true);
     }
 
     public static SkillsShCandidateCollector production(Supplier<String> oidcTokenSupplier) {
@@ -71,13 +98,14 @@ public final class SkillsShCandidateCollector {
             throw new IllegalArgumentException("invalid discovery query");
         }
         String token = tokenSupplier.get();
-        if (token == null || token.isBlank() || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0) {
+        if (!publicExperimental && (token == null || token.isBlank()
+            || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0)) {
             throw new DiscoveryException("skills.sh credential unavailable");
         }
-        String path = "/api/v1/skills/search?q="
+        String path = (publicExperimental ? "/api/search?q=" : "/api/v1/skills/search?q=")
             + URLEncoder.encode(query.strip(), StandardCharsets.UTF_8) + "&limit=" + limit;
         JsonNode listing = get(path, token);
-        JsonNode data = listing.path("data");
+        JsonNode data = listing.path(publicExperimental ? "skills" : "data");
         if (!data.isArray() || data.size() > limit) throw new DiscoveryException("invalid skills.sh listing");
         List<SkillCandidate> result = new ArrayList<>();
         Set<String> ids = new HashSet<>();
@@ -93,14 +121,14 @@ public final class SkillsShCandidateCollector {
                 || !ids.add(id)) throw new DiscoveryException("invalid skills.sh ID");
             String name = required(item, "name");
             String source = required(item, "source");
-            String url = required(item, "url");
+            String url = publicExperimental ? "https://skills.sh/" + id : required(item, "url");
             if (!source.equals(id.substring(0, id.lastIndexOf('/')))
                 || !url.equals("https://skills.sh/" + id)) {
                 throw new DiscoveryException("inconsistent skills.sh item");
             }
-            JsonNode detail = get("/api/v1/skills/" + id, token);
-            if (!id.equals(required(detail, "id"))
-                || !source.equals(required(detail, "source"))) {
+            JsonNode detail = get((publicExperimental ? "/api/download/" : "/api/v1/skills/") + id, token);
+            if (!publicExperimental && (!id.equals(required(detail, "id"))
+                || !source.equals(required(detail, "source")))) {
                 throw new DiscoveryException("skills.sh detail identity mismatch");
             }
             String hash = required(detail, "hash");

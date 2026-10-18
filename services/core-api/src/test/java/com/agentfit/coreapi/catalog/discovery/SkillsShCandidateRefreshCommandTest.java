@@ -45,6 +45,29 @@ class SkillsShCandidateRefreshCommandTest {
     }
 
     @Test
+    void explicitPublicModeStagesCandidatesWithExperimentalLabel() throws Exception {
+        Path directory = Files.createTempDirectory(Path.of("target"), "skills-public-command-");
+        Path snapshot = directory.resolve("candidates.json");
+        try {
+            var collector = SkillsShCandidateCollector.publicExperimental((uri, token) -> {
+                assertEquals("", token);
+                return uri.getPath().equals("/api/search")
+                    ? response(200, "{\"skills\":[{\"id\":\"owner/repo/example\",\"name\":\"Example\",\"source\":\"owner/repo\"}]}")
+                    : response(200, "{\"hash\":\"" + "a".repeat(64) + "\",\"files\":[]}");
+            }, URI.create("https://skills.sh"), Clock.fixed(Instant.parse("2026-10-17T00:00:00Z"), ZoneOffset.UTC));
+            var out = new ByteArrayOutputStream();
+            assertEquals(0, SkillsShCandidateRefreshCommand.run(
+                new String[] {"react", "2", snapshot.toString(), "--public"},
+                new PrintStream(out), new PrintStream(new ByteArrayOutputStream()), collector));
+            assertEquals(1, SkillsShCandidateSnapshot.load(snapshot).size());
+            assertTrue(out.toString(StandardCharsets.UTF_8).contains("EXPERIMENTAL_PUBLIC_API"));
+        } finally {
+            Files.deleteIfExists(snapshot);
+            Files.deleteIfExists(directory);
+        }
+    }
+
+    @Test
     void providerFailurePreservesExistingSnapshotAndDoesNotPrintCredential() throws Exception {
         Path directory = Files.createTempDirectory(Path.of("target"), "skills-command-fail-");
         Path snapshot = directory.resolve("candidates.json");

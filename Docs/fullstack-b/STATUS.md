@@ -1,5 +1,19 @@
 # Full Stack B current status
 
+**설정 입력 HTTP 한도 (2026-10-18):** 미리보기·ZIP 다운로드 POST의 JSON 본문을 각각 1 MiB로 제한한다. Content-Length가 없거나 실제보다 작아도 읽기 한도로 413 `PAYLOAD_TOO_LARGE`를 반환하며, 경계값 요청은 원본 bytes를 컨트롤러에 전달한다. 필터 단위 테스트, 인증된 Core·AI·PostgreSQL 데모 스모크, Java 21 Core 전체 테스트가 통과했다.
+
+**데모 산출물 안내 (2026-10-18):** 합성 카탈로그에 `README.md` 안내를 추가해 미리보기와 ZIP에 설정 예시 및 설치 금지·미검증 범위가 함께 나타나게 했다. 새 카탈로그 무결성 해시를 데모 설정에 고정했다. 미리보기와 ZIP의 두 파일 bytes 일치, Java 21 Core 전체 테스트, Catalog manifest 테스트, Core·AI·PostgreSQL 데모 스모크가 통과했다. 실제 Claude Code 적용 절차는 아직 검증·승인된 Catalog가 없어 제공하지 않는다.
+
+**ZIP 응답 캐시 방지 (2026-10-18):** 설정 ZIP 다운로드 응답에 `Cache-Control: no-store`를 추가했다. 설정 원문은 응답으로만 전달하고 저장하지 않는 기존 원칙을 HTTP 응답에도 적용한다. 누락을 재현한 컨트롤러 테스트가 수정 후 통과했다.
+
+**미리보기 공개 응답 보완 (2026-10-18):** 부분 구성을 만들 때 남는 필수 Capability 키와 생성된 임시 파일 내용·Diff를 `POST /config-previews` 응답에 포함한다. 이 응답은 `Cache-Control: no-store`를 사용한다. 파일 원문·Diff는 DB에 저장하지 않고 승인·다운로드 시 기존과 같이 동일 입력과 지문을 재검증한다. Java 21 Core 전체 테스트와 Core·AI·PostgreSQL 데모 스모크가 통과했다.
+
+**skills.sh 후보 데모 연결 (2026-10-18):** 로컬 Java 17 환경에서 Docker Java 21로 `refresh_skills_candidates.ps1 -Public`을 실행해 실제 후보 2건을 갱신했다(`changed=0`). 데모 Compose는 후보 스냅샷을 Core에 읽기 전용으로 연결하고, 인증된 `GET /api/tool-candidates`는 `UNVERIFIED`로 표시한다. Core·AI health 200, API 경로 등록, 비로그인 401, 인증 형태의 백엔드 후보 조회→합성 Catalog 추천→ZIP 통합 흐름을 확인했다. skills.sh 후보는 실제 추천·설정에 사용하지 않는다. 공식 v1 API는 Vercel OIDC가 없어 실호출하지 않았다.
+
+**B 공개 API 통합 검증 (2026-10-18):** A DRAFT 확정 뒤 B의 개발자 프로필 PUT·환경 프로필 PUT·입력 GET·승인 Catalog GET을 Spring Security 필터와 A 소유권 검사로 호출했다. 반환된 입력 버전으로 추천 POST를 수행해 FastAPI `needs` → PostgreSQL 추천 저장 → 미리보기·승인·ZIP 다운로드까지 통과했다. 테스트 인증과 합성 Catalog를 사용하며, 실제 GitHub 콜백·Solar 문서 분석·프론트 화면·실제 승인 도구를 입증하지 않는다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).
+
+**Phase 3 데모 연결 점검 (2026-10-17):** Java 21 Core → FastAPI HMAC needs → B 추천 판정과 PostgreSQL 저장을 합성 Catalog로 검증했다. Spring Security 필터, OAuth 형태의 테스트 인증, CSRF, A UUID 소유권 조회를 거쳐 A DRAFT 사용자 확정 → B 추천 POST/최신 GET → 설정 미리보기 POST → 승인 POST → ZIP 다운로드 POST까지 격리 DB에서 통과했다. 이 백엔드 경로는 `tools/run_phase3_demo_smoke.ps1`로 재현할 수 있다. Java 21 빌더의 전체 Core 테스트, OAuth 시작 경로의 GitHub 302, Core·AI health 200, skills.sh 공개 후보 2건 수집도 확인했다. 실제 GitHub 콜백·브라우저 세션, A 분석 Worker부터 한 번에 이어지는 시연, Solar 실호출, 검증·승인 Catalog, 프론트 화면 연결은 아직 별도 검증이 필요하다. 테스트 중 A의 실패 진단 만료 삭제 작업에서 PostgreSQL `Instant` 바인딩 오류 로그가 발견돼 A 측 수정이 필요하다. [검증 세부](integration/phase3-confirmed-profile-handoff.md).
+
 **`develop` 병합 갱신 (2026-10-17):** A의 분석 Worker·DRAFT 확정 경로와 AI v2 needs/rank 내부 호출 코드를 B Phase 2 브랜치에 병합했다. 충돌 해소 후 Core API 511개 테스트(실패·오류 0, 건너뜀 58), AI 27개 테스트, B의 로컬 PostgreSQL 최신 추천·최종화 통합 테스트를 통과했다. 건너뛴 테스트와 실제 Solar 호출·승인 Catalog를 이용한 종단 시연은 별도 검증이 필요하다. 아래 기존 Phase 1 체크리스트와 과거 연동 제한 문장은 당시 기록이며 현재 병합 상태를 뜻하지 않는다.
 
 **Phase 2 갱신 (2026-10-17):** A Phase 2가 들어간 `origin/main` 기준으로 B UUID JDBC 저장 경계를 수정했다. PostgreSQL V5에서 추천→Preview→승인→ZIP 이력/보고→삭제와 rollback을 검증했다. B 소유 최신 추천·설정 생성 이력·승인 Catalog 조회, 승인·ZIP 다운로드·사용자 적용 보고 API를 연결했다. 다만 실제 A 소유권 HTTP 조회는 UUID 바인딩 오류로 500이 재현됐고, GitHub 로그인 경로도 UUID 스키마와 맞지 않는다. 실제 AI Capability 응답과 검증·승인된 Claude Code Catalog 역시 미완이다. [검증 범위와 담당](integration/phase2-demo-readiness.md). 아래 B01–B12 체크 표시는 이 통합 검증만으로 올리지 않는다.

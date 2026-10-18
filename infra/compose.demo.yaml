@@ -1,0 +1,13 @@
+# Local synthetic Catalog demonstration only. Never use as verified tool evidence.
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5434:5432"
+  core-api:
+    environment:
+      AGENTFIT_CATALOG_DIRECTORY: /opt/agentfit/demo-catalog
+      AGENTFIT_CATALOG_APPROVED_HASH: 30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f
+      AGENTFIT_SKILLS_SH_SNAPSHOT_PATH: /opt/agentfit/discovery/skills-sh-candidates.json
+    volumes:
+      - ../demo/catalog-synthetic:/opt/agentfit/demo-catalog:ro
+      - ../catalog-candidates:/opt/agentfit/discovery:ro

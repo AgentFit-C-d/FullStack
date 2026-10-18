@@ -39,6 +39,27 @@ class SkillsShCandidateCollectorTest {
     }
 
     @Test
+    void publicExperimentalSearchStagesOnlyHashedCandidates() {
+        SkillsShCandidateCollector.Transport transport = (uri, bearer) -> {
+            assertEquals("", bearer);
+            if (uri.getRawPath().equals("/api/search")) {
+                assertEquals("q=react&limit=2", uri.getRawQuery());
+                return new SkillsShCandidateCollector.Response(200, ("{\"skills\":[{\"id\":\"owner/repo/example\","
+                    + "\"name\":\"Example Skill\",\"source\":\"owner/repo\"}]}").getBytes(StandardCharsets.UTF_8));
+            }
+            assertEquals("/api/download/owner/repo/example", uri.getRawPath());
+            return new SkillsShCandidateCollector.Response(200,
+                ("{\"hash\":\"" + HASH + "\",\"files\":[]}").getBytes(StandardCharsets.UTF_8));
+        };
+        var publicCollector = SkillsShCandidateCollector.publicExperimental(transport,
+            URI.create("https://skills.sh"), Clock.fixed(Instant.parse("2026-10-17T00:00:00Z"), ZoneOffset.UTC));
+        var candidates = publicCollector.search("react", 2);
+        assertEquals(1, candidates.size());
+        assertEquals(HASH, candidates.getFirst().contentHash());
+        assertEquals("https://skills.sh/owner/repo/example", candidates.getFirst().sourceUrl());
+    }
+
+    @Test
     void discoversSnapshotWithoutPromotingExternalDataToCatalog() {
         searchBody = """
             {"data":[{"id":"owner/repo/example","slug":"example","name":"Example Skill",

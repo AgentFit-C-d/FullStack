@@ -44,6 +44,7 @@ class ConfigurationDownloadControllerTest {
             .andExpect(status().isOk())
             .andExpect(header().string("X-Config-Export-Id", "export-1"))
             .andExpect(header().string("X-Unmet-Capability-Keys", "cap_browser_verification"))
+            .andExpect(header().string("Cache-Control", "no-store"))
             .andExpect(header().string("Content-Type", "application/zip"));
         verify(ownership).requireOwned(principal, "project-1");
     }

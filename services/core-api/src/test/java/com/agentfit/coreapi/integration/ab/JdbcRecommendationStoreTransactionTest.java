@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.integration.ab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.CatalogRecommendationWorkflow;
@@ -38,11 +39,13 @@ class JdbcRecommendationStoreTransactionTest {
             basis.confirmedProfileId(), 2L, basis.confirmationEventId(), 1L, 1L, 1L,
             Set.of("profile.projectName"), Map.of("profile.projectName", "demo"), false,
             new EnvironmentTarget("WINDOWS", "client", "1"), Map.of());
+        seedSnapshot(jdbc, projectId, basis);
         var claims = CapabilityKey.keys().stream().map(key ->
             new AiCapabilityIntake.Claim(key, AiCapabilityIntake.Need.REQUIRED, "reason",
                 List.of("profile.projectName"))).toList();
         var item = new CatalogRecommendationDetails.Item("tool-1", "Tool", null, null, "1.0",
-            "support-1", Set.of(), null, List.of());
+            "support-1", Set.of(), new com.agentfit.coreapi.catalog.VerificationEvidence(
+                "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)), List.of());
         var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
             new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED, List.of("tool-1"), List.of(), List.of()),
             claims, List.of(), List.of(item));
@@ -52,11 +55,45 @@ class JdbcRecommendationStoreTransactionTest {
 
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation WHERE id = ?", Integer.class, UUID.fromString(recommendationId)));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_event WHERE project_id = ? AND event = 'RECOMMENDATION_CREATED'", Integer.class, projectId));
+
+        var undecided = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
+            new RecommendationDecision(RecommendationDecision.Status.NEEDS_INFORMATION,
+                List.of(), List.of("undetermined_capability"), List.of()),
+            CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(key,
+                AiCapabilityIntake.Need.UNDETERMINED, "insufficient facts", List.of())).toList(),
+            List.of(), List.of());
+        String undecidedId = new JdbcRecommendationStoreAdapter(dataSource)
+            .saveIfUnchanged(snapshot, basis, undecided);
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
+            Integer.class, UUID.fromString(undecidedId)));
+
+        jdbc.update("UPDATE environment_profile SET version = 2 WHERE project_id = ?", projectId);
+        assertThrows(RecommendationCreationService.SnapshotChangedException.class,
+            () -> new JdbcRecommendationStoreAdapter(dataSource).saveIfUnchanged(snapshot, basis, result));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation", Integer.class));
+    }
+
+    private static void seedSnapshot(JdbcTemplate jdbc, UUID projectId, PreviewBasis basis) {
+        jdbc.update("INSERT INTO project_profile (id, project_id, kind, version) VALUES (?, ?, 'CONFIRMED', 2)",
+            UUID.fromString(basis.confirmedProfileId()), projectId);
+        jdbc.update("INSERT INTO profile_confirmation_event (id, project_id, confirmed_profile_id, confirmed_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+            UUID.fromString(basis.confirmationEventId()), projectId, UUID.fromString(basis.confirmedProfileId()));
+        jdbc.update("INSERT INTO developer_profile (project_id, version) VALUES (?, 1)", projectId);
+        jdbc.update("INSERT INTO environment_profile (project_id, version) VALUES (?, 1)", projectId);
+        UUID reviewId = UUID.randomUUID();
+        jdbc.update("INSERT INTO profile_review (id, project_id, target_profile_id, target_profile_version, review_version) VALUES (?, ?, ?, 2, 1)",
+            reviewId, projectId, UUID.fromString(basis.confirmedProfileId()));
+        jdbc.update("UPDATE project SET current_review_id = ? WHERE id = ?", reviewId, projectId);
     }
 
     private static void createSchema(JdbcTemplate jdbc) {
         jdbc.execute("CREATE TABLE \"USER\" (id UUID PRIMARY KEY, name VARCHAR(100))");
-        jdbc.execute("CREATE TABLE project (id UUID PRIMARY KEY, user_id UUID NOT NULL, version BIGINT NOT NULL)");
+        jdbc.execute("CREATE TABLE project (id UUID PRIMARY KEY, user_id UUID NOT NULL, version BIGINT NOT NULL, current_review_id UUID)");
+        jdbc.execute("CREATE TABLE project_profile (id UUID PRIMARY KEY, project_id UUID, kind VARCHAR(20), version BIGINT)");
+        jdbc.execute("CREATE TABLE profile_confirmation_event (id UUID PRIMARY KEY, project_id UUID, confirmed_profile_id UUID, confirmed_at TIMESTAMP)");
+        jdbc.execute("CREATE TABLE developer_profile (project_id UUID, version BIGINT)");
+        jdbc.execute("CREATE TABLE environment_profile (project_id UUID, version BIGINT)");
+        jdbc.execute("CREATE TABLE profile_review (id UUID PRIMARY KEY, project_id UUID, target_profile_id UUID, target_profile_version BIGINT, review_version BIGINT)");
         jdbc.execute("CREATE TABLE recommendation (id UUID PRIMARY KEY, project_id UUID, confirmed_profile_id UUID, confirmed_profile_version BIGINT, confirmation_event_id UUID, project_version BIGINT, review_version BIGINT, developer_version BIGINT, environment_version BIGINT, catalog_release VARCHAR(100), catalog_hash CHAR(64), status VARCHAR(40), evidence_level VARCHAR(40), created_at TIMESTAMP)");
         jdbc.execute("CREATE TABLE recommendation_capability (recommendation_id UUID, capability_key VARCHAR(100), necessity VARCHAR(30), reason VARCHAR(200), input_refs VARCHAR ARRAY)");
         jdbc.execute("CREATE TABLE recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID, tool_key VARCHAR(100), tool_version VARCHAR(100), support_key VARCHAR(100), required BOOLEAN, reason VARCHAR(200), explanation_source VARCHAR(30))");

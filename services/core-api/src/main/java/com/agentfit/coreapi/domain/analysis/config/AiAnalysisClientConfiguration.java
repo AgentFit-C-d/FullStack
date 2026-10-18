@@ -23,7 +23,9 @@ public class AiAnalysisClientConfiguration {
             @Value("${agentfit.ai-service.analysis-url:http://localhost:8000/internal/v1/analysis}") String analysisUrl,
             @Value("${agentfit.ai-service.needs-url:http://localhost:8000/internal/v1/skills/needs}") String needsUrl,
             @Value("${agentfit.ai-service.rank-url:http://localhost:8000/internal/v1/skills/rank}") String rankUrl) {
-        return new HttpAiAnalysisClient(HttpClient.newHttpClient(), objectMapper, signer,
+        // Uvicorn does not accept the default Java client's h2c upgrade with a signed POST body.
+        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+        return new HttpAiAnalysisClient(httpClient, objectMapper, signer,
             URI.create(analysisUrl), URI.create(needsUrl), URI.create(rankUrl));
     }
 

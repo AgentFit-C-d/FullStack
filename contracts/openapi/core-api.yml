@@ -286,6 +286,92 @@ paths:
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
         "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/projects/{projectId}/recommendation-inputs:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      summary: Read the owner's developer and environment declarations
+      operationId: getRecommendationInputs
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Null profile means not entered yet; installedComponentsKnown distinguishes unknown from known empty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  developer: { $ref: "#/components/schemas/DeveloperProfileInputState" }
+                  environment: { $ref: "#/components/schemas/EnvironmentProfileInputState" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/RecommendationConflict" }
+  /api/projects/{projectId}/developer-profile:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    put:
+      summary: Save the owner's developer role and responsibilities after profile confirmation
+      operationId: saveDeveloperProfileInput
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, role, responsibilities]
+              properties:
+                expectedVersion: { type: integer, format: int64, minimum: 0 }
+                role: { type: string, maxLength: 30 }
+                responsibilities:
+                  type: array
+                  maxItems: 30
+                  items: { type: string, maxLength: 200 }
+      responses:
+        "200": { $ref: "#/components/responses/SavedInputVersion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/projects/{projectId}/environment-profile:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    put:
+      summary: Save the owner's declared target and installed components after profile confirmation
+      operationId: saveEnvironmentProfileInput
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents]
+              properties:
+                expectedVersion: { type: integer, format: int64, minimum: 0 }
+                osFamily: { type: string, maxLength: 30 }
+                clientId: { type: string, maxLength: 200 }
+                clientVersion: { type: string, maxLength: 200 }
+                installedComponentsKnown: { type: boolean }
+                installedComponents:
+                  type: array
+                  maxItems: 50
+                  items: { $ref: "#/components/schemas/InstalledComponentInput" }
+      responses:
+        "200": { $ref: "#/components/responses/SavedInputVersion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
   /api/projects/{projectId}/recommendations:
     parameters:
       - $ref: "#/components/parameters/ProjectId"
@@ -351,7 +437,11 @@ paths:
               $ref: "#/components/schemas/PreviewCreateRequest"
       responses:
         "201":
-          description: Content-free Preview metadata and fingerprint
+          description: Transient Preview files, unmet capability warnings, and saved content-free metadata
+          headers:
+            Cache-Control:
+              description: Transient file content must not be cached.
+              schema: { type: string, enum: [no-store] }
           content:
             application/json:
               schema:
@@ -360,7 +450,42 @@ paths:
         "403": { $ref: "#/components/responses/CsrfRejected" }
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
+        "413":
+          description: Preview JSON body exceeds 1 MiB and is not processed
         "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/tool-candidates:
+    get:
+      summary: Read staged skills.sh research candidates
+      description: Candidates are unverified and are never used by recommendation or configuration generation.
+      operationId: getSkillCandidates
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Staged discovery candidates, explicitly marked unverified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source, verificationStatus, candidates]
+                properties:
+                  source: { type: string, enum: [skills.sh] }
+                  verificationStatus: { type: string, enum: [UNVERIFIED] }
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      required: [externalId, name, source, sourceUrl, contentHash, observedAt]
+                      properties:
+                        externalId: { type: string }
+                        name: { type: string }
+                        source: { type: string }
+                        sourceUrl: { type: string, format: uri }
+                        contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+                        observedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "503":
+          description: Candidate snapshot is absent or invalid
 components:
   securitySchemes:
     agentFitSession:
@@ -393,6 +518,15 @@ components:
         type: string
         minLength: 1
   responses:
+    SavedInputVersion:
+      description: Saved B input version for the next optimistic update or recommendation request
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [version]
+            properties:
+              version: { type: integer, format: int64, minimum: 1 }
     Unauthenticated:
       description: Login required or session expired
       content:
@@ -448,6 +582,35 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    InstalledComponentInput:
+      type: object
+      required: [toolKey]
+      properties:
+        toolKey: { type: string, maxLength: 200 }
+        version: { type: string, nullable: true, maxLength: 200 }
+    DeveloperProfileInputState:
+      type: object
+      nullable: true
+      required: [version, role, responsibilities]
+      properties:
+        version: { type: integer, format: int64 }
+        role: { type: string }
+        responsibilities:
+          type: array
+          items: { type: string }
+    EnvironmentProfileInputState:
+      type: object
+      nullable: true
+      required: [version, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents]
+      properties:
+        version: { type: integer, format: int64 }
+        osFamily: { type: string }
+        clientId: { type: string }
+        clientVersion: { type: string }
+        installedComponentsKnown: { type: boolean }
+        installedComponents:
+          type: array
+          items: { $ref: "#/components/schemas/InstalledComponentInput" }
     HealthResponse:
       type: object
       required:
@@ -672,7 +835,7 @@ components:
         clientVersion: { type: string, minLength: 1 }
     PreviewResponse:
       type: object
-      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt]
+      required: [previewId, recommendationId, fingerprint, selectionDigest, contentDigest, createdAt, expiresAt, unmetCapabilityKeys, files]
       properties:
         previewId: { type: string, format: uuid }
         recommendationId: { type: string, format: uuid }
@@ -681,6 +844,25 @@ components:
         contentDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+        unmetCapabilityKeys:
+          description: Required capabilities still missing after the selected partial configuration; an empty array means complete coverage.
+          type: array
+          items: { type: string }
+        files:
+          description: Transient generated content and comparison details for user review; these bytes are not stored.
+          type: array
+          items:
+            type: object
+            required: [targetKey, relativePath, action, afterHash, content, comparisonScope]
+            properties:
+              targetKey: { type: string }
+              relativePath: { type: string }
+              action: { type: string, enum: [PROPOSAL, UPDATE] }
+              beforeHash: { type: string, nullable: true }
+              afterHash: { type: string }
+              content: { type: string }
+              diff: { type: string, nullable: true }
+              comparisonScope: { type: string, enum: [EXISTING_UNKNOWN, PROVIDED_FILE] }
         draft:
           nullable: true
           type: object
