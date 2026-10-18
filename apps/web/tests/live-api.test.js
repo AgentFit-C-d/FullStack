@@ -1,6 +1,6 @@
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath } from '../src/features/live/api.js'
+import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from '../src/features/live/api.js'
 
 const originalFetch = globalThis.fetch
 const originalDocument = globalThis.document
@@ -62,4 +62,11 @@ test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 
   globalThis.document = { cookie: '' }
   globalThis.fetch = async () => Response.json('null')
   assert.equal(await loadSession(), null)
+})
+
+test('적용 결과 보고는 서버 계약의 상태·사유만 전달한다', () => {
+  assert.deepEqual(reportBody('APPLIED', ''), { reportedState: 'APPLIED', reasonCode: null })
+  assert.deepEqual(reportBody('FAILED', 'AUTH_REQUIRED'), { reportedState: 'FAILED', reasonCode: 'AUTH_REQUIRED' })
+  assert.throws(() => reportBody('FAILED', ''), /실패 사유/)
+  assert.throws(() => reportBody('APPLIED', 'UNKNOWN'), /적용 완료/)
 })

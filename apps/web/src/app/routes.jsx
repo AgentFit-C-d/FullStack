@@ -20,6 +20,7 @@ import { serviceApi as defaultServiceApi } from '../features/service/serviceApi.
 import { loadServiceRoute } from '../features/service/serviceModel.js'
 import LivePage from '../features/live/LivePage.jsx'
 import ServiceProjectCreatePage from '../pages/ServiceProjectCreatePage.jsx'
+import ServiceWorkflowEntry from '../features/service/ServiceWorkflowEntry.jsx'
 
 export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
   return [{
@@ -57,9 +58,11 @@ export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
           { path: 'live', element: <LivePage /> },
           ...serviceStages.map(stage => ({
             path: stage.path,
-            element: stage.key === 'new' ? <ServiceProjectCreatePage /> : <ServicePage stage={stage} />,
-            loader: args => loadServiceRoute(serviceApi, stage.resource, args),
-            HydrateFallback: ServiceLoading,
+            element: stage.key === 'new' ? <ServiceProjectCreatePage />
+              : stage.key === 'projects' ? <ServicePage stage={stage} /> : <ServiceWorkflowEntry />,
+            ...(stage.key === 'new' || stage.key === 'projects'
+              ? { loader: args => loadServiceRoute(serviceApi, stage.resource, args), HydrateFallback: ServiceLoading }
+              : {}),
           })),
           { path: '*', element: <ServicePage stage={{ key: 'unknown', title: '요청한 화면을 찾을 수 없어요' }} />, loader: args => loadServiceRoute(serviceApi, null, args), HydrateFallback: ServiceLoading },
         ],

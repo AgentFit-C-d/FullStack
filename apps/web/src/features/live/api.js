@@ -51,3 +51,17 @@ export function planningInputBody(expectedVersion, inputText, file) {
   else body.append('inputText', inputText)
   return body
 }
+
+export function reportBody(reportedState, reasonCode) {
+  if (reportedState === 'APPLIED') {
+    if (reasonCode) throw new Error('적용 완료에는 실패 사유를 보낼 수 없습니다.')
+    return { reportedState, reasonCode: null }
+  }
+  if (reportedState === 'FAILED') {
+    if (!['COPY_FAILED', 'AUTH_REQUIRED', 'DEPENDENCY_MISSING', 'UNKNOWN'].includes(reasonCode)) {
+      throw new Error('실패 사유를 선택해 주세요.')
+    }
+    return { reportedState, reasonCode }
+  }
+  throw new Error('적용 상태를 선택해 주세요.')
+}

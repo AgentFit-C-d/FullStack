@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider, MemoryRouter, matchRoutes } from 'react-router'
 import { createServer } from 'vite'
 import { createServiceApi } from '../src/features/service/serviceApi.js'
+import { serviceWorkflowPath } from '../src/features/service/serviceWorkflowPath.js'
 import { serviceStages } from '../src/features/service/serviceStages.js'
 let server, createAppRoutes, ServiceScreen, ServiceResourceState, ServiceProjectCreateScreen
 before(async () => {
@@ -22,8 +23,8 @@ async function renderRoute(path, api) {
   try { return renderToStaticMarkup(h(RouterProvider, { router })) } finally { router.dispose() }
 }
 const noDemo = html => assert.doesNotMatch(html, /시연|예시 데이터|fixture|메모리|API|OAuth|연동 전|개발용|가상/)
-test('전체 서비스 경로와 query 우회는 인증 검사 뒤 차단되며 demo 라우트는 보존한다', async () => {
-  const paths = serviceStages.map(stage => `/app/${stage.path.replace(':projectId', 'p-1')}`)
+test('서비스 목록과 생성은 인증 검사로 차단되고 단계별 경로는 실제 작업 화면으로 이어진다', async () => {
+  const paths = serviceStages.filter(stage => ['projects', 'new'].includes(stage.key)).map(stage => `/app/${stage.path}`)
   for (const path of ['/app', ...paths, '/app/unknown', '/app/projects?mode=demo&active=true']) {
     const html = await renderRoute(path)
     assert.match(html, /지금은 로그인 서비스를 이용할 수 없어요/)
@@ -37,6 +38,7 @@ test('전체 서비스 경로와 query 우회는 인증 검사 뒤 차단되며 
   }
   assert.equal(matchRoutes(routes, '/app/projects/a/complete').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
   assert.equal(matchRoutes(routes, '/app/live').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
+  assert.equal(serviceWorkflowPath('id with space'), '/app/live?project=id%20with%20space')
 })
 test('서비스 로그인은 기존 디자인을 재사용하며 시연 컨트롤·내부 설명이 없다', async () => {
   const service = await renderRoute('/login')
@@ -51,7 +53,7 @@ test('서비스 로그인은 기존 디자인을 재사용하며 시연 컨트�
 test('서버 null 세션과 세션 만료는 정상 로그인 안내로 차단한다', async () => {
   for (const data of [null, { user: { id: 'a', name: 'a' }, session: { expiresAt: '2000-01-01' } }]) {
     const api = createServiceApi({ transport: async () => ({ status: 200, data }) })
-    const html = await renderRoute('/app/projects/a/preview', api)
+    const html = await renderRoute('/app/projects', api)
     assert.match(html, /로그인이 필요해요/)
     noDemo(html)
   }
@@ -92,12 +94,8 @@ test('실제 프로젝트 생성 화면은 이름 입력과 서버 저장 동작
 })
 
 
-test('인증 성공만으로 서비스 폼·추천·승인·다운로드를 활성화하지 않는다', async () => {
-  const api = createServiceApi({ transport: async () => ({ status: 200, data: { user: { id: 'a', name: 'a' }, session: { expiresAt: '2099-01-01T00:00:00Z' } } }) })
-  for (const stage of serviceStages.filter(stage => ['role', 'recommendation', 'selection', 'preview', 'complete'].includes(stage.key))) {
-    const html = await renderRoute(`/app/${stage.path.replace(':projectId', 'a')}`, api)
-    assert.match(html, /지금은 이 기능을 이용할 수 없어요/)
-    noDemo(html)
-    assert.doesNotMatch(html, /type="checkbox"|사용자 보고 저장|download=|설정 결과 다운로드 \(연동 전\)/)
-  }
+test('demo 경로와 서버 단계 경로는 서로 다른 모드로 유지된다', () => {
+  const routes = createAppRoutes()
+  assert.equal(matchRoutes(routes, '/demo/projects/a/preview').find(match => match.route.handle?.mode)?.route.handle.mode, 'demo')
+  assert.equal(matchRoutes(routes, '/app/projects/a/preview').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
 })
