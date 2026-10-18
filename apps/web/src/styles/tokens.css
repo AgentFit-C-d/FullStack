@@ -1,0 +1,16 @@
+:root {
+  font-family: Arial, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  color-scheme: light;
+  --bg: #f7f9fc;
+  --surface: #fcfdff;
+  --white: #fff;
+  --ink: #1e2936;
+  --muted: #738296;
+  --line: #dce4ed;
+  --accent: #456a9a;
+  --accent-hover: #395a84;
+  --accent-soft: #eaf0f7;
+  --selected-bg: #dde7f2;
+  --accent-ink: #fff;
+  --shadow: 0 20px 65px rgb(27 41 76 / 4.5%);
+}

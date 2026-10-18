@@ -1,0 +1,8 @@
+.panel { max-width: 960px; }
+.input { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); padding: 13px 14px; font-size: 12px; }
+.input::placeholder { color: #a4aebb; }
+.input[aria-invalid='true'] { border-color: #c6534a; background: #fffafa; }
+.input[aria-invalid='true']:focus-visible { outline-color: #c6534a; }
+.limit { margin: 0; font-size: 11px !important; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 23px; }
+@media (max-width: 700px) { .actions { flex-wrap: wrap; } .actions > * { flex: 1; } }
