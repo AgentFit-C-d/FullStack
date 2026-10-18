@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
 import { defaultPermissionChoices, permissionKey, permissionSelections, previewPolicies } from './permissions.js'
+import { inputsDirty } from './inputState.js'
 import styles from './LivePage.module.css'
 
 const isProfile = value => value?.kind === 'CONFIRMED' || value?.kind === 'DRAFT'
@@ -214,6 +215,7 @@ export default function LivePage() {
   }
 
   async function createRecommendation() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
     await run(async () => {
       const created = await apiRequest(`${projectPath(projectId)}/recommendations`, {
         method: 'POST', body: { expectedVersions: {
@@ -230,6 +232,7 @@ export default function LivePage() {
   }
 
   async function createPreview() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
     await run(async () => {
       const request = {
         basis: recommendation.basis, recommendationId: recommendation.recommendationId,
@@ -243,6 +246,7 @@ export default function LivePage() {
   }
 
   async function approve() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
     await run(async () => {
       const result = await apiRequest(`${projectPath(projectId)}/config-previews/${preview.previewId}/approval`, {
         method: 'POST', body: { fingerprint: preview.fingerprint, confirmed: true },
@@ -252,6 +256,7 @@ export default function LivePage() {
   }
 
   async function download() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
     await run(async () => {
       const blob = await apiRequest(`${projectPath(projectId)}/config-approvals/${approval.approvalId}/download`, {
         method: 'POST', body: { previewId: preview.previewId, fingerprint: preview.fingerprint,
@@ -281,6 +286,18 @@ export default function LivePage() {
     }, '설정 생성 이력을 조회했습니다.')
   }
 
+  async function readMoreHistory() {
+    if (!history?.nextCursor) return
+    await run(async () => {
+      const cursor = encodeURIComponent(history.nextCursor)
+      const next = await apiRequest(`${projectPath(projectId)}/configuration-history?cursor=${cursor}`)
+      setHistory(previous => ({
+        items: [...previous.items, ...(next.items || []).filter(item => !previous.items.some(saved => saved.id === item.id))],
+        nextCursor: next.nextCursor,
+      }))
+    }, '이전 생성 이력을 불러왔습니다.')
+  }
+
   function invalidatePreview() {
     setPreview(null); setPreviewRequest(null); setApproval(null)
   }
@@ -304,6 +321,8 @@ export default function LivePage() {
   const confirmed = detail?.confirmed?.kind === 'CONFIRMED' ? detail.confirmed : null
   const attempt = detail?.latestAttempt
   const inputReady = inputs?.developer && inputs?.environment
+  const inputDirty = inputsDirty(inputs, { role, responsibilities, osFamily, clientId,
+    clientVersion, installedComponentsKnown })
 
   return <div className={styles.page}>
     <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link></nav></header>
@@ -311,6 +330,7 @@ export default function LivePage() {
       <div className={styles.heading}><span>AGENTFIT · LIVE DEMO</span><h1>프로젝트에서 설정 다운로드까지</h1><p>이 화면은 실제 Core API, FastAPI, PostgreSQL에 연결됩니다. 카탈로그의 도구와 설정은 검증 전 합성 데모 데이터입니다.</p></div>
       {error && <div className={styles.error} role="alert">{error}</div>}
       {notice && <div className={styles.notice} role="status">{notice}</div>}
+      {inputDirty && <div className={styles.notice}>역할·환경 변경 내용을 저장한 뒤 추천·승인·다운로드를 진행해 주세요.</div>}
       {session === undefined && <section className={styles.card}>세션 확인 중…</section>}
       {session === null && <section className={styles.card}><h2>GitHub 로그인이 필요합니다</h2><p>백엔드 API는 실제 세션과 프로젝트 소유권을 확인합니다.</p><a className={styles.action} href="/api/oauth2/authorization/github">GitHub로 로그인</a></section>}
       {session && <>
@@ -333,7 +353,7 @@ export default function LivePage() {
           {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 데모 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p><p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul>{!recommendation.items?.length && <p>선택 가능한 도구가 없습니다. 추가 정보가 필요하거나 호환 대상이 없을 수 있습니다.</p>}{(recommendation.notices || []).length > 0 && <details><summary>질문·안내 ({recommendation.notices.length})</summary><pre>{JSON.stringify(recommendation.notices, null, 2)}</pre></details>}</>}</section>}
           {recommendation?.items?.length > 0 && <section className={styles.card}><h2>6. 설정 미리보기와 다운로드</h2><p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 합성 데모 설정은 실제 설치에 사용하지 마세요.</p><label>현재 설정 상태 <select value={existingState} onChange={event => { setExistingState(event.target.value); invalidatePreview() }}><option value="UNKNOWN">모름</option><option value="USER_SAYS_EMPTY">사용자가 비어 있다고 선언</option></select></label><div className={styles.row}><button type="button" disabled={busy || recommendation.validity === 'STALE' || selectedKeys.length === 0} onClick={createPreview}>미리보기 생성</button>{preview && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}{approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}</div>{selectedKeys.length === 0 && <p>설정 파일을 만들 도구를 하나 이상 선택해 주세요.</p>}{preview && <><p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>{preview.files?.map(file => <details key={file.relativePath}><summary>{file.relativePath} · {file.action}</summary><pre>{file.content}</pre></details>)}</>}</section>}
           {confirmed && <section className={styles.card}><h2>7. 생성 이력과 적용 결과</h2><p>다운로드 후 이력을 조회할 수 있습니다. 적용 결과는 사용자 보고이며 설치 성공을 자동 검증하지 않습니다.</p><button type="button" disabled={busy} onClick={readHistory}>생성 이력 조회</button>
-            {history && <>{history.items?.length ? <><ul>{history.items.map(item => <li key={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.status} · {item.validity} · 파일 {item.files?.length || 0}개{item.latestUserReport && ` · 사용자 보고 ${item.latestUserReport.reportedState}`}</li>)}</ul><form onSubmit={submitReport} className={styles.stack}><label>보고할 생성 이력<select value={selectedExportId} onChange={event => setSelectedExportId(event.target.value)}>{history.items.map(item => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.id}</option>)}</select></label><label>적용 결과<select value={reportState} onChange={event => { setReportState(event.target.value); setReportReason('') }}><option value="">선택해 주세요</option><option value="APPLIED">적용했다고 보고</option><option value="FAILED">적용 실패 보고</option></select></label>{reportState === 'FAILED' && <label>실패 사유<select value={reportReason} onChange={event => setReportReason(event.target.value)}><option value="">선택해 주세요</option><option value="COPY_FAILED">파일 복사 실패</option><option value="AUTH_REQUIRED">인증 필요</option><option value="DEPENDENCY_MISSING">의존성 누락</option><option value="UNKNOWN">알 수 없음</option></select></label>}<button disabled={busy}>적용 결과 저장</button></form></> : <p>생성된 설정 이력이 없습니다.</p>}{history.nextCursor && <p>이전 이력은 다음 페이지에 있습니다.</p>}</>}
+            {history && <>{history.items?.length ? <><ul>{history.items.map(item => <li key={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.status} · {item.validity} · 파일 {item.files?.length || 0}개{item.latestUserReport && ` · 사용자 보고 ${item.latestUserReport.reportedState}`}</li>)}</ul><form onSubmit={submitReport} className={styles.stack}><label>보고할 생성 이력<select value={selectedExportId} onChange={event => setSelectedExportId(event.target.value)}>{history.items.map(item => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.id}</option>)}</select></label><label>적용 결과<select value={reportState} onChange={event => { setReportState(event.target.value); setReportReason('') }}><option value="">선택해 주세요</option><option value="APPLIED">적용했다고 보고</option><option value="FAILED">적용 실패 보고</option></select></label>{reportState === 'FAILED' && <label>실패 사유<select value={reportReason} onChange={event => setReportReason(event.target.value)}><option value="">선택해 주세요</option><option value="COPY_FAILED">파일 복사 실패</option><option value="AUTH_REQUIRED">인증 필요</option><option value="DEPENDENCY_MISSING">의존성 누락</option><option value="UNKNOWN">알 수 없음</option></select></label>}<button disabled={busy}>적용 결과 저장</button></form></> : <p>생성된 설정 이력이 없습니다.</p>}{history.nextCursor && <button type="button" disabled={busy} onClick={readMoreHistory}>이전 이력 더 보기</button>}</>}
           </section>}
         </>}
       </>}
