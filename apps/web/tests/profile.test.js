@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { demoReducer, initialDemoState } from '../src/features/projects/projectModel.js'
+import { demoReducer, initialDemoState, getVisibleProjects } from '../src/features/projects/projectModel.js'
 import { validateProfile } from '../src/features/profile/profileModel.js'
 
 function session() {
@@ -61,7 +61,7 @@ test('필수·길이·빈 항목 오류는 편집 초안을 유지하며 마지�
   state = edit(state, { edit: 'confirm' })
   assert.equal(state.demoProfiles.a.confirmed, true)
   assert.equal(state.demoProfiles.a.profile.project_name, '고친 이름')
-  assert.equal(state.projects.find(p => p.id === 'a').name, 'a')
+  assert.equal(state.projects.find(p => p.id === 'a').name, '고친 이름')
 })
 
 test('목록 30개 제한과 잘못된 필드·인덱스를 안전하게 처리한다', () => {
@@ -100,7 +100,8 @@ test('신규 Profile은 생성 이름만 가져오며 예시는 확인된 명시
   assert.equal(state.projects[0].name, '내 프로젝트')
   state = demoReducer(state, { type: 'profile-load-example', id: 'a', confirmed: true })
   assert.equal(state.demoProfiles.a.source, 'demo-fixture')
-  assert.equal(state.demoProfiles.a.draft.project_name, '예시 팀 일정 서비스')
+  assert.equal(state.demoProfiles.a.draft.project_name, '내 프로젝트')
+  assert.equal(state.demoProfiles.a.nameOrigin, 'project')
 })
 
 test('선택형 단일 필드의 삭제·공백은 null이며 직접 편집 출처와 마지막 유효 값을 보존한다', async () => {
@@ -127,4 +128,46 @@ test('선택형 단일 필드의 삭제·공백은 null이며 직접 편집 출�
   assert.deepEqual(state.demoProfiles.a.draft.features, other)
   const server = { ...state.demoProfiles.a, draft: { ...state.demoProfiles.a.draft, database: '서버 문서 값' }, editedFields: {}, sources: { database: 'DOCUMENT' } }
   assert.equal(getTechnicalFieldLabel(server, 'database'), '문서에서 확인')
+})
+
+
+test('Review 이름은 100 코드포인트이며 유효한 전체 확인에만 목록과 동기화한다', () => {
+  let state = session()
+  const other = state.demoProfiles.b
+  const name = '🦊'.repeat(100)
+  state = edit(state, { edit: 'scalar', key: 'project_name', value: ` ${name} ` })
+  assert.equal(validateProfile(state.demoProfiles.a.draft, state.demoProfiles.a.modes).project_name, undefined)
+  assert.equal(state.projects.find(p => p.id === 'a').name, 'a')
+  state = edit(state, { edit: 'confirm' })
+  assert.equal(state.projects.find(p => p.id === 'a').name, name)
+  assert.equal(state.demoProfiles.a.profile.project_name, name)
+  assert.equal(state.demoProfiles.a.draft.project_name, name)
+  const valid = state.demoProfiles.a.profile
+  for (const value of ['', '   ', '🦊'.repeat(101)]) {
+    state = edit(state, { edit: 'scalar', key: 'project_name', value })
+    assert.ok(validateProfile(state.demoProfiles.a.draft, state.demoProfiles.a.modes).project_name)
+    state = edit(state, { edit: 'confirm' })
+    assert.equal(state.demoProfiles.a.profile, valid)
+    assert.equal(state.demoProfiles.a.draft.project_name, value)
+    assert.equal(state.projects.find(p => p.id === 'a').name, name)
+  }
+  assert.equal(state.demoProfiles.b, other)
+  assert.equal(state.projects.find(p => p.id === 'b').name, 'b')
+  state = edit(state, { edit: 'scalar', key: 'project_name', value: '새 이름' })
+  state = edit(state, { edit: 'item', key: 'features', index: 0, value: '' })
+  state = edit(state, { edit: 'confirm' })
+  assert.equal(state.projects.find(p => p.id === 'a').name, name)
+})
+
+test('예시 프로젝트 이름 확정도 토글·재진입 중 보존한다', () => {
+  let state = demoReducer(initialDemoState, { type: 'enter' })
+  state = demoReducer(state, { type: 'examples' })
+  const id = 'demo-example-workout'
+  state = demoReducer(state, { type: 'profile-preview', id })
+  state = demoReducer(state, { type: 'profile-edit', id, edit: 'scalar', key: 'project_name', value: '변경한 예시 이름' })
+  state = demoReducer(state, { type: 'profile-edit', id, edit: 'confirm' })
+  state = demoReducer(state, { type: 'examples' })
+  state = demoReducer(state, { type: 'examples' })
+  // The shared list selector must use the confirmed project name for example cards too.
+  assert.equal(getVisibleProjects(state).find(p => p.id === id).name, '변경한 예시 이름')
 })

@@ -1,8 +1,9 @@
+import { environmentClient } from '../features/environment/clientDefinition.js'
 import { useRef, useState } from 'react'
-import { Navigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { useDemoProjects } from '../features/projects/DemoContext.js'
 import { getVisibleProjects } from '../features/projects/projectModel.js'
-import { authOptions, canEnterDemoEnvironment, configurationOptions, emptyEnvironmentEntry, osOptions, validateEnvironment } from '../features/environment/environmentModel.js'
+import { authOptions, canEnterDemoEnvironment, configurationOptions, emptyEnvironmentEntry, osOptions, prepareEnvironmentEntry, validateEnvironment } from '../features/environment/environmentModel.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import WizardProgress from '../features/projects/WizardProgress.jsx'
 import { Badge, Button, Card, FormField } from '../components/ui/UI.jsx'
@@ -10,12 +11,13 @@ import styles from './EnvironmentPage.module.css'
 
 export default function EnvironmentPage() {
   const { demoId } = useParams()
+  const navigate = useNavigate()
   const { state, dispatch } = useDemoProjects()
   const project = getVisibleProjects(state).find(item => item.id === demoId)
   if (!project) return <Card padded><h1>프로젝트를 찾을 수 없어요</h1><p>현재 시연 세션의 목록에서 프로젝트를 다시 선택해주세요.</p><Button to="/demo/projects">내 프로젝트로</Button></Card>
   const path = `/demo/projects/${encodeURIComponent(project.id)}`
   if (!canEnterDemoEnvironment(state.demoProfiles[project.id], state.roleDrafts[project.id])) return <Navigate to={`${path}/role`} replace />
-  return <EnvironmentEditor key={project.id} mode="demo" entry={state.environmentDrafts[project.id] || emptyEnvironmentEntry} rolePath={`${path}/role`} onEdit={action => dispatch({ ...action, type: 'environment-edit', id: project.id })} onConfirm={() => dispatch({ type: 'environment-confirm', id: project.id })} />
+  return <EnvironmentEditor key={project.id} mode="demo" entry={state.environmentDrafts[project.id] || emptyEnvironmentEntry} rolePath={`${path}/role`} onEdit={action => dispatch({ ...action, type: 'environment-edit', id: project.id })} onConfirm={() => { dispatch({ type: 'environment-confirm', id: project.id }); navigate(`${path}/recommendation`) }} />
 }
 
 export function EnvironmentEditor({ mode, entry, rolePath, onEdit, onConfirm }) {
@@ -23,10 +25,11 @@ export function EnvironmentEditor({ mode, entry, rolePath, onEdit, onConfirm }) 
   const [notice, setNotice] = useState('')
   const form = useRef(null)
   const details = useRef(null)
+  entry = prepareEnvironmentEntry(entry)
   const draft = entry.draft
   const errors = submitted ? validateEnvironment(draft) : {}
   if (mode !== 'demo') return <Card padded><h1>개발환경 입력을 이용할 수 없어요</h1><p>인증된 세션과 개발환경 데이터 API 연결이 필요합니다.</p></Card>
-  if (entry.source !== 'demo-user') return <Card padded><h1>개발환경 정보를 불러올 수 없어요</h1></Card>
+  if (entry.source !== 'demo-user' || entry.clientId !== environmentClient.id) return <Card padded><h1>개발환경 정보를 불러올 수 없어요</h1></Card>
   function edit(action) { onEdit(action); setNotice('') }
   const options = items => items.map(([value, label]) => <option key={value} value={value}>{label}</option>)
   function scalar(field, label, values, placeholder) {
@@ -64,7 +67,7 @@ export function EnvironmentEditor({ mode, entry, rolePath, onEdit, onConfirm }) 
       return
     }
     onConfirm()
-    setNotice('입력 조건을 확인했어요. Capability 추천(07/10)은 아직 구현되지 않아 이동하지 않습니다. 서버 저장·환경 검사·추천 결과 생성은 수행하지 않았고 입력값은 시연 메모리에만 유지됩니다.')
+
   }
   return <>
     <PageHeader eyebrow="06 / 10 · ENVIRONMENT PROFILE" title="개발환경 입력" description="PC 환경을 자동 검사하지 않습니다. 알고 있는 정보를 직접 입력해주세요." />
@@ -76,8 +79,10 @@ export function EnvironmentEditor({ mode, entry, rolePath, onEdit, onConfirm }) 
           <div className={styles.eyebrow}>OPERATING SYSTEM</div><h3 className={styles.heading}>운영체제</h3><div className={styles.divider} />
           {scalar('osFamily', 'OS 종류', osOptions)}{scalar('osVersion', 'OS 버전', null, '예: 11')}
           <div className={styles.divider} />
-          <div className={styles.field}><div className={styles.label}>AI Client</div><div className={styles.readonly}>Codex <Badge variant="neutral">MVP 지원 대상</Badge></div><p className={styles.hint}>다른 Client는 현재 지원 대상으로 등록되어 있지 않습니다.</p></div>
-          {scalar('clientVersion', 'Codex 버전 (알고 있다면)', null, '모르면 비워두기')}{scalar('configurationKnowledge', '현재 설정 상태', configurationOptions)}
+          <div className={styles.field}><div className={styles.label}>AI Client</div><div className={styles.readonly}>{environmentClient.name} <Badge variant="neutral">MVP 지원 대상</Badge></div><p className={styles.hint}>{environmentClient.supportHint}</p></div>
+          {scalar('clientVersion', environmentClient.versionLabel, null, '모르면 비워두기')}{scalar('configurationKnowledge', environmentClient.configurationLabel, configurationOptions)}
+          <p className={styles.hint}>{environmentClient.configurationHint}</p>
+          {entry.legacyClientInput && <p className={styles.hint}>이전 Codex 버전·설정 입력은 별도로 보존했으며 Claude Code 값으로 변환하지 않았습니다. Claude Code 정보는 다시 입력해주세요.</p>}
         </Card>
         <Card padded>
           <div className={styles.eyebrow}>RUNTIME</div><h3 className={styles.heading}>실행 환경</h3><div className={styles.divider} />
@@ -92,7 +97,7 @@ export function EnvironmentEditor({ mode, entry, rolePath, onEdit, onConfirm }) 
           </details>
         </Card>
       </div>
-      <p className={styles.demo}>시연 모드 · 새로고침하거나 시연을 종료하면 환경 입력값이 초기화됩니다. Codex 표시는 시안의 지원 대상이며 현재 PC에 설치되어 있다는 뜻이 아닙니다.</p>
+      <p className={styles.demo}>시연 모드 · 새로고침하거나 시연을 종료하면 환경 입력값이 초기화됩니다. {environmentClient.name}는 지원 대상 표시이며 현재 PC의 설치·인증·설정 상태를 확인했다는 뜻이 아닙니다.</p>
       <p className={styles.notice} role="status">{notice}</p>
       <div className={styles.actions}><Button to={rolePath}>← 내 역할 수정</Button><Button type="submit" variant="primary" large>개발환경 저장하고 추천 보기 →</Button></div>
     </form>

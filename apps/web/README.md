@@ -1,17 +1,181 @@
-# AgentFit demo web
+# AgentFit Frontend
 
-`D:/capstone/Frontend`의 React/Vite 화면을 커밋 `5893007` 기준으로 `demo` 브랜치에 복사한 소스입니다. 원본 저장소의 `/demo` 메모리 기반 시연은 유지하고, `/app`에 실제 Core API 연동 화면을 별도로 추가했습니다. 프론트 원본 저장소에는 변경을 기록하지 않았습니다.
+FullStack 통합본에서는 최신 Frontend `main` (`0c39dad`)을 가져와
+`/login` GitHub 로그인, `/app` 서버 프로젝트 목록, `/app/projects/new` 서버 저장을 연결했다.
+프로젝트를 연 뒤 `/app/live`에서 실제 분석·확정·추천·설정 다운로드 흐름을 사용할 수 있다.
+단계별 `/app/projects/:projectId/...` 서비스 화면은 아직 데이터 폼 연결 작업 중이다.
+`/demo`는 메모리 기반 화면 시연 경로다. 아래 설명 중 "API 미연동"은
+Frontend 원본의 `/demo` 화면 또는 초기 인계 상태를 설명한다.
 
-루트 `D:/capstone/FullStack`에서 Docker Desktop을 켠 뒤, Git에서 제외된 `env.docker`를 준비하고 실행합니다.
+React + Vite + JavaScript + CSS Modules 기반 AgentFit 프론트엔드입니다.
+로그인, 프로젝트 목록, 프로젝트 생성, 기획 자료 입력과 AI 분석 연결 전 화면과 시연 Project Profile 편집 및 내 역할·개발환경 입력 및 Capability 추천 상태 및 시연 도구·권한 선택 화면을 구현했습니다.
 
-```powershell
-docker compose --env-file env.docker -f infra/compose.fullstack.yaml -f infra/compose.demo.yaml -f infra/compose.web-demo.yaml up --build -d
+## 실행 및 검증
+
+```bash
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run build
+npm run preview
 ```
 
-`http://localhost:8080`에서 GitHub 로그인으로 진입합니다. `/app`은 같은 출처 `/api` 프록시를 사용하므로 세션·CSRF 쿠키가 브라우저에서 함께 전송됩니다. OAuth 앱에 등록한 콜백은 `http://localhost:8080/api/login/oauth2/code/github`이어야 합니다. Core API 직접 접근은 `localhost:18080`, AI는 `localhost:8001`, PostgreSQL은 `localhost:5434`입니다.
+초기 검증 환경은 Node.js 26.8.2, npm 11.19.1입니다. Vite 및 설치된 개발 도구의
+Node.js 요구사항을 충족하는 버전을 사용하고, 팀의 LTS 버전은 추후 통일합니다.
+`npm test`는 Node.js 내장 테스트 러너를 사용하며 추가 테스트 의존성은 없습니다.
 
-이 데모 Compose는 GitHub OAuth 요청을 `read:user`로 제한합니다. 기존 공통 설정의 `user:email` 요청은 데모 로그인에 필요하지 않아 덮어씁니다. 앱에 대한 GitHub 동의 자체는 여전히 필요합니다.
+## 시연 모드
 
-화면에서는 프로젝트 생성, 자료 저장, 비동기 분석 상태 조회, DRAFT 확인, 역할·환경 저장, 추천, 설정 미리보기·승인·ZIP 다운로드를 시도할 수 있습니다. AI 공급자는 `env.docker`의 설정을 따릅니다. 데모 Catalog는 합성 데이터이며, 생성된 파일은 실제 설치 지침으로 사용하지 않습니다. 로그인 후 실제 사용자 흐름은 GitHub OAuth 콜백과 계정 설정에 의존합니다.
+- GitHub 버튼은 OAuth 연동 전 안내만 보여주며 인증 성공으로 처리하지 않습니다.
+- `npm run dev`에서 별도의 **개발용 시연 모드로 둘러보기** 버튼으로 진입합니다.
+- `/demo/projects`: 빈 목록, 개발용 예시 표시/닫기 토글, 프로젝트 선택.
+- `/demo/projects/new`: 이름 필수·최대 100 코드포인트 검증 후 목록에 반영하고 기획 자료 입력으로 이동.
+- 카드 선택은 `/demo/projects/:demoId`의 기획 자료 입력으로 이동합니다.
+- 기획 자료는 PDF/Markdown 파일 1개·최대 10 MiB 또는 직접 입력 최대 100,000 코드포인트를 받습니다.
+- 프로젝트별 파일·텍스트·활성 탭은 화면 이동 중 메모리에 유지되며 새로고침 시 사라집니다. 잘못된 파일 교체는 기존 유효 파일을 유지합니다.
+- PDF 페이지 수·내용은 검증하지 않으며 100페이지 제한은 서버 계약 확인이 필요합니다. 분석 버튼은 활성 탭 입력 검증 후 `/demo/projects/:demoId/analysis`로 이동합니다.
+- 분석 화면은 API 미연동 상태만 표시하며 실제 분석·진행률·결과를 생성하지 않습니다. 실제 Project Profile 이동은 비활성화되어 있으며, 카드 내부의 별도 시연 Profile 미리보기로만 `/demo/projects/:demoId/review`에 진입합니다. 기획 자료 수정 및 브라우저 뒤로 가기는 메모리의 입력을 유지합니다.
+- 입력 없이 분석 주소에 접근하면 Planning으로 돌아가며, 없는 프로젝트는 기존 프로젝트 없음 안내를 표시합니다.
+- ID는 탭 내 시연용 식별자이며 실제 API의 ID 형식과 관계없습니다.
+- 모든 시연 데이터는 React 메모리에만 있습니다. 새로고침 또는 시연 종료 시 사라지고
+  로그인 화면으로 돌아갑니다. localStorage, sessionStorage, 서버 저장을 사용하지 않습니다.
+- 브라우저 이전/다음 이동에서는 작성 중인 이름을 유지합니다. 명시적인 취소는 초안을 비웁니다.
+- 예시 프로젝트와 생성 프로젝트 모두 시연 데이터로 표시합니다.
+- 프로덕션 빌드에서는 개발용 진입 버튼과 예시 불러오기 버튼을 표시하지 않습니다.
+  실제 로그인, 조회·저장 API는 아직 연결하지 않았습니다.
 
-로컬 검증: `npm ci`, `npm test`, `npm run lint`, `npm run build`. 비밀키를 `VITE_` 변수에 넣지 마세요.
+## 구조
+
+```text
+src/
+  app/                  Router 및 Provider 구성
+  assets/               실제 화면에 사용하는 원본 이미지 복사본
+  components/layout/    AppLayout, Sidebar, Topbar, Brand, PageHeader
+  components/ui/        Button, Card, Badge, FormField
+  features/auth/        온보딩 캐러셀
+  features/projects/    시연 상태, 검증 로직, 단계 표시
+  features/planning/    기획 자료 입력 검증
+  features/profile/     고정 시연 fixture, Profile 초안 편집·검증
+  features/role/        시연 역할 입력·검증·Review 진입 조건
+  pages/                로그인, 목록, 생성, 기획 자료, 분석, 시연 Profile, 역할 화면
+  styles/               토큰 및 전역 초기화
+tests/                 시연 상태 및 Unicode 입력 검증
+```
+
+컴포넌트별 스타일은 CSS Modules로 관리합니다. 색상·글꼴은
+`src/styles/tokens.css`, 초기화·공통 포커스는 `src/styles/global.css`에 있습니다.
+캐러셀은 4.5초 자동 전환, 수동 선택, hover·키보드 focus 중 정지를 지원합니다. 원본과 동일하게 별도 일시정지 버튼은 표시하지 않습니다.
+reduced-motion 설정에서는 자동 전환과 애니메이션을 멈추며 수동 선택은 가능합니다.
+
+## 디자인 기준과 구현 범위
+
+`design-input/index.html`을 최신 시각·시안 인터랙션 기준으로 사용했습니다.
+DOCX는 입력·검증 조건 참고 자료이며, 실제 기능·인증·권한 정책은 팀 PRD와 확정 API 계약을
+따릅니다. 참고 폴더는 수정하지 않고 Git에서 제외했습니다.
+사용하는 7개 이미지만 `src/assets`에 복사했으며 한글 파일명은 빌드용 영문 이름으로 연결했습니다.
+루트 `index.html`은 기존 Vite 진입 파일을 유지합니다.
+
+전체 12개 화면의 시연 UI를 구현했습니다. 실제 AI 분석, 추천,
+실제 설정 생성·승인·다운로드, 실제 인증 및 서버 데이터 저장은 구현하지 않았습니다.
+
+## 배포 및 Git
+
+Browser Router를 사용하므로 배포 시 하위 경로 요청을 `index.html`로 연결하는 SPA fallback이
+필요합니다. Vite dev 서버는 이 동작을 지원합니다.
+
+`design-input/`, `node_modules/`, `dist/`, 실제 환경변수 파일은 Git에서 제외합니다.
+사용 이미지 복사본과 `package-lock.json`은 소스와 함께 관리합니다.
+`VITE_` 변수는 브라우저 번들에 포함되므로 비밀정보를 넣지 않습니다.
+커밋·Push는 별도 승인 후 진행합니다.
+
+## 시연 데이터 경계
+
+시연 안내는 `/demo` 레이아웃과 개발용 로그인 진입에만 있습니다. 이 Provider의 `active`는
+시연 세션 여부이며 인증 상태가 아닙니다. 생성 프로젝트와 예시는 모두 `source: demo`이고,
+예시는 별도의 표시 상태로 계산하여 생성 데이터를 삭제하거나 숨기지 않습니다.
+실제 API 연동 시에는 별도 인증 세션과 서버 데이터 저장소를 사용하고 시연 Provider와 합치지 않습니다.
+
+## 시연 Project Profile
+
+Analysis의 ‘시연용 Profile 편집 화면 미리보기’는 생성 단계 프로젝트명만 가져오고 나머지는 null로 시작합니다.
+고정 fixture는 ‘예시 데이터 불러오기’ → 교체 확인을 거친 경우에만 사용하며 기존 Profile은 재진입 시 유지합니다.
+`demoProfiles`에는 `source: demo-manual | demo-fixture`, 편집 `draft`, 마지막 유효 `profile`, 목록 `modes`를
+분리해 보관합니다. 실제 분석 결과 저장소가 아니며 Planning 내용을 추론하지 않습니다.
+목록의 null(미확인), [](명시적 없음), 값 배열을 유지하고, 빈 편집 행은 확인 시 오류로 처리합니다.
+프로젝트명은 100 코드포인트, 그 외 단일 필드는 200 코드포인트, 목록은 최대 30개입니다. 유효한 전체 Profile 확인 시 프로젝트명은 목록과 동기화됩니다. 항목 추가·삭제 버튼으로 목록을 편집합니다.
+확인은 시연 메모리만 갱신하며 프로젝트 목록 이름이나 실제 분석 상태를 변경하지 않습니다.
+재진입 시 초안을 유지하고 새로고침·시연 종료 시 제거합니다. 유효한 시연 Profile 확인 후 05단계 내 역할 입력으로 이동합니다.
+실제 분석 상태(API 미연동/대기/진행/완료/실패) 중 현재는 미연동만 표시합니다.
+나머지 4종의 문구는 준비되어 있으며 실제 상태는 API 연동 시 연결합니다. OAuth 상태와 독립적으로 처리해야 합니다.
+서비스/시연 문구는 명시적 mode로 분리합니다. `/login`·`/app/...` 서비스 진입 기반은 준비했지만 실제 인증·API·서비스 폼 연결은 미구현입니다.
+[API 연동 준비 메모](docs/API-INTEGRATION.md)에 기존 계약과 확인할 항목을 정리했습니다.
+
+## 내 역할 입력
+
+`/demo/projects/:demoId/role`은 유효한 시연 Profile 확인 후 진입합니다.
+역할·담당 업무·경험 수준은 모두 선택이며, 업무는 최대 30개·항목당 200 코드포인트이며, 줄바꿈·공백·구분자 포함 원문 전체 최대 6,000 코드포인트입니다.
+프로젝트별 원문 초안을 메모리에 유지하고 오류 시 마지막 유효 값을 보존합니다.
+이전·목록 이동 중에는 유지되며 새로고침·시연 종료 시 초기화됩니다.
+유효한 역할 입력 확인 후 개발환경 입력으로 이동합니다. API 요청·추천 결과 생성은 수행하지 않습니다.
+
+## 개발환경 입력
+
+`/demo/projects/:demoId/environment`은 유효한 시연 Profile·Role 확인 후 진입합니다.
+모든 정보는 선택 입력이고 자동 PC 검사는 없습니다. OS/버전, 현재 설정 상태, 실행 환경,
+설치 구성요소, 외부 서비스 인증 준비 상태를 입력합니다. Codex는 시안의 읽기 전용 지원 대상 표시입니다.
+목록은 모름(null)과 알고 있는 빈 목록([])을 구분하고 프로젝트별 초안·마지막 유효 값을 보존합니다.
+유효한 입력 확인 후 Capability 화면으로 이동하며 서버 저장이나 추천 생성을 수행하지 않습니다.
+실제 지원 Client와 환경 API 계약은 팀 확인이 필요합니다. 자세한 사항은 API 연동 메모를 참고하세요.
+
+## Capability 추천 상태
+
+`/demo/projects/:demoId/recommendation`은 유효한 환경 입력 확인 후 이동합니다.
+기본은 추천 미실행이며 실제 Capability/도구 결과는 null입니다. 시안의 9개 항목을 미정으로 표시합니다.
+명시적인 ‘시연용 상태 미리보기’를 열면 원본의 필요성 선택과 추천 상태 4종을 조작할 수 있습니다.
+선택은 프로젝트별 `recommendationPreviews`에만 보관되며 실제 추천 결과나 근거로 사용하지 않습니다.
+추천 API·점수·규칙·Client별 지원 정책은 미구현입니다. Codex/Claude Code 지원 대상은 팀 확정 전입니다.
+실제 결과를 선택하는 08단계 진입은 제공하지 않으며, 별도 시연용 도구·권한 화면 미리보기로만 진입합니다. 새로고침하면 시연 상태는 초기화됩니다.
+
+## 시연 도구·권한 선택
+
+`/demo/projects/:demoId/selection`은 Capability의 명시적 시연 진입 버튼으로만 접근합니다.
+기본 도구·권한 데이터는 미조회(null)입니다. 예시를 열면 실제 도구가 아닌 추상 UI 카드 2개와
+권한 3종 조작을 확인할 수 있습니다. 고정된 필수 카드·토글 가능한 선택 카드는 UI 동작 예시입니다.
+프로젝트별 선택·권한·설명 펼침 상태를 유지하며 실제 서버 권한·승인·설치·설정 생성은 수행하지 않습니다.
+09단계는 구현하지 않았고, Preview 버튼은 검증과 미구현 안내만 표시합니다.
+
+
+Environment는 Claude Code 우선 지원 정책을 표시하며 Codex는 후속 지원입니다.
+Client별 문구는 `src/features/environment/clientDefinition.js`에 분리했고, 버전·설정 존재 여부는
+사용자 직접 입력입니다. 자동 환경 검사나 실제 API 연결은 하지 않습니다.
+이전 Codex 시연 입력은 별도로 보존하며 Claude 입력으로 자동 변환하지 않습니다.
+
+
+## 설정 확인·승인 시연 화면
+
+Selection의 별도 시연 미리보기 버튼으로 `/demo/projects/:demoId/preview`에 진입합니다.
+실제 Preview는 미준비이며 명시적으로 예시를 열 때만 추상 선택 요약과 설정 영역 설명을 표시합니다.
+실제 설정 파일·권한 승인·다운로드는 생성하지 않습니다. 시연 체크는 프로젝트별 메모리에만 보관하며
+예시를 닫거나 선택 도구·권한이 변경되면 해제합니다. 확인 후 버튼은 10단계 시연 안내 화면으로 이동하며 실제 서버 승인이나 다운로드를 의미하지 않습니다.
+
+
+## 다운로드·적용 안내 시연 화면
+
+`/demo/projects/:demoId/complete`는 Preview 예시 열기·현재 선택 확인 체크·명시적 다음 버튼 진입이 필요합니다.
+체크 취소·예시 닫기·선택 도구/권한 변경은 기존 진입을 취소합니다. 재확인·재진입 후 입력은 보존됩니다.
+다운로드 버튼은 미연동 안내만 표시하며 파일·ZIP·Blob·다운로드 URL을 만들지 않습니다.
+Claude Code 적용 순서는 일반 안내이며 파일 종류·경로·설정 범위·병합·인증 절차는 계약 확정 후 연결합니다.
+적용 상태 APPLIED/FAILED와 실패 사유 4종을 입력해 현재 프로젝트의 시연 사용자 보고로만 표시합니다.
+오류 초안과 마지막 유효 보고를 분리하고 시스템 검증은 항상 NOT_RUN입니다. 서버 요청·영구 저장은 없습니다.
+
+
+## 백엔드 인계용 서비스 진입 기반
+
+- 기존 `/`·`/demo/...` 시연 화면은 유지합니다. `/login`은 시연 컨트롤이 없는 서비스 로그인 표시입니다.
+- `/app/projects`와 `/app/projects/:projectId` 및 `/analysis`~`/complete`는 **임시 서비스 경로**입니다.
+- 서비스 경로는 demo Provider와 분리되며 각 loader가 세션을 먼저 확인합니다. 현재 인증 읽기 transport가 없어 이용 불가 상태를 표시합니다.
+- `src/features/service/serviceApi.js`가 연결 경계입니다. 기존 계약의 세션/목록/상세 읽기 인터페이스만 준비했고 기본 네트워크 요청은 없습니다.
+- 실제 OAuth·서비스 폼 CRUD·쓰기·분석·승인·다운로드는 아직 동작하지 않습니다. 성공/완료 fixture를 대체 응답으로 쓰지 않습니다.
+- 프론트 차단은 UX이며 최종 인증·소유권·승인·다운로드 검사는 서버가 수행해야 합니다.
+- 구현 범위·확정/미확정 계약·연동 순서·필수 테스트는 `docs/API-INTEGRATION.md` 첫 절을 참고하세요.

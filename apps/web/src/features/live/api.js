@@ -29,3 +29,25 @@ export async function apiRequest(path, { method = 'GET', body, signal, download 
 }
 
 export const projectPath = id => `/api/projects/${encodeURIComponent(id)}`
+
+export async function loadSession() {
+  const value = await apiRequest('/api/auth/get-session')
+  if (value === null || value === 'null') return null
+  if (!value?.user?.id || !value.user.name) throw new Error('세션 응답이 올바르지 않습니다.')
+  return value
+}
+
+export function environmentProfileBody(expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown) {
+  return {
+    expectedVersion, osFamily: osFamily.trim().toUpperCase(), clientId: clientId.trim(),
+    clientVersion: clientVersion.trim(), installedComponentsKnown, installedComponents: [],
+  }
+}
+
+export function planningInputBody(expectedVersion, inputText, file) {
+  const body = new FormData()
+  body.append('expectedVersion', new Blob([JSON.stringify(expectedVersion)], { type: 'application/json' }))
+  if (file) body.append('file', file)
+  else body.append('inputText', inputText)
+  return body
+}

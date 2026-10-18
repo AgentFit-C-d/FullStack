@@ -18,7 +18,7 @@ export default function ProjectCreatePage() {
   function changeName(value) {
     const limited = limitProjectName(value)
     dispatch({ type: 'draft', value: limited })
-    setLimitNotice(value !== limited ? '프로젝트 이름은 최대 200자까지 입력할 수 있어요.' : '')
+    setLimitNotice(value !== limited ? '프로젝트 이름은 최대 100 코드포인트까지 입력할 수 있어요.' : '')
     if (limited.trim()) setError('')
   }
   function submit(event) {
@@ -46,7 +46,7 @@ export default function ProjectCreatePage() {
             onCompositionEnd={event => { setComposing(false); changeName(event.currentTarget.value) }}
             onChange={event => { if (composing) setCompositionValue(event.target.value); else changeName(event.target.value) }} />
         </FormField>
-        <p id="project-name-limit" className={styles.limit} role="status">{limitNotice || '최대 200자 · 시연 모드에서만 생성되며 서버에 저장되지 않습니다.'}</p>
+        <p id="project-name-limit" className={styles.limit} role="status">{limitNotice || '최대 100 코드포인트 · 시연 모드에서만 생성되며 서버에 저장되지 않습니다.'}</p>
       </Card>
       <div className={styles.actions}><Button to="/demo/projects" onClick={() => dispatch({ type: 'cancel' })}>취소</Button><Button variant="primary" large type="submit">프로젝트 만들기 →</Button></div>
     </form>

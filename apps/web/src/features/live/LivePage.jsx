@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
-import { apiRequest, projectPath } from './api.js'
+import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath } from './api.js'
 import styles from './LivePage.module.css'
 
 const isProfile = value => value?.kind === 'CONFIRMED' || value?.kind === 'DRAFT'
@@ -30,6 +30,7 @@ export default function LivePage() {
   const [osFamily, setOsFamily] = useState('WINDOWS')
   const [clientId, setClientId] = useState('demo-claude-code')
   const [clientVersion, setClientVersion] = useState('demo-1')
+  const [installedComponentsKnown, setInstalledComponentsKnown] = useState(false)
   const [selectedKeys, setSelectedKeys] = useState([])
   const [existingState, setExistingState] = useState('UNKNOWN')
 
@@ -53,11 +54,15 @@ export default function LivePage() {
       if (savedInputs.developer) {
         setRole(savedInputs.developer.role)
         setResponsibilities((savedInputs.developer.responsibilities || []).join('\n'))
-      }
+      } else { setRole('FULLSTACK'); setResponsibilities('') }
       if (savedInputs.environment) {
         setOsFamily(savedInputs.environment.osFamily)
         setClientId(savedInputs.environment.clientId)
         setClientVersion(savedInputs.environment.clientVersion)
+        setInstalledComponentsKnown(savedInputs.environment.installedComponentsKnown)
+      } else {
+        setOsFamily('WINDOWS'); setClientId('demo-claude-code'); setClientVersion('demo-1')
+        setInstalledComponentsKnown(false)
       }
       try {
         const latest = await apiRequest(`${base}/recommendations/latest`)
@@ -69,7 +74,7 @@ export default function LivePage() {
 
   useEffect(() => {
     let active = true
-    apiRequest('/api/auth/get-session').then(value => {
+    loadSession().then(value => {
       if (!active) return
       setSession(value)
       if (value) return loadProjects()
@@ -92,6 +97,11 @@ export default function LivePage() {
   function selectProject(id) {
     setDetail(null); setInputs(null); setRecommendation(null); setPreview(null)
     setPreviewRequest(null); setApproval(null); setError(''); setNotice('')
+    setPlanningText(''); setPlanningFile(null)
+    setProfileEdit({ projectName: '', projectType: '', domain: '' })
+    setRole('FULLSTACK'); setResponsibilities(''); setOsFamily('WINDOWS')
+    setClientId('demo-claude-code'); setClientVersion('demo-1'); setInstalledComponentsKnown(false)
+    setSelectedKeys([]); setExistingState('UNKNOWN')
     setSearch(id ? { project: id } : {})
   }
 
@@ -118,10 +128,7 @@ export default function LivePage() {
     event.preventDefault()
     if (!planningFile && !planningText.trim()) { setError('파일 또는 텍스트를 입력해 주세요.'); return }
     await run(async () => {
-      const form = new FormData()
-      form.append('expectedVersion', String(detail.project.version))
-      if (planningFile) form.append('file', planningFile)
-      else form.append('inputText', planningText)
+      const form = planningInputBody(detail.project.version, planningText, planningFile)
       await apiRequest(`${projectPath(projectId)}/planning-input`, { method: 'PUT', body: form })
       await loadProject(projectId)
     }, '기획 자료를 서버에 저장했습니다. 이제 분석을 시작할 수 있습니다.')
@@ -162,12 +169,8 @@ export default function LivePage() {
         },
       })
       await apiRequest(`${base}/environment-profile`, {
-        method: 'PUT', body: {
-          expectedVersion: inputs?.environment?.version || 0,
-          osFamily: osFamily.trim().toUpperCase(), clientId: clientId.trim(),
-          clientVersion: clientVersion.trim(), installedComponentsKnown: false,
-          installedComponents: [],
-        },
+        method: 'PUT', body: environmentProfileBody(inputs?.environment?.version || 0,
+          osFamily, clientId, clientVersion, installedComponentsKnown),
       })
       await loadProject(projectId)
     }, '역할과 환경 선언을 DB에 저장했습니다.')
@@ -251,7 +254,7 @@ export default function LivePage() {
         {detail && <>
           <section className={styles.card}><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !detail.project.version || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
           {draft && <section className={styles.card}><h2>3. 분석 초안 확인</h2><p>DRAFT v{draft.version} · 문서 추출 결과를 확인하고 확정합니다.</p><div className={styles.grid3}><label>프로젝트명<input value={profileEdit.projectName} onChange={event => setProfileEdit({ ...profileEdit, projectName: event.target.value })} /></label><label>서비스 유형<input value={profileEdit.projectType} onChange={event => setProfileEdit({ ...profileEdit, projectType: event.target.value })} /></label><label>도메인<input value={profileEdit.domain} onChange={event => setProfileEdit({ ...profileEdit, domain: event.target.value })} /></label></div><details><summary>추출된 항목과 근거 ({draft.items?.length || 0}개)</summary><ul>{(draft.items || []).map((item, index) => <li key={`${item.fieldKey}-${index}`}>{item.fieldKey}: {item.name} <small>{item.source}</small></li>)}</ul></details><button type="button" disabled={busy || !profileEdit.projectName.trim()} onClick={confirmProfile}>확인하고 확정 저장</button></section>}
-          {confirmed && <section className={styles.card}><h2>4. 내 역할과 개발환경</h2><p>입력 정보는 내 프로젝트에 저장됩니다. 설치 버전은 실제 PC를 검사한 값이 아닌 사용자 선언입니다.</p><div className={styles.grid3}><label>역할<input value={role} onChange={event => setRole(event.target.value)} /></label><label>OS<input value={osFamily} onChange={event => setOsFamily(event.target.value)} /></label><label>AI Client<input value={clientId} onChange={event => setClientId(event.target.value)} /></label><label>Client 버전<input value={clientVersion} onChange={event => setClientVersion(event.target.value)} /></label></div><label>담당 업무 (줄마다 하나)<textarea value={responsibilities} onChange={event => setResponsibilities(event.target.value)} /></label><p>데모 카탈로그 대상: WINDOWS / demo-claude-code / demo-1. 다른 값이면 호환 도구가 없을 수 있습니다.</p><button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button> {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}</section>}
+          {confirmed && <section className={styles.card}><h2>4. 내 역할과 개발환경</h2><p>입력 정보는 내 프로젝트에 저장됩니다. 설치 버전은 실제 PC를 검사한 값이 아닌 사용자 선언입니다.</p><div className={styles.grid3}><label>역할<input value={role} onChange={event => setRole(event.target.value)} /></label><label>OS<input value={osFamily} onChange={event => setOsFamily(event.target.value)} /></label><label>AI Client<input value={clientId} onChange={event => setClientId(event.target.value)} /></label><label>Client 버전<input value={clientVersion} onChange={event => setClientVersion(event.target.value)} /></label></div><label>담당 업무 (줄마다 하나)<textarea value={responsibilities} onChange={event => setResponsibilities(event.target.value)} /></label><label><input type="checkbox" checked={installedComponentsKnown} onChange={event => setInstalledComponentsKnown(event.target.checked)} /> 이 프로젝트의 설치 도구 목록이 비어 있음을 확인했습니다</label><p>이 데모는 실제 PC를 검사하지 않습니다. 확인하지 않았다면 설치 상태는 미정으로 저장되어 추천 전에 추가 확인을 요청합니다.</p><p>데모 카탈로그 대상: WINDOWS / demo-claude-code / demo-1. 다른 값이면 호환 도구가 없을 수 있습니다.</p><button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button> {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}</section>}
           {confirmed && <section className={styles.card}><h2>5. 추천</h2><p>AI가 필요한 Capability를 분석하고, Core API가 데모 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey))} /> {item.name} ({item.toolKey})</label></li>)}</ul>{!recommendation.items?.length && <p>선택 가능한 도구가 없습니다. 추가 정보가 필요하거나 호환 대상이 없을 수 있습니다.</p>}{(recommendation.notices || []).length > 0 && <details><summary>질문·안내 ({recommendation.notices.length})</summary><pre>{JSON.stringify(recommendation.notices, null, 2)}</pre></details>}</>}</section>}
           {recommendation?.items?.length > 0 && <section className={styles.card}><h2>6. 설정 미리보기와 다운로드</h2><p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 합성 데모 설정은 실제 설치에 사용하지 마세요.</p><label>현재 설정 상태 <select value={existingState} onChange={event => setExistingState(event.target.value)}><option value="UNKNOWN">모름</option><option value="USER_SAYS_EMPTY">사용자가 비어 있다고 선언</option></select></label><div className={styles.row}><button type="button" disabled={busy} onClick={createPreview}>미리보기 생성</button>{preview && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}{approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}</div>{preview && <><p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>{preview.files?.map(file => <details key={file.relativePath}><summary>{file.relativePath} · {file.action}</summary><pre>{file.content}</pre></details>)}</>}</section>}
         </>}

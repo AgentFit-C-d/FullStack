@@ -1,12 +1,21 @@
+import { environmentClient } from './clientDefinition.js'
 import { canEnterDemoRole, validateRole } from '../role/roleModel.js'
 
 export const osOptions = [['', '미정'], ['WINDOWS', 'Windows'], ['MACOS', 'macOS'], ['LINUX', 'Linux'], ['OTHER', '기타']]
 export const configurationOptions = [['UNKNOWN', '모름'], ['USER_SAYS_EMPTY', '기존 설정 없음'], ['HAS_EXISTING', '기존 설정 있음']]
 export const authOptions = [['UNKNOWN', '모름'], ['READY', '준비됨'], ['NOT_READY', '준비 안 됨']]
 export const emptyEnvironmentEntry = {
-  source: 'demo-user', confirmed: false,
+  source: 'demo-user', clientId: environmentClient.id, confirmed: false,
   draft: { osFamily: '', osVersion: '', clientVersion: '', configurationKnowledge: 'UNKNOWN', runtimeKnowledge: 'UNKNOWN', runtimes: [], installedComponentsKnowledge: 'UNKNOWN', installedComponents: [], authReadiness: [] },
-  value: { osFamily: null, osVersion: null, clientVersion: null, configurationKnowledge: 'UNKNOWN', runtimes: null, installedComponents: null, authReadiness: [] },
+  value: { clientId: environmentClient.id, osFamily: null, osVersion: null, clientVersion: null, configurationKnowledge: 'UNKNOWN', runtimes: null, installedComponents: null, authReadiness: [] },
+}
+// Older demo sessions used implicit Codex fields. Keep those values without relabelling them.
+export function prepareEnvironmentEntry(entry) {
+  if (entry.source !== 'demo-user' || entry.clientId) return entry
+  return { ...entry, clientId: environmentClient.id, confirmed: false,
+    legacyClientInput: { clientId: 'CODEX', clientVersion: entry.draft.clientVersion, configurationKnowledge: entry.draft.configurationKnowledge },
+    draft: { ...entry.draft, clientVersion: '', configurationKnowledge: 'UNKNOWN' },
+  }
 }
 export function canEnterDemoEnvironment(profile, role) {
   return canEnterDemoRole(profile) && !!role && role.source === 'demo-user' && role.confirmed === true && !Object.keys(validateRole(role.draft)).length
@@ -33,13 +42,15 @@ export function validateEnvironment(draft) {
 }
 export function editEnvironment(entry, action) {
   if (entry.source !== 'demo-user') return entry
+  entry = prepareEnvironmentEntry(entry)
+  if (entry.clientId !== environmentClient.id) return entry
   const draft = structuredClone(entry.draft)
   const { field, value, index, property } = action
   if (action.type === 'environment-confirm') {
     if (Object.keys(validateEnvironment(draft)).length) return entry
     const nullable = text => text.trim() ? text : null
     return { ...entry, confirmed: true, value: {
-      osFamily: draft.osFamily || null, osVersion: nullable(draft.osVersion), clientVersion: nullable(draft.clientVersion), configurationKnowledge: draft.configurationKnowledge,
+      clientId: entry.clientId, osFamily: draft.osFamily || null, osVersion: nullable(draft.osVersion), clientVersion: nullable(draft.clientVersion), configurationKnowledge: draft.configurationKnowledge,
       runtimes: draft.runtimeKnowledge === 'UNKNOWN' ? null : structuredClone(draft.runtimes),
       installedComponents: draft.installedComponentsKnowledge === 'UNKNOWN' ? null : structuredClone(draft.installedComponents), authReadiness: structuredClone(draft.authReadiness),
     } }

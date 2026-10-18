@@ -17,7 +17,7 @@ const edit = (state, field, value, id = 'a') => demoReducer(state, { type: 'role
 test('Role 모든 항목은 선택이며 업무 30개·각 200 코드포인트를 검증한다', () => {
   assert.deepEqual(validateRole(emptyRoleEntry.draft), {})
   assert.deepEqual(parseResponsibilities('  첫 업무  \n\n둘째 업무\r\n '), ['첫 업무', '둘째 업무'])
-  const draft = { role: 'AI', experience: '초보', responsibilitiesText: Array(30).fill('🦊'.repeat(200)).join('\n') }
+  const draft = { role: 'AI', experience: '초보', responsibilitiesText: Array(30).fill('🦊'.repeat(199)).join('\n') }
   assert.deepEqual(validateRole(draft), {})
   assert.ok(validateRole({ ...draft, responsibilitiesText: '🦊'.repeat(201) }).responsibilitiesText)
   assert.ok(validateRole({ ...draft, responsibilitiesText: Array(31).fill('업무').join('\n') }).responsibilitiesText)
@@ -69,4 +69,25 @@ test('잘못된 업무는 마지막 유효 값을 지우지 않고 초안에 보
   state = edit(state, 'responsibilitiesText', '')
   state = demoReducer(state, { type: 'role-confirm', id: 'a' })
   assert.deepEqual(state.roleDrafts.a.value.responsibilities, [])
+})
+
+
+test('담당 업무 전체 6000 경계는 줄바꿈·공백·구분자를 포함하고 초안을 자르지 않는다', () => {
+  const rows = [...Array(29).fill('🦊'.repeat(200)), '🦊'.repeat(171)]
+  const exact = rows.join('\n')
+  assert.equal(Array.from(exact).length, 6000)
+  assert.deepEqual(validateRole({ ...emptyRoleEntry.draft, responsibilitiesText: exact }), {})
+  const over = exact + ' '
+  assert.match(validateRole({ ...emptyRoleEntry.draft, responsibilitiesText: over }).responsibilitiesText, /6,000/)
+  assert.match(validateRole({ ...emptyRoleEntry.draft, responsibilitiesText: rows.join('\r\n') }).responsibilitiesText, /6,000/)
+  assert.match(validateRole({ ...emptyRoleEntry.draft, responsibilitiesText: exact + '\n' }).responsibilitiesText, /6,000/)
+  let state = edit(session(), 'responsibilitiesText', '정상 업무')
+  state = demoReducer(state, { type: 'role-confirm', id: 'a' })
+  const valid = state.roleDrafts.a.value
+  state = edit(state, 'responsibilitiesText', over)
+  state = demoReducer(state, { type: 'role-confirm', id: 'a' })
+  assert.equal(state.roleDrafts.a.value, valid)
+  assert.equal(state.roleDrafts.a.draft.responsibilitiesText, over)
+  assert.equal(state.roleDrafts.a.confirmed, false)
+  assert.equal(state.roleDrafts.b, undefined)
 })

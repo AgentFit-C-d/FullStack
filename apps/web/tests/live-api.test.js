@@ -1,6 +1,6 @@
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { apiRequest, projectPath } from '../src/features/live/api.js'
+import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath } from '../src/features/live/api.js'
 
 const originalFetch = globalThis.fetch
 const originalDocument = globalThis.document
@@ -39,4 +39,27 @@ test('읽기 요청은 CSRF 요청 없이 서버 오류 상태를 전달한다',
   await assert.rejects(apiRequest('/api/projects'), error => error.status === 401)
   assert.deepEqual(paths, ['/api/projects'])
   assert.equal(projectPath('project id'), '/api/projects/project%20id')
+})
+
+test('기획 자료의 버전은 Spring RequestPart가 읽는 JSON 숫자로 전송한다', async () => {
+  const body = planningInputBody(1, '데모 기획', null)
+  assert.equal(body.get('expectedVersion').type, 'application/json')
+  assert.equal(await body.get('expectedVersion').text(), '1')
+  assert.equal(body.get('inputText'), '데모 기획')
+  assert.equal(body.get('file'), null)
+})
+
+test('설치 상태는 사용자 선언에 따라서만 KNOWN으로 저장한다', () => {
+  assert.deepEqual(environmentProfileBody(0, 'WINDOWS', 'demo-claude-code', 'demo-1', false), {
+    expectedVersion: 0, osFamily: 'WINDOWS', clientId: 'demo-claude-code',
+    clientVersion: 'demo-1', installedComponentsKnown: false, installedComponents: [],
+  })
+  assert.equal(environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true)
+    .installedComponentsKnown, true)
+})
+
+test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 처리한다', async () => {
+  globalThis.document = { cookie: '' }
+  globalThis.fetch = async () => Response.json('null')
+  assert.equal(await loadSession(), null)
 })

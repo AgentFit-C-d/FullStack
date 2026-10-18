@@ -1,0 +1,81 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { demoReducer, initialDemoState } from '../src/features/projects/projectModel.js'
+import { canEnterDemoComplete, canPreviewComplete, validateCompleteReport, unpreparedCompleteData } from '../src/features/complete/completeModel.js'
+function session() {
+  let state = demoReducer(initialDemoState, { type: 'enter' })
+  for (const id of ['a', 'b']) for (const action of [{ type: 'create', name: id }, { type: 'profile-preview' }, { type: 'profile-edit', edit: 'confirm' }, { type: 'role-confirm' }, { type: 'environment-confirm' }, { type: 'selection-enter' }, { type: 'preview-enter' }]) state = demoReducer(state, { ...action, id })
+  return state
+}
+const preview = (state, edit, value) => demoReducer(state, { type: 'preview-edit', id: 'a', edit, value })
+const complete = (state, action = {}, id = 'a') => demoReducer(state, { type: 'complete-enter', ...action, id })
+function checked(state = session()) { return preview(preview(state, 'visibility', true), 'acknowledge', true) }
+test('Complete는 현재 시연 Preview 확인과 명시적 진입만 허용하고 실제 산출물은 없다', () => {
+  let state = session()
+  assert.equal(canPreviewComplete(state, 'a'), false)
+  assert.equal(complete(state), state)
+  state = checked(state)
+  assert.equal(canPreviewComplete(state, 'a'), true)
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+  state = complete(state)
+  assert.equal(canEnterDemoComplete(state, 'a'), true)
+  assert.deepEqual(unpreparedCompleteData, { artifact: null, approval: null, download: null, verification: 'NOT_RUN' })
+  assert.equal(state.completeDrafts.a.report, null)
+  assert.equal(complete(state, {}, 'missing'), state)
+  assert.equal(canEnterDemoComplete({ ...state, active: false }, 'a'), false)
+  assert.equal(canEnterDemoComplete({ ...state, completeDrafts: { a: { ...state.completeDrafts.a, source: 'server' } } }, 'a'), false)
+})
+test('Preview 체크 해제·예시 닫기·도구/권한 변경은 Complete 접근을 취소하고 재진입을 요구한다', () => {
+  let state = complete(checked())
+  state = preview(state, 'acknowledge', false)
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+  assert.equal(complete(state, { type: 'complete-report' }), state)
+  assert.equal(complete(state, { type: 'complete-edit', field: 'status', value: 'APPLIED' }), state)
+  state = preview(state, 'acknowledge', true)
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+  state = complete(state)
+  assert.equal(canEnterDemoComplete(state, 'a'), true)
+  state = preview(state, 'visibility', false)
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+  state = complete(checked(state))
+  state = demoReducer(state, { type: 'selection-preview', id: 'a', edit: 'visibility', value: true })
+  state = demoReducer(state, { type: 'selection-preview', id: 'a', edit: 'tool', toolId: 'ui-optional' })
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+  state = complete(preview(state, 'acknowledge', true))
+  state = demoReducer(state, { type: 'selection-preview', id: 'a', edit: 'permission', value: 'ALWAYS_ALLOW' })
+  assert.equal(canEnterDemoComplete(state, 'a'), false)
+})
+test('결과 상태 필수·실패 사유 4종을 검증하고 잘못된 초안은 마지막 보고를 덮어쓰지 않는다', () => {
+  assert.ok(validateCompleteReport({ status: '', reason: '' }).status)
+  assert.ok(validateCompleteReport({ status: 'FAILED', reason: ' ' }).reason)
+  assert.ok(validateCompleteReport({ status: 'INVALID', reason: '' }).status)
+  for (const reason of ['파일 복사 실패', '인증 필요', '의존성 누락', '알 수 없음']) assert.deepEqual(validateCompleteReport({ status: 'FAILED', reason }), {})
+  let state = complete(checked())
+  const edit = (field, value) => { state = complete(state, { type: 'complete-edit', field, value }) }
+  const save = () => { state = complete(state, { type: 'complete-report' }) }
+  edit('status', 'APPLIED'); save()
+  const valid = state.completeDrafts.a.report
+  assert.equal(valid.source, 'demo-user-report')
+  assert.equal(valid.verification, 'NOT_RUN')
+  edit('status', 'FAILED'); save()
+  assert.equal(state.completeDrafts.a.report, valid)
+  assert.equal(state.completeDrafts.a.draft.status, 'FAILED')
+  edit('reason', '인증 필요'); save()
+  assert.equal(state.completeDrafts.a.report.reason, '인증 필요')
+  edit('status', 'APPLIED'); save()
+  assert.equal(state.completeDrafts.a.report.reason, '')
+  edit('status', 'FAILED')
+  assert.equal(state.completeDrafts.a.draft.reason, '인증 필요')
+  const stored = state.completeDrafts.a
+  assert.equal(complete(state).completeDrafts.a, stored)
+  assert.equal(state.completeDrafts.b, undefined)
+  state = complete(state, {}, 'b')
+  assert.equal(state.completeDrafts.b, undefined)
+  state = demoReducer(state, { type: 'preview-edit', id: 'b', edit: 'visibility', value: true })
+  state = demoReducer(state, { type: 'preview-edit', id: 'b', edit: 'acknowledge', value: true })
+  state = complete(state, {}, 'b')
+  assert.equal(state.completeDrafts.b.report, null)
+  assert.equal(state.completeDrafts.b.draft.status, '')
+  assert.equal(state.completeDrafts.a, stored)
+  assert.deepEqual(demoReducer(state, { type: 'exit' }).completeDrafts, {})
+})

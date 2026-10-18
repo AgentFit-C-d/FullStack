@@ -7,11 +7,13 @@ test('공백 이름은 거부하고 일반 이름은 허용한다', () => {
   assert.equal(validateProjectName(' 운동 기록 '), '')
 })
 
-test('200 코드포인트 제한은 이모지를 자르지 않는다', () => {
-  const value = '🦊'.repeat(201)
-  assert.equal(Array.from(limitProjectName(value)).length, 200)
-  assert.equal(limitProjectName(value), '🦊'.repeat(200))
-  assert.equal(validateProjectName(value), '프로젝트 이름은 최대 200자까지 입력할 수 있어요.')
+test('100 코드포인트 제한은 이모지를 자르지 않는다', () => {
+  assert.equal(validateProjectName(' 🦊'.trim().repeat(100)), '')
+  assert.equal(validateProjectName(' ' + '🦊'.repeat(100) + ' '), '')
+  const value = '🦊'.repeat(101)
+  assert.equal(Array.from(limitProjectName(value)).length, 100)
+  assert.equal(limitProjectName(value), '🦊'.repeat(100))
+  assert.equal(validateProjectName(value), '프로젝트 이름은 최대 100 코드포인트까지 입력할 수 있어요.')
 })
 
 test('시연 진입은 빈 세션이며 이름이 같은 프로젝트도 서로 식별한다', () => {

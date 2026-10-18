@@ -78,10 +78,10 @@ export function ProfileEditor({ project, entry, mode }) {
   return <>
     <PageHeader eyebrow="04 / 10 · PROJECT PROFILE" title={copy.title} description={copy.description} />
     <WizardProgress currentStep={4} incompleteSteps={mode === 'demo' ? [] : [3]} navigationOnly={mode === 'demo'} />
-    <div className={styles.alert}><Badge>{mode === 'demo' ? '시연 Profile' : 'Project Profile'} · {entry.confirmed ? '확인 완료' : '확인 전'}</Badge><span>프로젝트 목록 이름: <strong>{project.name}</strong>. 아래 Profile 프로젝트명은 별도 편집값이며 목록 이름과 자동 동기화하지 않습니다. 프로젝트명만 필수입니다.{mode === 'demo' && ' 변경 내용은 이 시연 세션의 메모리에만 유지되며 AI 분석 결과가 아닙니다.'}</span></div>
+    <div className={styles.alert}><Badge>{mode === 'demo' ? '시연 Profile' : 'Project Profile'} · {entry.confirmed ? '확인 완료' : '확인 전'}</Badge><span>프로젝트 목록 이름: <strong>{project.name}</strong>. 프로젝트명은 최대 100 코드포인트이며, 유효한 전체 입력을 확인하면 목록 이름에도 반영됩니다. 프로젝트명만 필수입니다.{mode === 'demo' && ' 변경 내용은 이 시연 세션의 메모리에만 유지되며 AI 분석 결과가 아닙니다.'}</span></div>
     {mode === 'demo' && <div className={styles.examples}>
       <Button variant="soft" onClick={() => setConfirmExample(true)}>예시 데이터 불러오기</Button>
-      {confirmExample && <div role="group" aria-label="예시 데이터 교체 확인"><p>기존 Profile 편집 내용과 확인한 값을 고정 예시로 교체할까요? Planning 입력과 목록 이름은 유지됩니다.</p><Button onClick={() => { dispatch({ type: 'profile-load-example', id: project.id, confirmed: true }); setConfirmExample(false); setSubmitted(false) }}>예시로 교체하기</Button> <Button onClick={() => setConfirmExample(false)}>취소</Button></div>}
+      {confirmExample && <div role="group" aria-label="예시 데이터 교체 확인"><p>프로젝트명을 제외한 기존 Profile 편집 내용과 확인한 값을 고정 예시로 교체할까요? Planning 입력과 프로젝트명은 유지됩니다.</p><Button onClick={() => { dispatch({ type: 'profile-load-example', id: project.id, confirmed: true }); setConfirmExample(false); setSubmitted(false) }}>예시로 교체하기</Button> <Button onClick={() => setConfirmExample(false)}>취소</Button></div>}
     </div>}
     <form ref={form} noValidate onSubmit={confirm}>
       <div className={styles.grid}>

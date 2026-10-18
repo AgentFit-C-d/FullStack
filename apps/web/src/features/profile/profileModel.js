@@ -1,3 +1,4 @@
+import { validateProjectName } from '../projects/projectName.js'
 import { createDemoProfileFixture } from './demoProfileFixture.js'
 
 export const scalarFields = [['project_name', '프로젝트명'], ['project_type', '프로젝트 유형'], ['domain', '도메인'], ['database', 'Database'], ['deployment', 'Deployment']]
@@ -6,15 +7,18 @@ export const automaticScalarFields = ['project_type', 'domain', 'database', 'dep
 const copy = value => structuredClone(value)
 
 export function createDemoProfile(projectName, example = false) {
-  const profile = example ? createDemoProfileFixture() : Object.fromEntries([...scalarFields, ...listFields].map(([key]) => [key, key === 'project_name' ? projectName : null]))
-  return { source: example ? 'demo-fixture' : 'demo-manual', nameOrigin: example ? 'fixture' : 'project', profile, draft: copy(profile), modes: Object.fromEntries(listFields.map(([key]) => [key, profile[key] === null ? 'UNKNOWN' : profile[key].length ? 'KNOWN' : 'KNOWN_EMPTY'])), confirmed: false }
+  const profile = example ? { ...createDemoProfileFixture(), project_name: projectName } : Object.fromEntries([...scalarFields, ...listFields].map(([key]) => [key, key === 'project_name' ? projectName : null]))
+  return { source: example ? 'demo-fixture' : 'demo-manual', nameOrigin: 'project', profile, draft: copy(profile), modes: Object.fromEntries(listFields.map(([key]) => [key, profile[key] === null ? 'UNKNOWN' : profile[key].length ? 'KNOWN' : 'KNOWN_EMPTY'])), confirmed: false }
 }
 
 export function validateProfile(draft, modes) {
   const errors = {}
   for (const [key] of scalarFields) {
     const value = draft[key]
-    if (key === 'project_name' && !value?.trim()) errors[key] = '프로젝트 이름을 입력해주세요.'
+    if (key === 'project_name') {
+      const error = validateProjectName(value)
+      if (error) errors[key] = error
+    }
     else if (automaticScalarFields.includes(key) && typeof value === 'string' && !value.trim()) continue
     else if (value !== null && (typeof value !== 'string' || !value.trim() || Array.from(value).length > 200)) errors[key] = '1~200 코드포인트를 입력하거나 미확인으로 설정해주세요.'
   }
@@ -63,7 +67,8 @@ export function editDemoProfile(entry, action) {
       break
     case 'confirm':
       if (Object.keys(validateProfile(draft, modes)).length) return entry
-      return { ...entry, profile: { ...copy(draft), ...Object.fromEntries(automaticScalarFields.map(field => [field, draft[field]?.trim() ? draft[field] : null])) }, confirmed: true }
+      draft.project_name = draft.project_name.trim()
+      return { ...entry, draft, profile: { ...copy(draft), ...Object.fromEntries(automaticScalarFields.map(field => [field, draft[field]?.trim() ? draft[field] : null])) }, confirmed: true }
     default: return entry
   }
   return { ...entry, draft, modes, confirmed: false, editedFields: action.edit === 'scalar' ? { ...entry.editedFields, [key]: true } : entry.editedFields, nameOrigin: key === 'project_name' ? 'user' : entry.nameOrigin }

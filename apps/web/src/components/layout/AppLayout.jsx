@@ -15,7 +15,7 @@ export default function AppLayout() {
     <a className={styles.skip} href="#main-content">본문으로 건너뛰기</a>
     <Sidebar />
     <div className={styles.main}>
-      <Topbar title={location.pathname.endsWith('/new') ? '프로젝트 생성' : location.pathname === '/demo/projects' ? '내 프로젝트' : location.pathname.endsWith('/analysis') ? 'AI 기획 분석' : location.pathname.endsWith('/review') ? '분석 내용 확인' : location.pathname.endsWith('/role') ? '내 역할 입력' : location.pathname.endsWith('/environment') ? '개발환경 입력' : '기획 자료 입력'} />
+      <Topbar title={location.pathname.endsWith('/new') ? '프로젝트 생성' : location.pathname === '/demo/projects' ? '내 프로젝트' : location.pathname.endsWith('/analysis') ? 'AI 기획 분석' : location.pathname.endsWith('/review') ? '분석 내용 확인' : location.pathname.endsWith('/role') ? '내 역할 입력' : location.pathname.endsWith('/environment') ? '개발환경 입력' : location.pathname.endsWith('/recommendation') ? '맞춤 도구 추천' : location.pathname.endsWith('/complete') ? '다운로드·적용 안내' : location.pathname.endsWith('/preview') ? '설정 확인·승인' : location.pathname.endsWith('/selection') ? '도구·권한 선택' : '기획 자료 입력'} />
       <main id="main-content" tabIndex={-1} ref={headingRef} className={styles.content}><Outlet /></main>
     </div>
   </div>

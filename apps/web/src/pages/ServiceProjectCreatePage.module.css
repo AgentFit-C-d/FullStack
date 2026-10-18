@@ -1,0 +1,7 @@
+.shell { max-width: 1080px; min-height: 100vh; margin: auto; padding: 28px 24px 64px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+.panel { max-width: 780px; }
+.input { display: block; width: 100%; margin-top: 9px; border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; color: var(--ink); font: inherit; }
+.input[aria-invalid='true'] { border-color: #c6534a; }
+.actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+@media (max-width: 700px) { .shell { padding: 20px 18px 40px; } .header, .actions { flex-wrap: wrap; } }

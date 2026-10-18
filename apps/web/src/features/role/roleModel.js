@@ -13,7 +13,8 @@ export function validateRole(draft) {
   if (draft.role && !roleOptions.includes(draft.role)) errors.role = '시안에 정의된 역할을 선택해주세요.'
   if (draft.experience && !experienceOptions.includes(draft.experience)) errors.experience = '시안에 정의된 경험 수준을 선택해주세요.'
   const items = parseResponsibilities(draft.responsibilitiesText)
-  if (items.length > 30) errors.responsibilitiesText = '담당 업무는 최대 30개까지 입력할 수 있어요.'
+  if (Array.from(draft.responsibilitiesText).length > 6000) errors.responsibilitiesText = '담당 업무는 줄바꿈·공백·구분자를 포함해 전체 최대 6,000 코드포인트까지 입력할 수 있어요.'
+  else if (items.length > 30) errors.responsibilitiesText = '담당 업무는 최대 30개까지 입력할 수 있어요.'
   else if (items.some(item => Array.from(item).length > 200)) errors.responsibilitiesText = '담당 업무는 항목당 최대 200 코드포인트까지 입력할 수 있어요.'
   return errors
 }

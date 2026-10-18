@@ -45,7 +45,7 @@ export function RoleEditor({ mode, entry, reviewPath, onEdit, onConfirm }) {
           <div className={styles.label}>역할 <span className={styles.optional}>선택</span></div>
           <div className={styles.options} role="group" aria-label="역할 선택">{roleOptions.map(role => <button key={role} data-field="role" type="button" className={`${styles.pill} ${entry.draft.role === role ? styles.selected : ''}`} aria-pressed={entry.draft.role === role} onClick={() => change('role', role)}>{role}</button>)}</div>
         </div>
-        <FormField id="responsibilities" label={<>담당 업무 <span className={styles.optional}>선택</span> <span className={styles.multiple}>여러 개 입력 가능</span></>} error={errors.responsibilitiesText} hint="최대 30개 업무, 항목당 200자. 빈칸은 미입력으로 남습니다.">
+        <FormField id="responsibilities" label={<>담당 업무 <span className={styles.optional}>선택</span> <span className={styles.multiple}>여러 개 입력 가능</span></>} error={errors.responsibilitiesText} hint="최대 30개 업무, 항목당 200 코드포인트. 줄바꿈·공백·구분자 포함 전체 6,000 코드포인트입니다. 빈칸은 미입력으로 남습니다.">
           <textarea id="responsibilities" data-field="responsibilitiesText" className={styles.textarea} value={entry.draft.responsibilitiesText} aria-invalid={!!errors.responsibilitiesText} aria-describedby={`responsibilities-hint${errors.responsibilitiesText ? ' responsibilities-error' : ''}`} placeholder={'한 줄에 담당 업무 하나씩 입력해주세요. 예: 로그인 화면 구현\n브라우저에서 주요 흐름 확인'} onChange={event => change('responsibilitiesText', event.target.value)} />
         </FormField>
         <div className={styles.field}>

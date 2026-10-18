@@ -1,0 +1,14 @@
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.warning > span { background: #fff5d4; color: #976c12; }
+.grid h3.downloadTitle { margin-top: 14px; }
+.divider { height: 1px; background: var(--line); margin: 22px 0; }
+.steps { padding-left: 20px; color: var(--muted); font-size: 12px; line-height: 2; }
+.select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); padding: 13px 14px; font-size: 12px; }
+.note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.note:empty { display: none; }
+.alert { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; margin: 15px 0 18px; border: 1px solid var(--accent-soft); border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 12px; line-height: 1.7; }
+.record { border: 1px solid var(--line); border-radius: 11px; padding: 15px 17px; background: #fff; margin-top: 16px; }
+.record strong { font-size: 12px; }
+.record p { margin: 8px 0 0; }
+.actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 23px; }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .download { max-width: 100%; white-space: normal; } }
