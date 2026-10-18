@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
 import { defaultPermissionChoices, permissionKey, permissionSelections, previewPolicies } from './permissions.js'
-import { inputsDirty } from './inputState.js'
+import { inputChanges, inputsDirty } from './inputState.js'
 import { confirmedProfileItems } from './profileItems.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
 import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
@@ -188,44 +188,59 @@ export default function LivePage() {
   }
 
   async function saveInputs() {
+    const form = { role, responsibilities, osFamily, clientId, clientVersion,
+      installedComponentsKnown, installedComponents }
+    const changes = inputChanges(inputs, form)
+    if (!changes.developer && !changes.environment) {
+      setError(''); setNotice('저장할 변경 내용이 없습니다.')
+      return
+    }
     await run(async () => {
       const base = projectPath(projectId)
       const pendingDeveloper = { role, responsibilities }
       const pendingEnvironment = { osFamily, clientId, clientVersion, installedComponentsKnown,
         installedComponents }
-      const environmentBody = environmentProfileBody(inputs?.environment?.version || 0,
-        osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents)
-      try {
-        await apiRequest(`${base}/developer-profile`, {
-          method: 'PUT', body: {
-            expectedVersion: inputs?.developer?.version || 0,
-            role: role.trim(), responsibilities: parsedLines(responsibilities),
-          },
-        })
-      } catch (cause) {
-        await loadProject(projectId)
-        setRole(pendingDeveloper.role)
-        setResponsibilities(pendingDeveloper.responsibilities)
-        setOsFamily(pendingEnvironment.osFamily)
-        setClientId(pendingEnvironment.clientId)
-        setClientVersion(pendingEnvironment.clientVersion)
-        setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
-        setInstalledComponents(pendingEnvironment.installedComponents)
-        throw cause
+      const environmentBody = changes.environment ? environmentProfileBody(
+        inputs?.environment?.version || 0, osFamily, clientId, clientVersion,
+        installedComponentsKnown, installedComponents) : null
+      if (changes.developer) {
+        try {
+          await apiRequest(`${base}/developer-profile`, {
+            method: 'PUT', body: {
+              expectedVersion: inputs?.developer?.version || 0,
+              role: role.trim(), responsibilities: parsedLines(responsibilities),
+            },
+          })
+          invalidatePreview()
+        } catch (cause) {
+          await loadProject(projectId)
+          setRole(pendingDeveloper.role)
+          setResponsibilities(pendingDeveloper.responsibilities)
+          setOsFamily(pendingEnvironment.osFamily)
+          setClientId(pendingEnvironment.clientId)
+          setClientVersion(pendingEnvironment.clientVersion)
+          setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
+          setInstalledComponents(pendingEnvironment.installedComponents)
+          throw cause
+        }
       }
-      invalidatePreview()
-      try {
-        await apiRequest(`${base}/environment-profile`, {
-          method: 'PUT', body: environmentBody,
-        })
-      } catch (cause) {
-        await loadProject(projectId)
-        setOsFamily(pendingEnvironment.osFamily)
-        setClientId(pendingEnvironment.clientId)
-        setClientVersion(pendingEnvironment.clientVersion)
-        setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
-        setInstalledComponents(pendingEnvironment.installedComponents)
-        throw new Error(`역할은 저장됐지만 환경 저장은 실패했습니다. 최신 버전을 불러왔습니다. ${cause.message}`, { cause })
+      if (changes.environment) {
+        try {
+          await apiRequest(`${base}/environment-profile`, {
+            method: 'PUT', body: environmentBody,
+          })
+          invalidatePreview()
+        } catch (cause) {
+          await loadProject(projectId)
+          setRole(pendingDeveloper.role)
+          setResponsibilities(pendingDeveloper.responsibilities)
+          setOsFamily(pendingEnvironment.osFamily)
+          setClientId(pendingEnvironment.clientId)
+          setClientVersion(pendingEnvironment.clientVersion)
+          setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
+          setInstalledComponents(pendingEnvironment.installedComponents)
+          throw new Error(`${changes.developer ? '역할은 저장됐지만 ' : ''}환경 저장은 실패했습니다. 최신 버전을 불러왔습니다. ${cause.message}`, { cause })
+        }
       }
       await loadProject(projectId)
     }, '역할과 환경 선언을 DB에 저장했습니다.')
