@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**브라우저 실서버 데모 (2026-10-18):** GitHub 세션에서 프로젝트 생성→텍스트 기획 분석→DRAFT 확정→역할·환경 저장→AI Capability/합성 Catalog 추천→미리보기→승인→ZIP→생성 이력까지 Core·FastAPI·PostgreSQL을 거쳐 확인했다. 설치 도구 목록·선택적 버전 입력은 DB 새로고침 복원까지 확인했고, 환경 변경 시 추천 STALE/재생성 및 현재 OS·Client·버전 Catalog 조회도 검증했다. 실도구 Catalog와 최신 단계별 디자인의 개별 API 바인딩은 미완료다. 범위·제약은 [브라우저 데모 기록](integration/demo-web-readiness-2026-10-18.md)에 정리했다.
+
 **설정 입력 HTTP 한도 (2026-10-18):** 미리보기·ZIP 다운로드 POST의 JSON 본문을 각각 1 MiB로 제한한다. Content-Length가 없거나 실제보다 작아도 읽기 한도로 413 `PAYLOAD_TOO_LARGE`를 반환하며, 경계값 요청은 원본 bytes를 컨트롤러에 전달한다. 필터 단위 테스트, 인증된 Core·AI·PostgreSQL 데모 스모크, Java 21 Core 전체 테스트가 통과했다.
 
 **데모 산출물 안내 (2026-10-18):** 합성 카탈로그에 `README.md` 안내를 추가해 미리보기와 ZIP에 설정 예시 및 설치 금지·미검증 범위가 함께 나타나게 했다. 새 카탈로그 무결성 해시를 데모 설정에 고정했다. 미리보기와 ZIP의 두 파일 bytes 일치, Java 21 Core 전체 테스트, Catalog manifest 테스트, Core·AI·PostgreSQL 데모 스모크가 통과했다. 실제 Claude Code 적용 절차는 아직 검증·승인된 Catalog가 없어 제공하지 않는다.
