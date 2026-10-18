@@ -9,4 +9,8 @@ export function inputsDirty(saved, form) {
     || environment.clientId !== form.clientId.trim()
     || environment.clientVersion !== form.clientVersion.trim()
     || environment.installedComponentsKnown !== form.installedComponentsKnown
+    || JSON.stringify(environment.installedComponents || []) !== JSON.stringify(
+      form.installedComponentsKnown ? (form.installedComponents || []).map(item => ({
+        toolKey: item.toolKey.trim(), version: item.version?.trim() || null,
+      })) : [])
 }

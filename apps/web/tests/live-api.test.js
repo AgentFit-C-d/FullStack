@@ -56,6 +56,11 @@ test('설치 상태는 사용자 선언에 따라서만 KNOWN으로 저장한다
   })
   assert.equal(environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true)
     .installedComponentsKnown, true)
+  assert.deepEqual(environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true,
+    [{ toolKey: 'skill-a', version: '' }]).installedComponents,
+  [{ toolKey: 'skill-a', version: null }])
+  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true,
+    [{ toolKey: 'skill-a' }, { toolKey: 'skill-a' }]), /중복 불가/)
 })
 
 test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 처리한다', async () => {
