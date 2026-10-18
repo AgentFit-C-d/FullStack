@@ -43,6 +43,7 @@ export default function LivePage() {
   const [permissionChoices, setPermissionChoices] = useState({})
   const [existingState, setExistingState] = useState('UNKNOWN')
   const [catalog, setCatalog] = useState(null)
+  const [catalogTarget, setCatalogTarget] = useState(null)
   const [candidates, setCandidates] = useState(null)
   const [history, setHistory] = useState(null)
   const [selectedExportId, setSelectedExportId] = useState('')
@@ -126,6 +127,7 @@ export default function LivePage() {
     setClientId('demo-claude-code'); setClientVersion('demo-1'); setInstalledComponentsKnown(false)
     setInstalledComponents([])
     setSelectedKeys([]); setPermissionChoices({}); setExistingState('UNKNOWN')
+    setCatalog(null); setCatalogTarget(null)
     setHistory(null); setSelectedExportId(''); setReportState(''); setReportReason('')
     setSearch(id ? { project: id } : {})
   }
@@ -302,8 +304,14 @@ export default function LivePage() {
     }, '설정 ZIP을 다운로드했습니다. 데모 파일의 적용 범위를 확인해 주세요.')
   }
 
-  async function readCatalog() {
-    await run(async () => setCatalog(await apiRequest('/api/tool-catalog')), '승인된 카탈로그를 조회했습니다.')
+  async function readCatalog(currentEnvironment = false) {
+    await run(async () => {
+      const target = currentEnvironment ? inputs?.environment : null
+      const query = target ? new URLSearchParams({ osFamily: target.osFamily,
+        clientId: target.clientId, clientVersion: target.clientVersion }) : null
+      setCatalog(await apiRequest(`/api/tool-catalog${query ? `?${query}` : ''}`))
+      setCatalogTarget(target ? `${target.osFamily} / ${target.clientId} / ${target.clientVersion}` : null)
+    }, '승인된 카탈로그를 조회했습니다.')
   }
 
   async function readCandidates() {
@@ -382,8 +390,8 @@ export default function LivePage() {
           </section>
           <section className={styles.card}><h2>현재 상태</h2>{detail ? <><p><strong>{detail.project.name}</strong></p><dl><dt>프로젝트 버전</dt><dd>{detail.project.version}</dd><dt>분석</dt><dd>{attempt?.state || '시작 전'}</dd><dt>기획 확정</dt><dd>{confirmed ? `완료 · v${confirmed.version}` : '미확정'}</dd><dt>추천</dt><dd>{recommendation?.status || '생성 전'}</dd></dl></> : <p>프로젝트를 선택해 주세요.</p>}</section>
         </div>
-        <section className={styles.card}><h2>승인 카탈로그와 Skill 후보</h2><p>승인 카탈로그만 추천과 설정 생성에 사용합니다. skills.sh에서 수집한 후보는 미검증 상태로 별도 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={readCatalog}>승인 카탈로그 조회</button><button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
-          {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개</p><ul>{(catalog.items || []).map(item => <li key={item.key}>{item.name} ({item.key}) · {item.kind}</li>)}</ul></div>}
+        <section className={styles.card}><h2>승인 카탈로그와 Skill 후보</h2><p>승인 카탈로그만 추천과 설정 생성에 사용합니다. skills.sh에서 수집한 후보는 미검증 상태로 별도 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>승인 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
+          {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개{catalogTarget && ` · ${catalogTarget}`}</p><ul>{(catalog.items || []).map(item => <li key={item.key}><strong>{item.name}</strong> ({item.key}) · {item.kind}<details><summary>지원·기능 근거</summary><p>제공 기능: {(item.capabilityKeys || []).join(', ') || '없음'}</p>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">원본 링크</a>}<ul>{(item.support || []).map(support => <li key={support.key}>{support.osFamily} / {support.clientId} / {support.clientVersion} · {support.verified ? '검증 기록 있음' : '미검증'}</li>)}</ul></details></li>)}</ul>{catalog.items?.length === 0 && <p>해당 환경에 승인된 도구가 없습니다.</p>}</div>}
           {candidates && <div><p>{candidates.source} · {candidates.verificationStatus} · 후보 {candidates.candidates?.length || 0}개</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · 미검증, 추천 제외</li>)}</ul></div>}
         </section>
         {detail && <>

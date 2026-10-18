@@ -33,12 +33,17 @@ class CatalogControllerTest {
 
         mvc().perform(get("/api/tool-catalog").param("osFamily", "WINDOWS")
                 .param("clientId", "example-client")
+                .param("clientVersion", "1.0")
                 .param("capabilityId", "cap_document_reference"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.revision").value("synthetic-recommendation"))
             .andExpect(jsonPath("$.catalogHash").value(hash))
             .andExpect(jsonPath("$.items[0].key").value("example-tool"))
             .andExpect(jsonPath("$.items[0].support[0].verified").value(true));
+
+        mvc().perform(get("/api/tool-catalog").param("clientVersion", "other-version"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items.length()").value(0));
     }
 
     @Test
