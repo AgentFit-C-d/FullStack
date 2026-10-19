@@ -17,6 +17,12 @@
 - `/`의 GitHub 버튼은 원래 메모리 시연 버튼이어서 실제 OAuth를 시작하지 않았다. 실제 로그인 화면을 `/`에 배치하고 메모리 시연 로그인은 `/demo/login`으로 분리했다.
 - OAuth 성공 후 A가 보내는 `/?login=success`를 프론트에서 `/app`으로 이동시켰다. 브라우저에서 GitHub 로그인 링크 클릭 → 성공 → `/app`의 DB 프로젝트 8개 표시를 확인했다.
 
+## 로컬 데모 PDF 저장 한도
+
+- `/demo` 단계별 화면은 브라우저 메모리 시연이며 DB에 자료를 저장하지 않는다. 실제 저장 화면은 `/app/live`이고 기존 `PUT /api/projects/{projectId}/planning-input`을 호출한다.
+- 5,053,322바이트 `AgentFit.pdf`는 nginx의 11MiB 한도에는 걸리지 않았으나 Core API의 별도 설정이 없어 Spring 기본 multipart 파일 한도에서 거부됐고, 공통 예외 처리로 `INTERNAL_SERVER_ERROR`가 표시됐다. 같은 PDF를 Java 21의 `PlanningInputValidator`에 직접 넣으면 8페이지·145자로 정상 추출됐다.
+- 로컬 `compose.web-demo.yaml`의 Core API에 파일 10MiB·요청 11MiB 제한을 설정했다. 동일 PDF를 QA 프로젝트에서 다시 저장한 뒤 화면 성공 메시지와 분석 버튼 활성화, PostgreSQL `planning_input`의 PDF 메타데이터를 확인했다. 다른 배포 방식에도 동일 제한을 적용하려면 A의 Core API 운영 설정에 반영해야 한다.
+
 ## 남은 범위
 
 - 실제 Claude Code 2.1.270 설치는 로컬에서 확인했지만 도구별 설치·호환성·권한·출력 검증 및 독립 승인 릴리스는 아직 없다. 현재 추천 Catalog는 합성 데모다. [Claude Code 공식 Skill 문서](https://code.claude.com/docs/en/skills)의 형식은 검토했으나 이를 곧바로 지원 검증으로 간주하지 않는다.
