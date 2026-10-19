@@ -78,15 +78,19 @@ def _extract(content: bytes, kind: str, document_id: str) -> Document:
         if not reader.pages or len(reader.pages) > MAX_PAGES:
             raise ValueError("TOO_MANY_PAGES" if len(reader.pages) > MAX_PAGES else "EMPTY_DOCUMENT")
         pages: list[str] = []
-        for page in reader.pages:
+        page_numbers: list[int] = []
+        for page_number, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
             if not text.strip():
-                raise ValueError("NO_TEXT_LAYER")
+                continue
             pages.append(text)
+            page_numbers.append(page_number)
+        if not pages:
+            raise ValueError("NO_TEXT_LAYER")
         text = "\n\f\n".join(pages)
         if len(text) > MAX_CODEPOINTS:
             raise ValueError("TEXT_TOO_LONG")
-        return Document(document_id, kind, text, tuple(range(1, len(pages) + 1)))
+        return Document(document_id, kind, text, tuple(page_numbers))
     except ImportError as exc:
         raise ValueError("PDF_PARSER_NOT_CONFIGURED") from exc
     except ValueError:
@@ -270,7 +274,8 @@ class AnalysisCore:
                 raise ValueError("INVALID_PROVIDER_OUTPUT")
             status = "suggested" if context == "explicit" else "unresolved"
             evidence_start = document.text.index(quote)
-            evidence = [{"documentId": document.document_id, "start": evidence_start, "end": evidence_start + len(quote), "page": 1}]
+            page_index = document.text[:evidence_start].count("\n\f\n")
+            evidence = [{"documentId": document.document_id, "start": evidence_start, "end": evidence_start + len(quote), "page": document.pages[page_index]}]
             identity = f"{document.document_id}:{field}:{value}:{evidence_start}".encode()
             candidate = {
                 "id": hashlib.sha256(identity).hexdigest()[:32],
