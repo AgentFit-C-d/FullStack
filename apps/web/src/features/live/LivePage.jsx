@@ -4,6 +4,7 @@ import Brand from '../../components/layout/Brand.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
 import { defaultPermissionChoices, permissionKey, permissionSelections, previewPolicies } from './permissions.js'
 import { inputChanges, inputsDirty } from './inputState.js'
+import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './projectActions.js'
 import { confirmedProfileItems } from './profileItems.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
 import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
@@ -27,6 +28,8 @@ export default function LivePage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [projectName, setProjectName] = useState('')
+  const [projectRename, setProjectRename] = useState(null)
+  const [projectDeleteName, setProjectDeleteName] = useState('')
   const [planningText, setPlanningText] = useState('')
   const [planningFile, setPlanningFile] = useState(null)
   const [planningReady, setPlanningReady] = useState(false)
@@ -60,6 +63,8 @@ export default function LivePage() {
     const base = projectPath(id)
     const current = await apiRequest(base)
     setDetail(current)
+    setProjectRename(previous => previous?.projectId === id
+      ? previous : { projectId: id, value: current.project.name })
     if (isProfile(current.draft)) {
       const review = current.confirmed?.sourceDraftId === current.draft.id
         ? current.confirmed : current.draft
@@ -121,6 +126,7 @@ export default function LivePage() {
     setPreviewRequest(null); setApproval(null); setError(''); setNotice('')
     setPlanningText(''); setPlanningFile(null)
     setPlanningReady(false)
+    setProjectRename(null); setProjectDeleteName('')
     setProfileEdit({ projectName: '', projectType: '', domain: '' })
     setProfileItems([])
     setRole('FULLSTACK'); setResponsibilities(''); setOsFamily('WINDOWS')
@@ -149,6 +155,37 @@ export default function LivePage() {
       setProjectName('')
       selectProject(created.project.id)
     }, '프로젝트를 DB에 저장했습니다.')
+  }
+
+  async function renameProject(event) {
+    event.preventDefault()
+    if (!canRenameProject(detail)) {
+      setError('기획 자료를 저장하거나 분석하기 전의 새 프로젝트만 이름을 변경할 수 있습니다.')
+      return
+    }
+    let body
+    try { body = renameProjectRequest(projectRename?.value || '', detail.project.version) }
+    catch (cause) { setError(cause.message); return }
+    if (body.name === detail.project.name) { setError(''); setNotice('프로젝트 이름이 변경되지 않았습니다.'); return }
+    await run(async () => {
+      await apiRequest(projectPath(projectId), { method: 'PATCH', body })
+      invalidatePreview()
+      await loadProject(projectId)
+      await loadProjects()
+      setProjectRename({ projectId, value: body.name })
+    }, '프로젝트 이름을 변경했습니다. 기존 추천은 최신 상태를 다시 확인해 주세요.')
+  }
+
+  async function deleteProject(event) {
+    event.preventDefault()
+    let body
+    try { body = deleteProjectRequest(detail.project.name, projectDeleteName, detail.project.version) }
+    catch (cause) { setError(cause.message); return }
+    await run(async () => {
+      await apiRequest(projectPath(projectId), { method: 'DELETE', body })
+      selectProject('')
+      await loadProjects()
+    }, '프로젝트와 연결된 정보를 삭제했습니다.')
   }
 
   async function savePlanning(event) {
@@ -388,7 +425,11 @@ export default function LivePage() {
             <div className={styles.list}>{projects.map(project => <button key={project.id} type="button" className={project.id === projectId ? styles.selected : ''} onClick={() => selectProject(project.id)}>{project.name}</button>)}</div>
             {!projects.length && <p>아직 저장된 프로젝트가 없습니다.</p>}
           </section>
-          <section className={styles.card}><h2>현재 상태</h2>{detail ? <><p><strong>{detail.project.name}</strong></p><dl><dt>프로젝트 버전</dt><dd>{detail.project.version}</dd><dt>분석</dt><dd>{attempt?.state || '시작 전'}</dd><dt>기획 확정</dt><dd>{confirmed ? `완료 · v${confirmed.version}` : '미확정'}</dd><dt>추천</dt><dd>{recommendation?.status || '생성 전'}</dd></dl></> : <p>프로젝트를 선택해 주세요.</p>}</section>
+          <section className={styles.card}><h2>현재 상태</h2>{detail ? <><p><strong>{detail.project.name}</strong></p><dl><dt>프로젝트 버전</dt><dd>{detail.project.version}</dd><dt>분석</dt><dd>{attempt?.state || '시작 전'}</dd><dt>기획 확정</dt><dd>{confirmed ? `완료 · v${confirmed.version}` : '미확정'}</dd><dt>추천</dt><dd>{recommendation?.status || '생성 전'}</dd></dl>
+            {canRenameProject(detail) ? <form onSubmit={renameProject} className={styles.row}><input aria-label="변경할 프로젝트 이름" value={projectRename?.projectId === projectId ? projectRename.value : ''} onChange={event => setProjectRename({ projectId, value: event.target.value })} /><button disabled={busy || !projectRename?.value?.trim() || projectRename.value.trim() === detail.project.name}>이름 변경</button></form> : <p>기획 정보가 있는 프로젝트의 이름 변경은 현재 지원하지 않습니다.</p>}
+            <p>프로젝트를 삭제하면 기획 정보와 추천·설정 이력도 함께 삭제되며 복구할 수 없습니다.</p>
+            <form onSubmit={deleteProject} className={styles.row}><input aria-label="삭제 확인용 프로젝트 이름" placeholder="삭제하려면 현재 이름 입력" value={projectDeleteName} onChange={event => setProjectDeleteName(event.target.value)} /><button disabled={busy || projectDeleteName !== detail.project.name}>프로젝트 삭제</button></form>
+          </> : <p>프로젝트를 선택해 주세요.</p>}</section>
         </div>
         <section className={styles.card}><h2>승인 카탈로그와 Skill 후보</h2><p>승인 카탈로그만 추천과 설정 생성에 사용합니다. skills.sh에서 수집한 후보는 미검증 상태로 별도 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>승인 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
           {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개{catalogTarget && ` · ${catalogTarget}`}</p><ul>{(catalog.items || []).map(item => <li key={item.key}><strong>{item.name}</strong> ({item.key}) · {item.kind}<details><summary>지원·기능 근거</summary><p>제공 기능: {(item.capabilityKeys || []).join(', ') || '없음'}</p>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">원본 링크</a>}<ul>{(item.support || []).map(support => <li key={support.key}>{support.osFamily} / {support.clientId} / {support.clientVersion} · {support.verified ? '검증 기록 있음' : '미검증'}</li>)}</ul></details></li>)}</ul>{catalog.items?.length === 0 && <p>해당 환경에 승인된 도구가 없습니다.</p>}</div>}
