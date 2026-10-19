@@ -21,6 +21,7 @@ import { loadServiceRoute } from '../features/service/serviceModel.js'
 import LivePage from '../features/live/LivePage.jsx'
 import ServiceProjectCreatePage from '../pages/ServiceProjectCreatePage.jsx'
 import ServiceWorkflowEntry from '../features/service/ServiceWorkflowEntry.jsx'
+import ServiceEntryPage from '../features/service/ServiceEntryPage.jsx'
 
 export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
   return [{
@@ -30,7 +31,7 @@ export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
         element: <DemoRoutes />,
         handle: { mode: 'demo' },
         children: [
-          { path: '/', element: <LoginPage /> },
+          { path: '/demo/login', element: <LoginPage /> },
           {
             path: '/demo', element: <AppLayout />,
             children: [
@@ -50,6 +51,7 @@ export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
           },
         ],
       },
+      { path: '/', element: <ServiceEntryPage />, handle: { mode: 'service' } },
       { path: '/login', element: <ServiceLoginPage />, handle: { mode: 'service' } },
       {
         path: '/app', handle: { mode: 'service' },
