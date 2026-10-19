@@ -53,6 +53,21 @@ test('서비스 로그인은 기존 디자인을 재사용하며 시연 컨트�
   assert.match(demo, /개발용 시연 모드로 둘러보기/)
   assert.match(demo, /메모리에만 유지/)
 })
+test('이미 인증된 사용자가 첫 화면을 열면 프로젝트 화면으로 이동한다', async () => {
+  const auth = { user: { id: 'a', name: 'a' }, session: { expiresAt: '2099-01-01T00:00:00Z' } }
+  const api = createServiceApi({ transport: async () => ({ status: 200, data: auth }) })
+  const router = createMemoryRouter(createAppRoutes({ serviceApi: api }), { initialEntries: ['/'] })
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { unsubscribe(); reject(new Error('첫 화면에서 자동 이동하지 않았습니다.')) }, 1000)
+    const unsubscribe = router.subscribe(state => {
+      if (state.initialized && state.navigation.state === 'idle' && state.location.pathname === '/app') {
+        clearTimeout(timer); unsubscribe(); resolve()
+      }
+    })
+  })
+  assert.equal(router.state.location.pathname, '/app')
+  router.dispose()
+})
 test('서버 null 세션과 세션 만료는 정상 로그인 안내로 차단한다', async () => {
   for (const data of [null, { user: { id: 'a', name: 'a' }, session: { expiresAt: '2000-01-01' } }]) {
     const api = createServiceApi({ transport: async () => ({ status: 200, data }) })

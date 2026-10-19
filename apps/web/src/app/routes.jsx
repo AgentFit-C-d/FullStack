@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router'
+import { Navigate, redirect } from 'react-router'
 import App, { DemoRoutes } from './App.jsx'
 import AppLayout from '../components/layout/AppLayout.jsx'
 import LoginPage, { ServiceLoginPage } from '../pages/LoginPage.jsx'
@@ -17,7 +17,7 @@ import SelectionPage from '../pages/SelectionPage.jsx'
 import ServicePage, { ServiceLoading } from '../pages/ServicePage.jsx'
 import { serviceStages } from '../features/service/serviceStages.js'
 import { serviceApi as defaultServiceApi } from '../features/service/serviceApi.js'
-import { loadServiceRoute } from '../features/service/serviceModel.js'
+import { isAuthenticatedSession, loadServiceRoute } from '../features/service/serviceModel.js'
 import LivePage from '../features/live/LivePage.jsx'
 import ServiceProjectCreatePage from '../pages/ServiceProjectCreatePage.jsx'
 import ServiceWorkflowEntry from '../features/service/ServiceWorkflowEntry.jsx'
@@ -51,7 +51,18 @@ export function createAppRoutes({ serviceApi = defaultServiceApi } = {}) {
           },
         ],
       },
-      { path: '/', element: <ServiceEntryPage />, handle: { mode: 'service' } },
+      {
+        path: '/', element: <ServiceEntryPage />, handle: { mode: 'service' },
+        loader: async ({ request }) => {
+          if (new URL(request.url).searchParams.get('login') === 'success') return redirect('/app')
+          try {
+            const session = await serviceApi.read('session', {}, { signal: request.signal })
+            if (isAuthenticatedSession(session)) return redirect('/app')
+          } catch { /* The login page remains available while the API is unreachable. */ }
+          return null
+        },
+        HydrateFallback: ServiceLoading,
+      },
       { path: '/login', element: <ServiceLoginPage />, handle: { mode: 'service' } },
       {
         path: '/app', handle: { mode: 'service' },
