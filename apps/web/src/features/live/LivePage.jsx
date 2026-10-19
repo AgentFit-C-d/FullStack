@@ -9,8 +9,11 @@ import { confirmedProfileItems } from './profileItems.js'
 import { hasUnanalyzedPlanningInput } from './planningState.js'
 import { recommendationFeedback } from './recommendationFeedback.js'
 import { createAndReadRecommendation } from './recommendationFlow.js'
+import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
 import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
+import ExistingFilesEditor from './ExistingFilesEditor.jsx'
+import QuestionAnswersEditor from './QuestionAnswersEditor.jsx'
 import styles from './LivePage.module.css'
 
 const isProfile = value => value?.kind === 'CONFIRMED' || value?.kind === 'DRAFT'
@@ -24,6 +27,8 @@ export default function LivePage() {
   const [detail, setDetail] = useState(null)
   const [inputs, setInputs] = useState(null)
   const [recommendation, setRecommendation] = useState(null)
+  const [questionAnswers, setQuestionAnswers] = useState([])
+  const [answerDrafts, setAnswerDrafts] = useState({})
   const [preview, setPreview] = useState(null)
   const [previewRequest, setPreviewRequest] = useState(null)
   const [approval, setApproval] = useState(null)
@@ -48,6 +53,8 @@ export default function LivePage() {
   const [selectedKeys, setSelectedKeys] = useState([])
   const [permissionChoices, setPermissionChoices] = useState({})
   const [existingState, setExistingState] = useState('UNKNOWN')
+  const [existingFileTargets, setExistingFileTargets] = useState([])
+  const [providedExistingFiles, setProvidedExistingFiles] = useState([])
   const [catalog, setCatalog] = useState(null)
   const [catalogTarget, setCatalogTarget] = useState(null)
   const [candidates, setCandidates] = useState(null)
@@ -97,10 +104,13 @@ export default function LivePage() {
       try {
         const latest = await apiRequest(`${base}/recommendations/latest`)
         setRecommendation(latest)
+        const answers = await apiRequest(`${base}/recommendations/${encodeURIComponent(latest.recommendationId)}/answers`)
+        setQuestionAnswers(answers.items || [])
+        setAnswerDrafts(Object.fromEntries((answers.items || []).map(item => [item.noticeId, item.answer])))
         setSelectedKeys((latest.items || []).map(item => item.toolKey))
         setPermissionChoices(defaultPermissionChoices(latest.items))
-      } catch (cause) { if (cause.status === 404) setRecommendation(null); else throw cause }
-    } else { setInputs(null); setRecommendation(null) }
+      } catch (cause) { if (cause.status === 404) { setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) } else throw cause }
+    } else { setInputs(null); setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) }
   }, [])
 
   useEffect(() => {
@@ -137,6 +147,8 @@ export default function LivePage() {
     setClientId('demo-claude-code'); setClientVersion('demo-1'); setInstalledComponentsKnown(false)
     setInstalledComponents([])
     setSelectedKeys([]); setPermissionChoices({}); setExistingState('UNKNOWN')
+    setQuestionAnswers([]); setAnswerDrafts({})
+    setExistingFileTargets([]); setProvidedExistingFiles([])
     setCatalog(null); setCatalogTarget(null)
     setHistory(null); setSelectedExportId(''); setReportState(''); setReportReason('')
     setSearch(id ? { project: id } : {})
@@ -298,24 +310,47 @@ export default function LivePage() {
           environment: inputs?.environment?.version || 0,
       })
       setRecommendation(created)
+      setQuestionAnswers([]); setAnswerDrafts({})
       setSelectedKeys((created.items || []).map(item => item.toolKey))
       setPermissionChoices(defaultPermissionChoices(created.items))
       invalidatePreview()
     }, 'AI Capability와 데모 카탈로그를 기준으로 추천을 저장했습니다.')
   }
 
-  async function createPreview() {
+  async function saveQuestionAnswer(noticeId) {
+    const answer = answerDrafts[noticeId]?.trim()
+    if (!answer || Array.from(answer).length > 4000) {
+      setError('답변을 1~4000자로 입력해 주세요.'); return
+    }
+    await run(async () => {
+      const saved = await apiRequest(`${projectPath(projectId)}/recommendations/${encodeURIComponent(recommendation.recommendationId)}/answers/${encodeURIComponent(noticeId)}`, {
+        method: 'PUT', body: { answer },
+      })
+      setQuestionAnswers(previous => [...previous.filter(item => item.noticeId !== noticeId), saved])
+      setAnswerDrafts(previous => ({ ...previous, [noticeId]: saved.answer }))
+    }, '추가 질문의 답변을 저장했습니다. 추천을 갱신하려면 관련 기획·환경 입력을 수정하고 다시 실행해야 합니다.')
+  }
+
+  async function createPreview(compareExisting = false) {
     if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    let providedFiles = []
+    try {
+      if (compareExisting) providedFiles = providedFilesForPreview(existingFileTargets, providedExistingFiles)
+    } catch (cause) { setError(cause.message); return }
     await run(async () => {
       const request = {
         basis: recommendation.basis, recommendationId: recommendation.recommendationId,
         target: { osFamily, clientId, clientVersion }, selectedToolKeys: selectedKeys,
         permissionSelections: permissionSelections(recommendation.items, selectedKeys, permissionChoices),
-        existingState, providedFiles: [], generatorVersion: 'agentfit-demo-web-v1',
+        existingState: compareExisting ? 'PROVIDED' : existingState,
+        providedFiles, generatorVersion: 'agentfit-demo-web-v1',
       }
       const created = await apiRequest(`${projectPath(projectId)}/config-previews`, { method: 'POST', body: request })
+      setExistingFileTargets(comparisonTargets(created.files))
+      if (!compareExisting) setProvidedExistingFiles([])
       setPreviewRequest(request); setPreview(created); setApproval(null)
-    }, '설정 미리보기를 생성했습니다. 내용과 경고를 확인해 주세요.')
+    }, compareExisting ? '기존 파일과 생성 파일의 차이를 계산했습니다. 변경 내용을 확인해 주세요.'
+      : '설정 미리보기를 생성했습니다. 내용과 경고를 확인해 주세요.')
   }
 
   async function approve() {
@@ -378,6 +413,12 @@ export default function LivePage() {
   }
 
   function invalidatePreview() {
+    setPreview(null); setPreviewRequest(null); setApproval(null)
+    setExistingFileTargets([]); setProvidedExistingFiles([])
+  }
+
+  function updateProvidedExistingFiles(files) {
+    setProvidedExistingFiles(files)
     setPreview(null); setPreviewRequest(null); setApproval(null)
   }
 
@@ -468,8 +509,35 @@ export default function LivePage() {
             <button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button>
             {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}
           </section>}
-          {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 데모 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>{recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}<p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul>{(recommendation.notices || []).length > 0 && <details><summary>질문·안내 ({recommendation.notices.length})</summary><pre>{JSON.stringify(recommendation.notices, null, 2)}</pre></details>}</>}</section>}
-          {recommendation?.items?.length > 0 && <section className={styles.card}><h2>6. 설정 미리보기와 다운로드</h2><p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 합성 데모 설정은 실제 설치에 사용하지 마세요.</p><label>현재 설정 상태 <select value={existingState} onChange={event => { setExistingState(event.target.value); invalidatePreview() }}><option value="UNKNOWN">모름</option><option value="USER_SAYS_EMPTY">사용자가 비어 있다고 선언</option></select></label><div className={styles.row}><button type="button" disabled={busy || recommendation.validity === 'STALE' || selectedKeys.length === 0} onClick={createPreview}>미리보기 생성</button>{preview && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}{approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}</div>{selectedKeys.length === 0 && <p>설정 파일을 만들 도구를 하나 이상 선택해 주세요.</p>}{preview && <><p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>{preview.files?.map(file => <details key={file.relativePath}><summary>{file.relativePath} · {file.action}</summary><pre>{file.content}</pre></details>)}</>}</section>}
+          {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 데모 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>{recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}<p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul><QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))} onSave={saveQuestionAnswer} /></>}</section>}
+          {recommendation?.items?.length > 0 && <section className={styles.card}>
+            <h2>6. 설정 미리보기와 다운로드</h2>
+            <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 합성 데모 설정은 실제 설치에 사용하지 마세요.</p>
+            <label>현재 설정 상태
+              <select value={existingState} onChange={event => { setExistingState(event.target.value); invalidatePreview() }}>
+                <option value="UNKNOWN">모름</option>
+                <option value="USER_SAYS_EMPTY">사용자가 비어 있다고 선언</option>
+              </select>
+            </label>
+            <div className={styles.row}>
+              <button type="button" disabled={busy || recommendation.validity === 'STALE' || selectedKeys.length === 0} onClick={() => createPreview()}>미리보기 생성</button>
+              {existingFileTargets.length > 0 && <button type="button" disabled={busy || providedExistingFiles.length === 0 || recommendation.validity === 'STALE'} onClick={() => createPreview(true)}>기존 파일과 비교</button>}
+              {preview && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}
+              {approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}
+            </div>
+            {selectedKeys.length === 0 && <p>설정 파일을 만들 도구를 하나 이상 선택해 주세요.</p>}
+            {existingFileTargets.length > 0 && <ExistingFilesEditor targets={existingFileTargets} selected={providedExistingFiles} onChange={updateProvidedExistingFiles} />}
+            {preview && <>
+              <p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>
+              {preview.files?.map(file => <details key={file.targetKey + file.relativePath}>
+                <summary>{file.relativePath} · {file.action === 'UPDATE' ? '기존 파일 교체' : '새 파일 제안'}</summary>
+                <p>비교 범위: {file.comparisonScope === 'PROVIDED_FILE' ? '제공한 기존 파일과 비교' : '기존 내용 미제공'}</p>
+                {file.diff && <><strong>변경 내용</strong><pre>{file.diff}</pre></>}
+                <strong>생성된 내용</strong><pre>{file.content}</pre>
+              </details>)}
+              {preview.files?.some(file => file.action === 'UPDATE') && <p>ZIP에는 생성된 파일이 들어갑니다. 기존 파일의 다른 내용은 자동 병합되지 않으므로 차이를 확인한 뒤 승인하세요.</p>}
+            </>}
+          </section>}
           {confirmed && <section className={styles.card}><h2>7. 생성 이력과 적용 결과</h2><p>다운로드 후 이력을 조회할 수 있습니다. 적용 결과는 사용자 보고이며 설치 성공을 자동 검증하지 않습니다.</p><button type="button" disabled={busy} onClick={readHistory}>생성 이력 조회</button>
             {history && <>{history.items?.length ? <><ul>{history.items.map(item => <li key={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.status} · {item.validity} · 파일 {item.files?.length || 0}개{item.latestUserReport && ` · 사용자 보고 ${item.latestUserReport.reportedState}`}</li>)}</ul><form onSubmit={submitReport} className={styles.stack}><label>보고할 생성 이력<select value={selectedExportId} onChange={event => setSelectedExportId(event.target.value)}>{history.items.map(item => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.id}</option>)}</select></label><label>적용 결과<select value={reportState} onChange={event => { setReportState(event.target.value); setReportReason('') }}><option value="">선택해 주세요</option><option value="APPLIED">적용했다고 보고</option><option value="FAILED">적용 실패 보고</option></select></label>{reportState === 'FAILED' && <label>실패 사유<select value={reportReason} onChange={event => setReportReason(event.target.value)}><option value="">선택해 주세요</option><option value="COPY_FAILED">파일 복사 실패</option><option value="AUTH_REQUIRED">인증 필요</option><option value="DEPENDENCY_MISSING">의존성 누락</option><option value="UNKNOWN">알 수 없음</option></select></label>}<button disabled={busy}>적용 결과 저장</button></form></> : <p>생성된 설정 이력이 없습니다.</p>}{history.nextCursor && <button type="button" disabled={busy} onClick={readMoreHistory}>이전 이력 더 보기</button>}</>}
           </section>}
