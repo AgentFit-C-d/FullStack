@@ -55,3 +55,9 @@
 프론트 변경 후 `npm test` 87/87, `npm run lint`, `npm run build`가 통과했다. Core API는 Java 21 Maven 컨테이너에서 관련 테스트 27개(프로젝트 삭제·보고·입력·카탈로그, B 전체 흐름·AI 분석-추천 연동·추천 생성)를 실행해 실패가 없었다. 실서비스의 사용자 적용 결과 보고 POST와 실제 Claude Code 도구 설치, skills.sh 실시간 동기화는 이 브라우저 점검에서 확인하지 않았다. `/demo`의 단계별 디자인 화면은 계속 메모리 시연이며, 실제 연결은 `/app/live`에서만 확인했다.
 
 기획 입력 복원은 별도 프로젝트 `d89bde97-8bc6-4bbc-bcf0-41b95385ceb1`에서 확인했다. 텍스트 자료 저장 뒤 새로고침해도 `AI 분석 시작` 버튼이 활성 상태로 돌아왔고, 해당 버튼으로 `PROCESSING → SUCCEEDED` 및 DRAFT v1 생성까지 확인했다. A의 상세 응답은 분석 전 입력 메타데이터를 `confirmed` 필드에 담으므로, 프론트는 `kind: CONFIRMED` Profile과 `revision`이 있는 입력 메타데이터를 구분한다. 이 QA 프로젝트는 삭제하지 않고 남겨 두었다.
+
+## 2026-10-19 추천 응답 계약 후속 검증
+
+추천 생성 `POST`는 AI 질문 목록을 반환하지만 저장된 B 질문·사유 코드는 반환하지 않는다. 반면 `GET /recommendations/latest`에는 저장된 `notices`와 `validity`가 포함된다. 생성 직후에도 최신 저장 결과를 다시 읽도록 프론트를 수정해 새로고침 전후 안내를 일치시켰다. 안내는 `environment_target`, `installed_components`, `installed_component_version`, `undetermined_capability`, `pending_conflict` 질문과 호환 불가·추가 도구 불필요 사유 코드를 구분한다.
+
+브라우저에서 QA 프로젝트 `f8c78fc7-e063-49e2-af48-3dd3bdd723b9`의 설치 목록을 `미확인`으로 바꾼 뒤 생성한 결과는 `NEEDS_INFORMATION`이며, 생성 직후 `설치 도구 목록을 확인해 주세요` 안내와 저장된 질문 1건이 표시됐다. 검증된 데모 도구 `demo-all-capabilities-skill` 버전 `demo-1`을 설치된 것으로 선언한 결과는 `NO_ADDITIONS_NEEDED`와 `이미 설치된 검증 도구` 안내였다. 이후 테스트 환경을 원래의 `설치 목록 확인됨·빈 목록`으로 복구하고 `RECOMMENDED · CURRENT`를 다시 생성했다. 이번 프론트 수정 기준 `npm test` 90/90, lint와 빌드가 통과했다.
