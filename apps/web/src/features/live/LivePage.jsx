@@ -8,6 +8,7 @@ import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './
 import { confirmedProfileItems } from './profileItems.js'
 import { hasUnanalyzedPlanningInput } from './planningState.js'
 import { recommendationFeedback } from './recommendationFeedback.js'
+import { createAndReadRecommendation } from './recommendationFlow.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
 import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
 import styles from './LivePage.module.css'
@@ -291,12 +292,10 @@ export default function LivePage() {
   async function createRecommendation() {
     if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
     await run(async () => {
-      const created = await apiRequest(`${projectPath(projectId)}/recommendations`, {
-        method: 'POST', body: { expectedVersions: {
+      const created = await createAndReadRecommendation(projectPath(projectId), {
           project: detail.project.version,
           developer: inputs?.developer?.version || 0,
           environment: inputs?.environment?.version || 0,
-        } },
       })
       setRecommendation(created)
       setSelectedKeys((created.items || []).map(item => item.toolKey))
