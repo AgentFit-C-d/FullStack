@@ -36,7 +36,7 @@ CREATE TABLE recommendation_capability (
         'cap_api_verification', 'cap_database_schema_inspection', 'cap_ai_evaluation'
     )),
     necessity VARCHAR(20) NOT NULL CHECK (necessity IN (
-        'REQUIRED', 'OPTIONAL', 'UNDETERMINED'
+        'REQUIRED', 'OPTIONAL', 'UNDETERMINED', 'NOT_REQUESTED'
     )),
     reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
     input_refs TEXT[] NOT NULL,

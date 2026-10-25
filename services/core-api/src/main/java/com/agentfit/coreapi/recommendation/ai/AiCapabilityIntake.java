@@ -34,7 +34,7 @@ public final class AiCapabilityIntake {
 
     private AiCapabilityIntake() {}
 
-    public enum Need { REQUIRED, OPTIONAL, UNDETERMINED }
+    public enum Need { REQUIRED, OPTIONAL, UNDETERMINED, NOT_REQUESTED }
 
     public record Claim(String capabilityKey, Need need, String reason, List<String> sourceFields) {}
 
@@ -85,6 +85,9 @@ public final class AiCapabilityIntake {
             if (claim.sourceFields().stream().anyMatch(AiCapabilityIntake::blank)) throw invalid();
             List<String> fields = List.copyOf(claim.sourceFields());
             if ((claim.need() == Need.REQUIRED || claim.need() == Need.OPTIONAL) && fields.isEmpty()) {
+                throw invalid();
+            }
+            if (claim.need() == Need.NOT_REQUESTED && !fields.isEmpty()) {
                 throw invalid();
             }
             if (new HashSet<>(fields).size() != fields.size()

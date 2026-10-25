@@ -47,8 +47,11 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
         }
     }
 
-    private static List<Map<String, Object>> facts(Map<String, String> sourceValues) {
-        return sourceValues.entrySet().stream().map(entry -> Map.<String, Object>of(
+    static List<Map<String, Object>> facts(Map<String, String> sourceValues) {
+        return sourceValues.entrySet().stream()
+            .filter(entry -> entry.getKey().startsWith("profile.item.")
+                || entry.getKey().startsWith("developer.responsibility."))
+            .map(entry -> Map.<String, Object>of(
             "id", entry.getKey(),
             "field", fieldFor(entry.getKey()),
             "value", entry.getValue()))

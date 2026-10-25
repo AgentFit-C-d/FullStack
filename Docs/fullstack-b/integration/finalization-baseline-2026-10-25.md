@@ -18,9 +18,14 @@
 
 - 추가 질문 답변 저장은 최신 추천 ID뿐 아니라 **현재 입력 basis**와 `NEEDS_INFORMATION` 상태를 확인한다. 이전 입력의 추천에는 답변을 추가하지 않는다.
 - `/app/live`는 만료된 추천의 질문을 읽기 전용으로 보여주고, 새 추천 생성 후 답변하도록 안내한다.
+- AI의 9개 Capability 응답에서 근거 없는 항목을 `NOT_REQUESTED`로 분리했다. 실제 미정 표현이 있는 작업만 `UNDETERMINED`와 해당 입력의 질문이 된다. Core는 이 값을 검증하고 V8 마이그레이션으로 저장한다.
+- AI에 전달하는 필요 작업은 확정 Profile 항목과 개발자 담당 업무로 제한했다. 프로젝트 이름·OS·Client 버전 등 환경 메타데이터는 Skill 필요 작업으로 변환하지 않는다.
+- 2026-10-25 skills.sh 실험적 공개 검색·상세 경로에서 `browser` 후보 2건과 64자리 콘텐츠 해시를 확인하고 로컬 미검증 후보 스냅샷에 저장했다. 공식 v1 API는 Vercel OIDC 인증이 필요하다. 이 후보는 승인 Catalog 및 설정 ZIP에 포함되지 않는다.
 
 ## 검증과 제한
 
-- Java 회귀 테스트 `RecommendationQuestionAnswerTest`: 2개 통과. 로컬 JDK 24로 Java 21 대상 코드를 컴파일했다. 실제 운영용 Java 21과 PostgreSQL 종단 경로는 이번 점검에서 다시 실행하지 않았다.
+- Java 회귀 테스트: 질문 답변 2개, Capability·입력·추천·메타데이터 관련 선택 테스트 통과. 로컬 JDK 24로 Java 21 대상 코드를 컴파일했다.
+- 격리된 PostgreSQL 17 임시 컨테이너에서 Flyway V1–V8 적용과 B 저장 스키마 테스트 3개를 통과했다. 로컬 FastAPI의 HMAC `needs` 호출 → Spring 추천 API → PostgreSQL 저장 → 최신 추천 조회 → Preview 생성 HTTP 통합 테스트를 통과했다. 확정 기획에 `브라우저 검증` 한 항목만 넣으면 `REQUIRED` 1건, `NOT_REQUESTED` 8건과 추천 1건이 DB에 기록된다. 테스트는 합성 승인 Catalog를 사용하며 실제 Claude Code 검증 완료를 뜻하지 않는다.
+- AI `needs` 관련 테스트 7개를 통과했다. 이 판정은 현재 명시적 작업 표현을 찾는 보수적 규칙이며, 자유로운 기획 문장을 의미적으로 모두 이해하는 단계는 아니다.
 - 프론트엔드: `npm test` 93개 통과, `npm run lint`, `npm run build` 통과.
-- Docker Desktop 엔진이 현재 응답하지 않아 컨테이너 기반 브라우저 종단 시연은 이번 최종화에서 재실행하지 않았다. 기존 시연 기록은 [프론트 기능 점검](frontend-demo-gap-audit-2026-10-18.md)과 [질문·파일 비교 기록](question-answer-and-existing-file-demo-2026-10-19.md)에 있다.
+- 브라우저에서 `/app/live`를 직접 클릭하는 전체 화면 시연은 이번 변경 이후 재실행하지 않았다. 기존 시연 기록은 [프론트 기능 점검](frontend-demo-gap-audit-2026-10-18.md)과 [질문·파일 비교 기록](question-answer-and-existing-file-demo-2026-10-19.md)에 있다.

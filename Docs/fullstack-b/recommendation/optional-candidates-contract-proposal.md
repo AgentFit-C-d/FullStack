@@ -1,20 +1,20 @@
 # FSB-04 선택 후보 분리 계약 제안
 
-> 상태: **미합의 제안**. `B04` 단위 테스트 완료와 PRD `FSB-04` 기능 완료는 다르다. 첫 실제 Catalog 및 A·AI·Frontend 응답 계약이 정해지기 전에는 선택 후보를 추천 결과로 활성화하지 않는다.
+> 상태: **선택 후보는 미합의 제안**. 2026-10-25 최종화 브랜치에서는 `NOT_REQUESTED`를 추가해 입력에 언급되지 않은 기능과 실제 미정 기능을 구분했다. 선택 후보 노출·승인은 여전히 별도 합의가 필요하다.
 
 ## 현재 확인된 동작과 누락
 
 - B 엔진은 AI가 `REQUIRED`로 분류한 Capability를 덮는 검증된 최소 구성만 찾는다. 환경·고정 버전·의존성·충돌·포함 컴포넌트·정확한 조합 근거를 검사한다.
-- `AiCapabilityIntake`는 `REQUIRED`·`OPTIONAL`·`UNDETERMINED`를 받지만, `RecommendationInputAssembler`는 `REQUIRED` 집합과 미정 여부만 추천 엔진에 전달한다. `OPTIONAL` claim은 응답의 검증된 근거로 보존되지만 선택 도구를 생성하지 않는다.
+- `AiCapabilityIntake`는 `REQUIRED`·`OPTIONAL`·`UNDETERMINED`·`NOT_REQUESTED`를 받지만, `RecommendationInputAssembler`는 `REQUIRED` 집합과 미정 여부만 추천 엔진에 전달한다. `NOT_REQUESTED`는 확인된 작업 입력에 신호가 없다는 뜻이며 `OPTIONAL`이나 불필요함의 확정 판정이 아니다. `OPTIONAL` claim은 응답의 검증된 근거로 보존되지만 선택 도구를 생성하지 않는다.
 - PRD `FSB-04`와 추천 API 초안은 `RECOMMENDED` 결과에서 최소 기본 구성과 `required=false`인 선택 항목을 구분하도록 요구한다. 현재 B 내부 `items`에는 선택 항목 구분 필드가 없으며 실제 Catalog·공개 DTO도 없다.
 
 ## 확정이 필요한 의미
 
-현재 3값 분류만으로는 **필요하지 않은 Capability**와 **있으면 유용한 선택 Capability**를 구분할 수 없다. 예를 들어 고정 9개 항목을 모두 반환할 때 필수 1개·미정 0개라면 나머지 8개를 모두 `OPTIONAL`로 채우게 될 수 있다. 이를 곧바로 8개 선택 추천으로 바꾸면 사용자에게 불필요한 도구와 권한을 제시한다.
+기존 3값 분류에서는 언급되지 않은 8개 기능을 모두 `UNDETERMINED`로 처리해 추천이 막혔다. 네 번째 값 `NOT_REQUESTED`로 이 문제를 분리했지만, **필요하지 않음**과 **있으면 유용한 선택 기능**의 차이는 여전히 별도 판단이 필요하다. `NOT_REQUESTED`를 선택 추천으로 승격하면 사용자에게 불필요한 도구와 권한을 제시할 수 있다.
 
 AI·A·Frontend가 다음 두 가지를 먼저 결정해야 한다.
 
-1. 9개 전량 반환을 유지할 때 `NOT_NEEDED` 같은 별도 분류를 추가할지, 아니면 `OPTIONAL`에 명시적 **선택 제안 가능 여부** 필드를 둘지. 생략을 `NOT_NEEDED`로 암묵 해석하는 방식은 현재 B의 9개 전량 검증과 충돌하므로 계약 변경이 필요하다.
+1. 9개 전량 반환과 명시적 `NOT_REQUESTED`는 구현했다. `OPTIONAL`을 어떤 근거로 제안 가능한 선택 기능으로 판정할지, 또는 선택 제안 가능 여부를 별도 필드로 둘지는 팀 합의가 필요하다.
 2. 선택 항목의 사용자 노출·저장 의미를 어떻게 정할지. `required=false`는 기본 설치·권한 승인·Preview 선택을 뜻하지 않아야 한다. 선택 항목에도 Catalog의 정확한 환경 지원, 단독/조합 검증, 고정 템플릿, 권한 근거가 필요하다.
 
 ## 제안하는 구현 순서

@@ -18,7 +18,7 @@ import java.util.UUID;
 /** Writes B1-B4 only after A has locked and owner-checked the current project snapshot. */
 public final class JdbcRecommendationMetadataWriter {
     public enum EvidenceLevel { PLAN_ONLY, ENVIRONMENT_DECLARED }
-    public enum Necessity { REQUIRED, OPTIONAL, UNDETERMINED }
+    public enum Necessity { REQUIRED, OPTIONAL, UNDETERMINED, NOT_REQUESTED }
     public enum ExplanationSource { AI, TEMPLATE }
     public enum NoticeType { QUESTION, REASON }
     public enum QuestionOwner { AI, B }

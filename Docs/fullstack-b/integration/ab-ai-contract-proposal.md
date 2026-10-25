@@ -49,11 +49,11 @@ B의 `CapabilityAnalyzer` 포트는 A의 전체 소유권 확인 스냅샷을 �
 
 | 필드 의미 | 제약 |
 | --- | --- |
-| Capability claim | 고정 9개 키 중 하나, `REQUIRED` / `OPTIONAL` / `UNDETERMINED`, 비어 있지 않은 이유, 근거가 된 A 허용 필드 경로 목록 |
+| Capability claim | 고정 9개 키 중 하나, `REQUIRED` / `OPTIONAL` / `UNDETERMINED` / `NOT_REQUESTED`, 비어 있지 않은 이유, 근거가 된 A 허용 필드 경로 목록. `NOT_REQUESTED`의 근거 경로는 빈 목록 |
 | 추가 질문 | A가 보유한 허용 필드 경로와 이유. 질문을 사용자에게 보여줄 주체·저장 위치는 합의 필요 |
 | 처리 메타데이터 | 요청 ID, 계약/스키마 버전, 모델·프롬프트 버전 및 실패 식별 정보. 실제 응답 DTO는 AI·A와 합의 필요 |
 
-`AiCapabilityIntake`는 현재 빈 claim 목록(질문만 있는 경우 포함), 중복·미지 키, 허용되지 않은 근거/질문 경로, 근거 없는 필수·선택 claim을 거부한다. **9개 키를 모두 반환해야 하는지, 생략된 키가 어떤 뜻인지, `UNDETERMINED`의 질문 연결 방식은 아직 미합의**다. 이 의미를 정하기 전에는 응답의 생략을 `OPTIONAL`이나 `NOT_NEEDED`로 해석하지 않는다. 오류, 타임아웃, 파싱 실패, 계약 버전 불일치에는 추천 성공 레코드를 만들지 않고 기존 결과를 보존한다. HTTP 상태·오류 envelope·재시도 횟수는 A·AI와 확정한다.
+`AiCapabilityIntake`는 빈 claim 목록, 중복·미지 키, 허용되지 않은 근거/질문 경로, 근거 없는 필수·선택 claim을 거부한다. 최종 추천 경로는 9개 키 전량을 요구하며, 언급되지 않은 기능은 생략 대신 `NOT_REQUESTED`로 명시한다. `UNDETERMINED`는 해당 작업의 필요 여부가 실제로 미정일 때만 사용하고 질문을 그 입력 경로에 연결한다. 이 네 번째 값은 최종화 브랜치에서 구현했으며 A·AI·Frontend의 팀 계약 확인이 필요하다. 오류, 타임아웃, 파싱 실패, 계약 버전 불일치에는 추천 성공 레코드를 만들지 않고 기존 결과를 보존한다.
 
 ## B → A/Frontend: 판정과 저장
 

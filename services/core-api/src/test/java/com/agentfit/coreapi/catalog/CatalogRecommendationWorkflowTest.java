@@ -48,6 +48,27 @@ class CatalogRecommendationWorkflowTest {
     }
 
     @Test
+    void unrelatedCapabilitiesDoNotTurnOneExplicitNeedIntoQuestions() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory);
+        var claims = CapabilityKey.keys().stream().map(key ->
+            new AiCapabilityIntake.Claim(key,
+                key.equals("cap_document_reference")
+                    ? AiCapabilityIntake.Need.REQUIRED : AiCapabilityIntake.Need.NOT_REQUESTED,
+                "Confirmed work signal",
+                key.equals("cap_document_reference")
+                    ? List.of("profile.item.features.0") : List.<String>of())).toList();
+        var input = new CatalogRecommendationWorkflow.Request(claims, List.of(),
+            Set.of("profile.item.features.0"), false,
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
+
+        var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input);
+
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, outcome.decision().status());
+        assertEquals(List.of("example-tool"), outcome.decision().toolKeys());
+        assertTrue(outcome.clarificationQuestions().isEmpty());
+    }
+
+    @Test
     void rejectsUnapprovedCatalogAndIncompleteAiAssessment() throws Exception {
         String approvedHash = SyntheticCatalogBundle.write(directory);
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,

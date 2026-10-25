@@ -79,7 +79,7 @@ class LiveAiPostgresRecommendationTest {
                 profile, project, "demo", "web", "development", owner);
             jdbc.update("INSERT INTO project_profile_item (id, project_profile_id, field_key, ordinal, name, source, evidence, created_at, updated_at) VALUES (?, ?, 'features', 0, ?, 'DOCUMENT', '[]'::jsonb, now(), now())",
                 UUID.randomUUID(), profile,
-                "문서, repo 코드 탐색, 코드 검토, 테스트 작성 및 실행, 브라우저 검증, API 연동, DB 점검, AI 모델 평가");
+                "브라우저 검증");
             jdbc.update("INSERT INTO profile_confirmation_event (id, project_id, confirmed_profile_id, confirmed_profile_version, project_version, actor_id, confirmed_at, request_id, profile_snapshot) VALUES (?, ?, ?, 1, 1, ?, now(), ?, '{}'::jsonb)",
                 confirmation, project, profile, owner, "live-ai-db-demo");
             assertEquals(1, new RecommendationInputsService(dataSource).saveEnvironment(project.toString(), 0,
@@ -143,6 +143,10 @@ class LiveAiPostgresRecommendationTest {
                 assertNotNull(jdbc.queryForObject("SELECT id FROM recommendation WHERE id = ?",
                     UUID.class, recommendation));
                 assertEquals(9, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ?",
+                    Integer.class, recommendation));
+                assertEquals(8, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ? AND necessity = 'NOT_REQUESTED'",
+                    Integer.class, recommendation));
+                assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ? AND necessity = 'REQUIRED'",
                     Integer.class, recommendation));
                 assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_item WHERE recommendation_id = ?",
                     Integer.class, recommendation));

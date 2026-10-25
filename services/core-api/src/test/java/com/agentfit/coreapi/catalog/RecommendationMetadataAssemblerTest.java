@@ -45,6 +45,28 @@ class RecommendationMetadataAssemblerTest {
     }
 
     @Test
+    void preservesNotRequestedCapabilityWithoutCreatingQuestionOrTool() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var original = recommendation(hash);
+        var claims = original.capabilities().stream().map(claim ->
+            claim.capabilityKey().equals("cap_document_reference") ? claim
+                : new AiCapabilityIntake.Claim(claim.capabilityKey(),
+                    AiCapabilityIntake.Need.NOT_REQUESTED,
+                    "No matching confirmed work", List.of())).toList();
+        var result = new CatalogRecommendationWorkflow.Result(original.catalogReleaseId(),
+            original.catalogHash(), original.decision(), claims,
+            original.clarificationQuestions(), original.items());
+
+        var draft = RecommendationMetadataAssembler.assemble(UUID.randomUUID().toString(),
+            basis(hash), result, JdbcRecommendationMetadataWriter.EvidenceLevel.PLAN_ONLY,
+            Instant.now(), List.of(), () -> UUID.randomUUID().toString());
+
+        assertEquals(8, draft.capabilities().stream().filter(capability ->
+            capability.necessity() == JdbcRecommendationMetadataWriter.Necessity.NOT_REQUESTED).count());
+        assertTrue(draft.notices().isEmpty());
+    }
+
+    @Test
     void rejectsCatalogBasisMismatchAndForgedItemSet() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var result = recommendation(hash);

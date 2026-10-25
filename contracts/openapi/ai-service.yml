@@ -63,7 +63,7 @@ paths:
               $ref: "#/components/schemas/SkillNeedsRequest"
       responses:
         "200":
-          description: At most six needs and the existing nine Capability assessment entries.
+          description: At most six needs and nine Capability assessments. NOT_REQUESTED means no signal in the confirmed work facts; UNDETERMINED requires a targeted question.
           content:
             application/json:
               schema:
@@ -272,6 +272,37 @@ components:
         result:
           type: object
           required: [needs, claims, questions]
+          properties:
+            needs:
+              type: array
+              maxItems: 6
+              items: { type: object, additionalProperties: true }
+            claims:
+              type: array
+              minItems: 9
+              maxItems: 9
+              items: { $ref: "#/components/schemas/CapabilityClaim" }
+            questions:
+              type: array
+              items: { $ref: "#/components/schemas/CapabilityQuestion" }
+    CapabilityClaim:
+      type: object
+      required: [capabilityKey, need, reason, sourceFields]
+      additionalProperties: false
+      properties:
+        capabilityKey: { type: string }
+        need: { type: string, enum: [REQUIRED, OPTIONAL, UNDETERMINED, NOT_REQUESTED] }
+        reason: { type: string, minLength: 1 }
+        sourceFields:
+          type: array
+          items: { type: string }
+    CapabilityQuestion:
+      type: object
+      required: [field, reason]
+      additionalProperties: false
+      properties:
+        field: { type: string }
+        reason: { type: string, minLength: 1 }
     ConfirmedFact:
       type: object
       required: [id, field, value]
@@ -280,7 +311,7 @@ components:
         id:
           type: string
           description: Core-approved canonical source path.
-          pattern: '^(profile\.(projectName|projectType|domain)|profile\.item\.(database|deployment|frontend|backend|ai|features|external_integrations)\.[0-9]+|developer\.version|environment\.(osFamily|clientId|clientVersion))$'
+          pattern: '^(profile\.(projectName|projectType|domain)|profile\.item\.(database|deployment|frontend|backend|ai|features|external_integrations)\.[0-9]+|developer\.(role|version|responsibility\.[0-9]+)|environment\.(osFamily|clientId|clientVersion))$'
         field:
           type: string
         value:

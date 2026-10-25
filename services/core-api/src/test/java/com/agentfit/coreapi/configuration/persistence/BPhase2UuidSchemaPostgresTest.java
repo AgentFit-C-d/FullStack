@@ -168,6 +168,28 @@ class BPhase2UuidSchemaPostgresTest {
         }
     }
 
+    @Test
+    void migratedSchemaPersistsNotRequestedCapabilityWithoutAQuestion() throws Exception {
+        var original = recommended(basis());
+        var capabilities = original.capabilities().stream().map(capability ->
+            capability.key().equals("cap_document_reference") ? capability
+                : new JdbcRecommendationMetadataWriter.Capability(capability.key(),
+                    JdbcRecommendationMetadataWriter.Necessity.NOT_REQUESTED,
+                    "No matching confirmed work", List.of())).toList();
+        var draft = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            capabilities, original.items(), List.of());
+
+        new JdbcRecommendationMetadataWriter().write(connection, draft);
+
+        try (var statement = connection.createStatement();
+             var rows = statement.executeQuery("SELECT COUNT(*) FROM recommendation_capability "
+                 + "WHERE necessity = 'NOT_REQUESTED'")) {
+            assertTrue(rows.next());
+            assertEquals(8, rows.getInt(1));
+        }
+    }
+
     private PreviewBasis basis() {
         return new PreviewBasis(projectId.toString(), 1, profileId.toString(), 1,
             confirmationId.toString(), 0, 1, 1, "demo-catalog", "a".repeat(64));
