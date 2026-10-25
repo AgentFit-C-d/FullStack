@@ -14,7 +14,7 @@
 | AI `needs` → B Capability | 9개 키와 `NOT_REQUESTED`를 받아 검증·DB 저장한다. `rank`는 실제 추천 선택 경로에 참여하지 않는다. |
 | `NEEDS_INFORMATION` 질문 → 프론트 답변 | 프론트는 `noticeId`별 목록·저장을 지원한다. B가 AI 질문 중 첫 건만 보존하던 문제를 수정해 여러 질문을 각각 저장한다. 답변은 기록이며 확정 기획이나 재추천 입력을 자동 변경하지 않는다. |
 | 추천 → 선택·권한 → Preview·승인·ZIP·이력 | 합성 승인 카탈로그를 사용한 백엔드/브라우저 데모 경로가 있다. 이번 점검에서는 질문 저장 관련 B 회귀 테스트를 실행했다. |
-| skills.sh 후보 → 승인 카탈로그 | 검색·상세 해시 수집과 `GET /api/tool-candidates` 조회까지만 연결된다. OS·Claude Code 버전·권한·설정 출력 검증이 없어 추천·ZIP에는 들어가지 않는다. |
+| skills.sh 후보 → 승인 카탈로그 | 검색·상세 해시 수집과 `GET /api/tool-candidates` 조회가 연결돼 있다. 실물 Skill 1종은 Windows·Claude Code 2.1.270에서 별도 검증했지만 팀의 독립 승인 전이라 운영 추천·ZIP에는 들어가지 않는다. |
 
 ## FSB-01–12 상위 기능 상태
 
@@ -33,7 +33,7 @@
 | FSB-09 기존 설정 비교 | 동작 | 제공 파일 이외의 상태는 알 수 없으며 자동 병합은 미구현 |
 | FSB-10 승인·산출물 일치 | 동작 | 운영 환경 회귀 검증 |
 | FSB-11 적용·인증·확인 안내 | 부분 | 실제 Client 설치·연결·무해한 확인 절차 검증 |
-| FSB-12 변경 영향·이력 | 부분 | 실도구 버전 변경 재검토와 Catalog 갱신 운영 |
+| FSB-12 변경 영향·이력 | 부분 | STALE 추천의 저장 당시 도구·이유는 읽을 수 있음. 실도구 버전 변경 재검토와 Catalog 갱신 운영은 미완 |
 
 데모 기준 **7/12개가 현재 연결 경로로 동작하고, 5/12개는 부분 구현**이다. 7/12는 엄격한 제품 완료율이나 실제 Claude Code 지원율이 아니다. 실제 검증·승인 Catalog가 현재 최대 차단 요인이다.
 
@@ -42,3 +42,4 @@
 - B 저장 경로는 AI가 반환한 모든 `clarificationQuestions`를 각각 `recommendation_notice`로 저장한다. 동일한 `code=undetermined_capability`여도 `noticeId`와 `answerTarget`은 항목별로 다르다.
 - 프론트는 이미 `noticeId`별 질문 목록·답변 API를 사용하므로 소스 수정 없이 추가 질문을 표시할 수 있다. 다만 별도 Frontend 레포의 단계별 `/app/projects/...` 화면은 여전히 `/app/live`로 이동하며 개별 API 바인딩은 프론트 작업이다.
 - B API의 추천 항목에는 지원 근거·충족 Capability·권한 옵션과 결정적 `reason` 문구를 제공한다. 같은 문구를 추천 이력에도 저장한다. `/app/live`는 현재 도구명과 권한 선택 위주로 보여주므로, 추천 이유를 화면에 배치하는 작업은 프론트 인계가 필요하다. 이 문구는 AI가 생성한 개인화 설명이 아니다.
+- 최신 추천 GET은 저장 당시 도구 키·버전·이유를 `savedItems`로 별도 반환하고 당시 입력 확인 수준(`evidenceLevel`)과 생성 시각(`createdAt`)도 제공한다. `validity=STALE`이면 현행 Catalog 권한이 담긴 `items`는 비어 있고, `savedItems`는 조회용 이력이다. 프론트에서 오래된 추천에 선택·권한·Preview 버튼을 붙이면 안 된다. B 응답 매핑과 최신 조회 단위 테스트는 통과했으며 실제 HTTP·PostgreSQL 회귀는 별도 검증 대상이다.

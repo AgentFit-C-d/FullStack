@@ -84,9 +84,7 @@ public class RecommendationController {
         ownership.requireOwned(principal, projectId);
         var snapshot = required(latest, "latest recommendation workflow").latest(projectId);
         if (snapshot == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "recommendation not found");
-        return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
-            snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
-            snapshot.catalogItems(), snapshot.capabilities(), snapshot.notices());
+        return latestResponse(snapshot);
     }
 
     @PostMapping("/config-previews")
@@ -125,6 +123,16 @@ public class RecommendationController {
             created.basis(), result.capabilities(), result.items(), result.clarificationQuestions());
     }
 
+    static RecommendationLatestResponse latestResponse(RecommendationLatestDetailsService.Snapshot snapshot) {
+        List<SavedItem> savedItems = snapshot.storedItems().stream()
+            .map(item -> new SavedItem(item.toolKey(), item.toolVersion(), item.reason()))
+            .toList();
+        return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
+            snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
+            snapshot.catalogItems(), snapshot.capabilities(), snapshot.notices(), savedItems,
+            snapshot.evidenceLevel(), snapshot.createdAt());
+    }
+
     public record ExpectedVersions(long project, long developer, long environment) {}
     public record RecommendationRequest(ExpectedVersions expectedVersions) {}
 
@@ -140,7 +148,13 @@ public class RecommendationController {
             RecommendationReadModel.Validity validity, PreviewBasis basis,
             List<CatalogRecommendationDetails.Item> items,
             List<JdbcRecommendationMetadataWriter.Capability> capabilities,
-            List<JdbcRecommendationMetadataWriter.Notice> notices) {}
+            List<JdbcRecommendationMetadataWriter.Notice> notices,
+            List<SavedItem> savedItems,
+            JdbcRecommendationMetadataWriter.EvidenceLevel evidenceLevel,
+            Instant createdAt) {}
+
+    /** Historical display only; this does not confer current support or usable permissions. */
+    public record SavedItem(String toolKey, String toolVersion, String reason) {}
 
     public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
             String fingerprint, String selectionDigest, String contentDigest, Instant createdAt,

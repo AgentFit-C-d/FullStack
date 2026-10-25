@@ -844,6 +844,11 @@ components:
       properties:
         recommendationId: { type: string, format: uuid }
         status: { type: string, enum: [RECOMMENDED, NO_ADDITIONS_NEEDED, NEEDS_INFORMATION, NO_COMPATIBLE_TOOLS] }
+        evidenceLevel:
+          type: string
+          enum: [PLAN_ONLY, ENVIRONMENT_DECLARED]
+          description: Input evidence level recorded when this recommendation was created; this does not attest installation or execution.
+        createdAt: { type: string, format: date-time }
         basis:
           type: object
           required: [projectId, projectVersion, confirmedProfileId, confirmedProfileVersion, confirmationEventId, reviewVersion, developerVersion, environmentVersion, catalogReleaseId, catalogHash]
@@ -861,12 +866,23 @@ components:
         capabilities: { type: array, items: { type: object, additionalProperties: true } }
         items:
           type: array
-          description: Recommended Catalog items. Each reason is a deterministic B Catalog explanation, not an AI-generated claim.
+          description: Current, approved Catalog items only. Empty when validity is STALE; each reason is a deterministic B Catalog explanation, not an AI-generated claim.
           items:
             type: object
             additionalProperties: true
             required: [reason]
             properties:
+              reason: { type: string, minLength: 1 }
+        savedItems:
+          type: array
+          description: Tool keys, versions and reasons saved with the recommendation. Historical display only; these rows do not prove current support or grant permissions, including when validity is STALE.
+          items:
+            type: object
+            additionalProperties: false
+            required: [toolKey, toolVersion, reason]
+            properties:
+              toolKey: { type: string }
+              toolVersion: { type: string }
               reason: { type: string, minLength: 1 }
         notices: { type: array, items: { type: object, additionalProperties: true } }
     RecommendationQuestionAnswer:
