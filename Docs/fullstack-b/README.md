@@ -5,6 +5,7 @@
 ## 먼저 읽을 파일
 
 1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
+   [최종화 기준 비교](integration/finalization-baseline-2026-10-25.md)는 `develop`과 기존 `demo` 변경의 반영 범위와 남은 기능 경계를 정리한다.
 2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): B05–B12의 완료 조건과 A·AI·Catalog 인계 입력.
 3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
 4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
@@ -51,7 +52,7 @@ FullStack/Docs/
 | 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](archive/plans/configuration/history/generation-history-plan.md) |
 | Preview·승인·생성 이력·적용 보고의 B5–B9 JDBC 기록 | `configuration/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 
-B 코드는 `feat/fullstack-b-phase1` 브랜치에서 기능별 패키지로 관리한다. 이 문서에서 말하는 구현은 외부 서비스·DB에 연결되지 않은 경계 코드다.
+B 구현은 `develop`에 병합된 Phase 1–3과 `feat/fullstack-b-finalization`의 서비스 연결 코드를 기준으로 본다. 실제 API 화면은 `/app/live`이며, `/demo` 단계 화면은 메모리 시연이다.
 
 ## 현재 구현 수준
 

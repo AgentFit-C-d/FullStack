@@ -4,22 +4,29 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
 import com.agentfit.coreapi.global.exception.BusinessException;
 import com.agentfit.coreapi.global.exception.ErrorCode;
+import com.agentfit.coreapi.recommendation.RecommendationDecision;
+import com.agentfit.coreapi.recommendation.RecommendationReadModel;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 /** Stores user answers as annotations; recommendation and confirmed facts remain unchanged. */
 @Service
 public class RecommendationQuestionAnswerService {
     private final JdbcTemplate jdbc;
+    private final RecommendationLatestDetailsService latest;
 
-    public RecommendationQuestionAnswerService(JdbcTemplate jdbc) {
+    public RecommendationQuestionAnswerService(JdbcTemplate jdbc,
+                                               RecommendationLatestDetailsService latest) {
         this.jdbc = jdbc;
+        this.latest = latest;
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public RecommendationQuestionAnswer save(String projectId, String recommendationId,
                                               String noticeId, String answer, UUID actorId) {
         UUID project = UUID.fromString(projectId);
@@ -27,9 +34,13 @@ public class RecommendationQuestionAnswerService {
         UUID notice = UUID.fromString(noticeId);
         if (actorId == null) throw new IllegalArgumentException("authenticated UUID actor required");
         String value = RecommendationQuestionAnswer.validatedAnswer(answer);
-        String latest = latestId(project);
-        if (!recommendation.toString().equals(latest)) {
-            throw new BusinessException(ErrorCode.VERSION_CONFLICT, "answer belongs to an older recommendation");
+        var snapshot = latest.latest(projectId);
+        if (snapshot == null || snapshot.summary() == null
+            || !recommendation.toString().equals(snapshot.summary().recommendationId())
+            || snapshot.summary().validity() != RecommendationReadModel.Validity.CURRENT
+            || snapshot.summary().status() != RecommendationDecision.Status.NEEDS_INFORMATION) {
+            throw new BusinessException(ErrorCode.VERSION_CONFLICT,
+                "answer requires the current information request");
         }
         List<String> targets = jdbc.query("""
             SELECT n.answer_target FROM recommendation_notice n
@@ -65,14 +76,6 @@ public class RecommendationQuestionAnswerService {
             WHERE a.project_id = ? AND a.recommendation_id = ?
             ORDER BY n.code, a.notice_id
             """, RecommendationQuestionAnswerService::map, project, recommendation);
-    }
-
-    private String latestId(UUID project) {
-        List<String> ids = jdbc.query("""
-            SELECT id FROM recommendation WHERE project_id = ?
-            ORDER BY created_at DESC, id DESC LIMIT 1
-            """, (rs, row) -> rs.getObject(1, UUID.class).toString(), project);
-        return ids.isEmpty() ? null : ids.get(0);
     }
 
     private RecommendationQuestionAnswer answerByNotice(UUID recommendation, UUID notice) {

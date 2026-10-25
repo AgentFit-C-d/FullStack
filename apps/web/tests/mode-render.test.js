@@ -7,7 +7,7 @@ import { createServer } from 'vite'
 import { createDemoProfile } from '../src/features/profile/profileModel.js'
 import { demoReducer, initialDemoState } from '../src/features/projects/projectModel.js'
 
-let server, AnalysisScreen, ProfileEditor, RoleEditor, EnvironmentEditor, RecommendationScreen, SelectionScreen, PreviewScreen, CompleteScreen, CompletePage, WizardProgress, DemoContext
+let server, AnalysisScreen, ProfileEditor, RoleEditor, EnvironmentEditor, RecommendationScreen, SelectionScreen, PreviewScreen, CompleteScreen, CompletePage, WizardProgress, DemoContext, QuestionAnswersEditor
 before(async () => {
   server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
   ;({ AnalysisScreen } = await server.ssrLoadModule('/src/pages/AnalysisPage.jsx'))
@@ -20,10 +20,22 @@ before(async () => {
   ;({ EnvironmentEditor } = await server.ssrLoadModule('/src/pages/EnvironmentPage.jsx'))
   ;({ RoleEditor } = await server.ssrLoadModule('/src/pages/RolePage.jsx'))
   ;({ DemoContext } = await server.ssrLoadModule('/src/features/projects/DemoContext.js'))
+  ;({ default: QuestionAnswersEditor } = await server.ssrLoadModule('/src/features/live/QuestionAnswersEditor.jsx'))
 })
 after(async () => { await server?.close() })
 const project = { id: 'a', name: '사용자 프로젝트' }
 const render = element => renderToStaticMarkup(h(MemoryRouter, null, element))
+
+test('만료된 추천의 추가 질문은 이전 답변을 보여주되 새 저장을 막는다', () => {
+  const notice = { id: 'notice-1', type: 'QUESTION', code: 'environment_target',
+    message: '환경을 확인해 주세요.', answerTarget: 'environment' }
+  const html = render(h(QuestionAnswersEditor, {
+    notices: [notice], answers: [], drafts: { 'notice-1': 'Windows' },
+    busy: false, current: false, onDraft() {}, onSave() {},
+  }))
+  assert.match(html, /이전 추천의 질문/)
+  assert.match(html, /disabled=""[^>]*>답변 저장/)
+})
 
 test('Analysis 실제 렌더링에서 시연 진입은 demo에만 보이고 결과 버튼은 비활성이다', () => {
   for (const mode of ['demo', 'service']) {

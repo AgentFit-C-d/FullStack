@@ -419,6 +419,70 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
+  /api/projects/{projectId}/recommendations/{recommendationId}/answers:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - name: recommendationId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Read saved answers for an owner-checked recommendation
+      operationId: listRecommendationAnswers
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Saved answers; answers do not change confirmed facts or the recommendation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/RecommendationQuestionAnswer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+  /api/projects/{projectId}/recommendations/{recommendationId}/answers/{noticeId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - name: recommendationId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: noticeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Save an answer to a current NEEDS_INFORMATION question
+      operationId: saveRecommendationAnswer
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer]
+              properties:
+                answer: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "200":
+          description: Answer annotation saved without changing confirmed facts or recommendation status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecommendationQuestionAnswer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
   /api/projects/{projectId}/config-previews:
     parameters:
       - $ref: "#/components/parameters/ProjectId"
@@ -797,6 +861,17 @@ components:
         capabilities: { type: array, items: { type: object, additionalProperties: true } }
         items: { type: array, items: { type: object, additionalProperties: true } }
         notices: { type: array, items: { type: object, additionalProperties: true } }
+    RecommendationQuestionAnswer:
+      type: object
+      required: [noticeId, recommendationId, answerTarget, answer, actorId, createdAt, updatedAt]
+      properties:
+        noticeId: { type: string, format: uuid }
+        recommendationId: { type: string, format: uuid }
+        answerTarget: { type: string }
+        answer: { type: string, minLength: 1, maxLength: 4000 }
+        actorId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     PreviewCreateRequest:
       type: object
       required: [basis, recommendationId, target, selectedToolKeys, permissionSelections, existingState, providedFiles, generatorVersion]
