@@ -60,6 +60,44 @@ class SkillsShCandidateCollectorTest {
     }
 
     @Test
+    void downloadsOnlyThePinnedSafeSkillFiles() {
+        detailBody = "{\"id\":\"owner/repo/example\",\"source\":\"owner/repo\","
+            + "\"hash\":\"" + HASH + "\",\"files\":["
+            + "{\"path\":\"SKILL.md\",\"contents\":\"---\\nname: example\\n---\\n\"},"
+            + "{\"path\":\"references/guide.md\",\"contents\":\"Guide\"}]}";
+        var candidate = new SkillCandidate("owner/repo/example", "Example", "owner/repo",
+            "https://skills.sh/owner/repo/example", HASH,
+            Instant.parse("2026-10-09T00:00:00Z"));
+
+        var downloaded = collector("token").download(candidate);
+
+        assertEquals(HASH, downloaded.contentHash());
+        assertEquals("Guide", downloaded.files().get("references/guide.md"));
+        assertEquals(2, downloaded.files().size());
+    }
+
+    @Test
+    void downloadRejectsChangedHashTraversalAndMissingSkill() {
+        var candidate = new SkillCandidate("owner/repo/example", "Example", "owner/repo",
+            "https://skills.sh/owner/repo/example", HASH,
+            Instant.parse("2026-10-09T00:00:00Z"));
+        detailBody = "{\"id\":\"owner/repo/example\",\"source\":\"owner/repo\","
+            + "\"hash\":\"" + "b".repeat(64) + "\",\"files\":["
+            + "{\"path\":\"SKILL.md\",\"contents\":\"valid\"}]}";
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").download(candidate));
+
+        detailBody = detailBody.replace("b".repeat(64), HASH)
+            .replace("SKILL.md", "../SKILL.md");
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").download(candidate));
+
+        detailBody = detailBody.replace("../SKILL.md", "notes.md");
+        assertThrows(SkillsShCandidateCollector.DiscoveryException.class,
+            () -> collector("token").download(candidate));
+    }
+
+    @Test
     void discoversSnapshotWithoutPromotingExternalDataToCatalog() {
         searchBody = """
             {"data":[{"id":"owner/repo/example","slug":"example","name":"Example Skill",

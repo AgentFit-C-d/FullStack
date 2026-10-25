@@ -11,6 +11,8 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 �
 3. API의 인증·제한·장애 응답 또는 잘못된 JSON은 오류로 처리한다. 기존 스냅샷을 빈 목록으로 덮어쓰지 않는다. 스냅샷도 엄격하게 검증하고 임시 파일에서 원자적으로 교체한다.
 4. 담당자가 후보의 출처, 실제 파일, Claude Code 버전/OS 지원, 의존성·충돌, 권한, 조합과 설정 방법을 따로 검증한다. 검증 후 별도 Catalog 릴리스를 작성·승인해야 추천에 들어간다. 외부 API 데이터만으로 자동 설치하거나 추천하지 않는다.
 
+`SkillsShCandidateCollector.download(candidate)`는 검토자가 고른 **고정 해시 후보**의 실제 Markdown 파일을 다시 받는다. 검색 당시 해시와 다르면 거부하고, `SKILL.md` 필수·경로 탐색 금지·중복 경로 금지·파일 수/크기 제한을 적용한다. 반환한 파일은 여전히 조사 자료이며 서버 카탈로그 설정이나 사용자의 환경에 자동 설치하지 않는다.
+
 `SkillsShReviewQueue.classify`는 후보 스냅샷과 별도 검토 결정 목록을 받아 `PENDING`, `SHORTLISTED`, `REJECTED`, `CHANGED`를 계산한다. 결정에는 후보 ID와 검토 당시 해시·이름·검토자·시각을 묶는다. 해시나 이름이 바뀌면 과거 SHORTLISTED/REJECTED 판단은 `CHANGED`가 된다. 관측 시각만 바뀐 경우에는 기존 판단을 유지한다. SHORTLISTED는 Catalog 검증 완료나 사용자 추천 가능을 의미하지 않는다. 검토 결정의 DB 저장·관리자 화면은 A 계약 전까지 없다.
 
 `SkillsShReviewDecisionStore`는 이 검토 결정을 후보 스냅샷과 **별도 JSON 파일**에 원자적으로 기록한다. 현재 후보에서 ID·이름·해시를 직접 읽어 결정에 묶고, 알 수 없는 후보·손상된 기존 결정 파일은 거부한다. `SkillsShTriageCommand`는 `list`, `shortlist`, `reject`를 제공하며, 후보 파일이 없으면 빈 목록으로 성공하지 않는다. 여기의 `reviewer-id`는 로컬 운영자가 입력한 표식일 뿐 인증된 사용자 ID나 독립 Catalog 승인자가 아니다.
@@ -41,6 +43,7 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.discovery.SkillsS
 - 2026-10-10 [skills.sh 공식 API 문서](https://www.skills.sh/docs/api)를 재확인했다. 검색·상세 경로, `Authorization: Bearer` 형식, 검색 `data`와 상세 `id`/`source`/`hash`는 현재 수집 코드의 가정과 맞는다. 상세 `hash`는 스냅샷이 없으면 `null`일 수 있으므로 현재 코드는 해당 후보를 거부한다. 이 확인은 문서 계약 점검이며 실서버 호출 성공이나 Catalog 검증은 아니다.
 - 2026-10-17 읽기 전용 실서버 확인: 토큰 없는 `GET /api/v1/skills/search?q=react&limit=2`는 HTTP 401, `GET /api/search?q=react&limit=2`는 HTTP 200과 검색 결과 2건을 반환했다. 후자는 CLI가 사용하는 비공식 경로이며 응답도 공식 v1과 다르다(`skills` 배열). 기본 수집 명령은 **공식 v1 + Vercel OIDC 토큰**을 사용한다. 비공식 경로 결과를 승인 Catalog로 자동 승격하지 않는다.
 - 인증 토큰이 없는 로컬 후보 조사에는 `-Public`을 명시할 수 있다. 이 모드는 비공식 `/api/search`와 `/api/download/{id}`에서 후보 ID·이름·출처·콘텐츠 해시만 수집하고 `EXPERIMENTAL_PUBLIC_API`를 출력한다. 2026-10-17 실서버 `react`, 2건 수집에 성공했고 재실행 시 변경 0건을 확인했다. API 형식·가용성은 보장되지 않으며 결과는 검토 대기 스냅샷에만 저장된다. 실제 검증과 독립 승인 없이는 추천에 쓰이지 않는다.
+- 2026-10-25 공개 실험 경로로 `test-driven-development` 후보 5건을 수집했고, `obra/superpowers/test-driven-development`의 상세 해시와 실제 두 Markdown 파일을 확인했다. 이 파일을 사용한 [Claude Code 로컬 검증 기록](obra-tdd-skill-pilot-2026-10-25.md)은 별도다.
 - 공식 인증 방식은 **Vercel 프로젝트 OIDC 토큰**이다. 배포 대상이 아직 정해지지 않아 Spring Boot 서버에서 이 토큰을 안전하게 발급·전달·갱신할 방법은 미확정이다. 일반 사용자 로그인 토큰이나 임의의 고정 API 키로 대체하지 않는다. 공식 인증 경로의 성공 호출은 아직 검증하지 않았다.
 - 로컬 관리용 갱신·선별 명령과 별도 결정 파일은 추가됐지만, 서버의 보호된 수집 API·배치, 인증된 검토자/관리 UI·DB 승인 기록, 검증된 Catalog 릴리스 생성 절차는 미구현이다.
 - API 응답에는 AgentFit의 OS·Client 버전 호환성, 권한, 의존성·충돌 검증 결과가 없다. 해시 변경은 재검토 신호이지 품질·보안 검증이 아니다.

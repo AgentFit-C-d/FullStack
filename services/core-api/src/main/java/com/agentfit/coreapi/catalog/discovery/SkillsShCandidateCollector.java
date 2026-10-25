@@ -18,6 +18,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -138,6 +141,64 @@ public final class SkillsShCandidateCollector {
             result.add(new SkillCandidate(id, name, source, url, hash, clock.instant()));
         }
         return List.copyOf(result);
+    }
+
+    /** Fetches reviewable Markdown files for one pinned candidate; never approves or activates it. */
+    public SkillPackage download(SkillCandidate candidate) {
+        if (candidate == null) throw new IllegalArgumentException("candidate required");
+        String token = tokenSupplier.get();
+        if (!publicExperimental && (token == null || token.isBlank()
+            || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0)) {
+            throw new DiscoveryException("skills.sh credential unavailable");
+        }
+        JsonNode detail = get((publicExperimental ? "/api/download/" : "/api/v1/skills/")
+            + candidate.externalId(), token);
+        if (!publicExperimental && (!candidate.externalId().equals(required(detail, "id"))
+            || !candidate.source().equals(required(detail, "source")))) {
+            throw new DiscoveryException("skills.sh detail identity mismatch");
+        }
+        String hash = required(detail, "hash");
+        if (!candidate.contentHash().equals(hash)) {
+            throw new DiscoveryException("skills.sh content changed since discovery");
+        }
+        JsonNode files = detail.path("files");
+        if (!files.isArray() || files.isEmpty() || files.size() > 20) {
+            throw new DiscoveryException("invalid skills.sh file list");
+        }
+        Map<String, String> contents = new LinkedHashMap<>();
+        Set<String> foldedPaths = new HashSet<>();
+        long totalBytes = 0;
+        for (JsonNode file : files) {
+            String path = required(file, "path");
+            String body = required(file, "contents");
+            if (!safeMarkdownPath(path) || !foldedPaths.add(path.toLowerCase(Locale.ROOT))) {
+                throw new DiscoveryException("unsafe skills.sh file path");
+            }
+            int bytes = body.getBytes(StandardCharsets.UTF_8).length;
+            totalBytes += bytes;
+            if (bytes > 1_048_576 || totalBytes > 1_048_576) {
+                throw new DiscoveryException("skills.sh package too large");
+            }
+            contents.put(path, body);
+        }
+        if (!contents.containsKey("SKILL.md")) {
+            throw new DiscoveryException("skills.sh package lacks SKILL.md");
+        }
+        return new SkillPackage(hash, Map.copyOf(contents));
+    }
+
+    private static boolean safeMarkdownPath(String path) {
+        if (path.length() > 200 || !path.matches("[A-Za-z0-9._/-]+")
+            || path.startsWith("/") || path.endsWith("/") || path.contains("//")
+            || !path.endsWith(".md")) return false;
+        for (String part : path.split("/")) {
+            if (part.equals(".") || part.equals("..")) return false;
+        }
+        return true;
+    }
+
+    public record SkillPackage(String contentHash, Map<String, String> files) {
+        public SkillPackage { files = Map.copyOf(files); }
     }
 
     private JsonNode get(String path, String token) {

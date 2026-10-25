@@ -1,0 +1,15 @@
+# Local review of one real skills.sh Skill. This candidate has not received the
+# team's independent release approval and must not be used as production Catalog.
+services:
+  core-api:
+    environment:
+      AGENTFIT_CATALOG_DIRECTORY: /opt/agentfit/catalog-review
+      AGENTFIT_CATALOG_APPROVED_HASH: 9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90
+      AGENTFIT_SKILLS_SH_SNAPSHOT_PATH: /opt/agentfit/discovery/skills-sh-candidates.json
+    volumes:
+      - ../catalog-candidates/obra-tdd-windows-claude-2.1.270-verified:/opt/agentfit/catalog-review:ro
+      - ../catalog-candidates:/opt/agentfit/discovery:ro
+
+volumes:
+  agentfit_fullstack_postgres_data:
+    name: agentfit_catalog_review_postgres_data
