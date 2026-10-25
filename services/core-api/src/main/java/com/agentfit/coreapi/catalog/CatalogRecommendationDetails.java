@@ -26,10 +26,13 @@ public final class CatalogRecommendationDetails {
                        String catalogVersion, String supportKey,
                        Set<String> coveredRequiredCapabilities,
                        VerificationEvidence supportEvidence,
-                       List<PermissionOption> permissionOptions) {
+                       List<PermissionOption> permissionOptions, String reason) {
         public Item {
             coveredRequiredCapabilities = Set.copyOf(coveredRequiredCapabilities);
             permissionOptions = List.copyOf(permissionOptions);
+            if (reason == null || reason.isBlank()) {
+                throw new IllegalArgumentException("recommendation reason required");
+            }
         }
     }
 
@@ -60,7 +63,10 @@ public final class CatalogRecommendationDetails {
                 .filter(requiredCapabilities::contains).collect(java.util.stream.Collectors.toUnmodifiableSet());
             items.add(new Item(key, tool.name(), tool.kind(), tool.sourceUrl(),
                 tool.version(), support.key(), covered,
-                supportEvidence, permissions));
+                supportEvidence, permissions,
+                covered.isEmpty()
+                    ? "검증된 도구 조합의 의존성을 충족하기 위해 포함됩니다."
+                    : "필수 기능을 지원하며 현재 개발 환경에 맞는 카탈로그 지원 기록이 있습니다."));
         }
         return List.copyOf(items);
     }

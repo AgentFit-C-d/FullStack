@@ -40,6 +40,7 @@ class RecommendationMetadataAssemblerTest {
         assertEquals("1.0", item.toolVersion());
         assertEquals("support-1", item.supportKey());
         assertTrue(item.required());
+        assertEquals(result.items().getFirst().reason(), item.reason());
         assertEquals(JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE,
             item.explanationSource());
     }

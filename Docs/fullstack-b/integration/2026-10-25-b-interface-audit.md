@@ -41,4 +41,4 @@
 
 - B 저장 경로는 AI가 반환한 모든 `clarificationQuestions`를 각각 `recommendation_notice`로 저장한다. 동일한 `code=undetermined_capability`여도 `noticeId`와 `answerTarget`은 항목별로 다르다.
 - 프론트는 이미 `noticeId`별 질문 목록·답변 API를 사용하므로 소스 수정 없이 추가 질문을 표시할 수 있다. 다만 별도 Frontend 레포의 단계별 `/app/projects/...` 화면은 여전히 `/app/live`로 이동하며 개별 API 바인딩은 프론트 작업이다.
-- B API의 추천 항목에는 지원 근거·충족 Capability·권한 옵션이 있지만 `/app/live`는 현재 도구명과 권한 선택 위주로 보여준다. 추천 이유를 사용자에게 보여주는 화면 작업과 이유 문구 계약은 후속 합의가 필요하다.
+- B API의 추천 항목에는 지원 근거·충족 Capability·권한 옵션과 결정적 `reason` 문구를 제공한다. 같은 문구를 추천 이력에도 저장한다. `/app/live`는 현재 도구명과 권한 선택 위주로 보여주므로, 추천 이유를 화면에 배치하는 작업은 프론트 인계가 필요하다. 이 문구는 AI가 생성한 개인화 설명이 아니다.

@@ -46,7 +46,8 @@ class JdbcRecommendationStoreTransactionTest {
                 List.of("profile.projectName"))).toList();
         var item = new CatalogRecommendationDetails.Item("tool-1", "Tool", null, null, "1.0",
             "support-1", Set.of(), new com.agentfit.coreapi.catalog.VerificationEvidence(
-                "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)), List.of());
+                "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)),
+            List.of(), "테스트 지원 근거");
         var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
             new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED, List.of("tool-1"), List.of(), List.of()),
             claims, List.of(), List.of(item));

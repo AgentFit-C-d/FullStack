@@ -859,7 +859,15 @@ components:
             catalogReleaseId: { type: string }
             catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
         capabilities: { type: array, items: { type: object, additionalProperties: true } }
-        items: { type: array, items: { type: object, additionalProperties: true } }
+        items:
+          type: array
+          description: Recommended Catalog items. Each reason is a deterministic B Catalog explanation, not an AI-generated claim.
+          items:
+            type: object
+            additionalProperties: true
+            required: [reason]
+            properties:
+              reason: { type: string, minLength: 1 }
         notices: { type: array, items: { type: object, additionalProperties: true } }
     RecommendationQuestionAnswer:
       type: object

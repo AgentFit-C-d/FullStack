@@ -40,7 +40,7 @@ public final class RecommendationMetadataAssembler {
             }
             items.add(new JdbcRecommendationMetadataWriter.Item(childIds.get(), item.toolKey(),
                 item.catalogVersion(), item.supportKey(), true,
-                "Verified Catalog support in the selected environment",
+                item.reason(),
                 JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE));
         }
         if (decisionKeys.size() != decision.toolKeys().size()
