@@ -42,7 +42,7 @@ class CatalogRecommendationWorkflowTest {
         assertEquals("https://example.org/example-tool", item.sourceUrl());
         assertEquals("support-1", item.supportKey());
         assertEquals(Set.of("cap_document_reference"), item.coveredRequiredCapabilities());
-        assertEquals("필수 기능을 지원하며 현재 개발 환경에 맞는 카탈로그 지원 기록이 있습니다.", item.reason());
+        assertEquals("문서 참조 기능을 지원하며 현재 개발 환경에 맞는 카탈로그 지원 기록이 있습니다.", item.reason());
         assertEquals(item.reason(), new com.fasterxml.jackson.databind.ObjectMapper()
             .findAndRegisterModules().valueToTree(item).get("reason").asText());
         assertEquals("https://example.org/review", item.supportEvidence().sourceUrl());

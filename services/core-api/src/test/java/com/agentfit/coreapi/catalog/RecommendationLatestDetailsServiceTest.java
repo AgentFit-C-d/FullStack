@@ -41,6 +41,25 @@ class RecommendationLatestDetailsServiceTest {
         assertEquals("support-1", item.supportKey());
         assertEquals("read", item.permissionOptions().getFirst().mappingKey());
         assertEquals(draft.items(), latest.storedItems());
+        assertEquals(draft.items().getFirst().reason(), item.reason());
+    }
+
+    @Test
+    void retainsSavedRecommendationReasonWhenReadingCurrentResult() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var original = storedRecommendation(hash);
+        var item = original.items().getFirst();
+        var saved = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            original.capabilities(), List.of(new JdbcRecommendationMetadataWriter.Item(
+                item.id(), item.toolKey(), item.toolVersion(), item.supportKey(), item.required(),
+                "저장 당시 확인한 추천 근거", item.explanationSource())), original.notices());
+
+        var latest = service(saved.basis(), saved, () ->
+            new RecommendationCreationService.ApprovedCatalog(directory, hash))
+            .latest(saved.basis().projectId());
+
+        assertEquals("저장 당시 확인한 추천 근거", latest.catalogItems().getFirst().reason());
     }
 
     @Test

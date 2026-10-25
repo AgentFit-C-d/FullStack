@@ -117,6 +117,12 @@ public class RecommendationLatestDetailsService {
         })) {
             throw new IllegalArgumentException("stored recommendation differs from approved Catalog");
         }
-        return details;
+        return details.stream().map(detail -> {
+            var item = saved.get(detail.toolKey());
+            return new CatalogRecommendationDetails.Item(detail.toolKey(), detail.name(),
+                detail.kind(), detail.sourceUrl(), detail.catalogVersion(), detail.supportKey(),
+                detail.coveredRequiredCapabilities(), detail.supportEvidence(),
+                detail.permissionOptions(), item.reason());
+        }).toList();
     }
 }

@@ -1,5 +1,9 @@
 # Full Stack B current status
 
+**현재 판정 (2026-10-25):** B 내부 구현 마일스톤은 **4/12** 체크, 합성 카탈로그를 사용한 시연 경로는 PRD `FSB-01–12` 중 **7/12 동작·5/12 부분 구현**이다. 이는 서로 다른 기준이며, 실도구를 갖춘 제품 요구사항을 종단에서 완결했다고 확인한 항목은 **0/12**다. skills.sh의 실물 Skill 1종은 Windows·Claude Code 2.1.270에서 실행과 B 추천→권한→Preview→ZIP 테스트를 마쳤지만 **별도 팀 검토·승인 전**이라 운영 카탈로그에 넣지 않았다. [실물 Skill 검토](catalog/obra-tdd-skill-pilot-2026-10-25.md)와 [연동 점검](integration/2026-10-25-b-interface-audit.md)을 참조한다.
+
+**추천 근거 표시 (2026-10-25):** 추천 항목의 설명에 실제로 충족하는 필수 Capability 이름을 담고, 최신 추천 GET에서는 DB에 저장된 당시의 설명을 반환한다. 기존 근거가 템플릿 변경으로 재생성되어 바뀌지 않도록 했다. B 추천 생성·최신 조회 단위 테스트가 통과했으며, 새 문구의 HTTP·PostgreSQL 재검증과 프론트 노출은 아직 수행하지 않았다.
+
 **브라우저 실서버 데모 (2026-10-18):** GitHub 세션에서 프로젝트 생성→텍스트 기획 분석→DRAFT 확정→역할·환경 저장→AI Capability/합성 Catalog 추천→미리보기→승인→ZIP→생성 이력까지 Core·FastAPI·PostgreSQL을 거쳐 확인했다. 설치 도구 목록·선택적 버전 입력은 DB 새로고침 복원까지 확인했고, 환경 변경 시 추천 STALE/재생성 및 현재 OS·Client·버전 Catalog 조회도 검증했다. 실도구 Catalog와 최신 단계별 디자인의 개별 API 바인딩은 미완료다. 범위·제약은 [브라우저 데모 기록](integration/demo-web-readiness-2026-10-18.md)에 정리했다.
 
 **설정 입력 HTTP 한도 (2026-10-18):** 미리보기·ZIP 다운로드 POST의 JSON 본문을 각각 1 MiB로 제한한다. Content-Length가 없거나 실제보다 작아도 읽기 한도로 413 `PAYLOAD_TOO_LARGE`를 반환하며, 경계값 요청은 원본 bytes를 컨트롤러에 전달한다. 필터 단위 테스트, 인증된 Core·AI·PostgreSQL 데모 스모크, Java 21 Core 전체 테스트가 통과했다.
