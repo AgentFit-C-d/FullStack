@@ -37,7 +37,8 @@ class JdbcRecommendationStoreTransactionTest {
             UUID.randomUUID().toString(), 1L, 1L, 1L, "catalog-1", "a".repeat(64));
         var snapshot = new RecommendationCreationService.OwnerCheckedSnapshot(projectId.toString(), 4L,
             basis.confirmedProfileId(), 2L, basis.confirmationEventId(), 1L, 1L, 1L,
-            Set.of("profile.projectName"), Map.of("profile.projectName", "demo"), false,
+            Set.of("profile.projectName", "developer.role"),
+            Map.of("profile.projectName", "demo", "developer.role", "full-stack"), false,
             new EnvironmentTarget("WINDOWS", "client", "1"), Map.of());
         seedSnapshot(jdbc, projectId, basis);
         var claims = CapabilityKey.keys().stream().map(key ->
@@ -61,11 +62,17 @@ class JdbcRecommendationStoreTransactionTest {
                 List.of(), List.of("undetermined_capability"), List.of()),
             CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(key,
                 AiCapabilityIntake.Need.UNDETERMINED, "insufficient facts", List.of())).toList(),
-            List.of(), List.of());
+            List.of(
+                new AiCapabilityIntake.Question("profile.projectName", "브라우저 검증 여부를 확인해 주세요."),
+                new AiCapabilityIntake.Question("developer.role", "API 검증 여부를 확인해 주세요.")),
+            List.of());
         String undecidedId = new JdbcRecommendationStoreAdapter(dataSource)
             .saveIfUnchanged(snapshot, basis, undecided);
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
             Integer.class, UUID.fromString(undecidedId)));
+        assertEquals(List.of("developer.role", "profile.projectName"), jdbc.queryForList(
+            "SELECT answer_target FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability' ORDER BY answer_target",
+            String.class, UUID.fromString(undecidedId)));
 
         jdbc.update("UPDATE environment_profile SET version = 2 WHERE project_id = ?", projectId);
         assertThrows(RecommendationCreationService.SnapshotChangedException.class,
