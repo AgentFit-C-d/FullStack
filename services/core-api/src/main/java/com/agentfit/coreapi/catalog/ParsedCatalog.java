@@ -8,9 +8,17 @@ import java.util.Map;
 /** A semantic projection of a hash-verified release, including its review sources. */
 public record ParsedCatalog(String catalogHash, CatalogRelease release,
                             List<PermissionMapping> permissionMappings,
-                            Map<String, VerificationEvidence> evidence) {
+                            Map<String, VerificationEvidence> evidence,
+                            Map<String, ToolRiskReview> riskReviews) {
     public ParsedCatalog {
         permissionMappings = List.copyOf(permissionMappings);
         evidence = Map.copyOf(evidence);
+        riskReviews = Map.copyOf(riskReviews);
+    }
+
+    public ParsedCatalog(String catalogHash, CatalogRelease release,
+                         List<PermissionMapping> permissionMappings,
+                         Map<String, VerificationEvidence> evidence) {
+        this(catalogHash, release, permissionMappings, evidence, Map.of());
     }
 }

@@ -76,6 +76,11 @@ public final class CatalogCandidateValidatorCommand {
             candidate.permissionMappings().stream().noneMatch(mapping -> mapping.toolKey().equals(toolKey)))) {
             reasons.add("PERMISSION_REVIEW_REQUIRED");
         }
+        if (candidate.release().tools().keySet().stream().anyMatch(toolKey ->
+            candidate.riskReviews().getOrDefault(toolKey, ToolRiskReview.unassessed()).status()
+                != ToolRiskReview.Status.REVIEWED)) {
+            reasons.add("RISK_REVIEW_REQUIRED");
+        }
         if (!bundle.files().containsKey("templates/index.json")) {
             reasons.add("OUTPUT_REVIEW_REQUIRED");
         }
@@ -102,6 +107,10 @@ public final class CatalogCandidateValidatorCommand {
         if (candidate.permissionMappings().stream().noneMatch(mapping ->
             mapping.toolKey().equals(tool.key()))) {
             reasons.add("PERMISSION_REVIEW_REQUIRED");
+        }
+        if (candidate.riskReviews().getOrDefault(tool.key(), ToolRiskReview.unassessed()).status()
+            != ToolRiskReview.Status.REVIEWED) {
+            reasons.add("RISK_REVIEW_REQUIRED");
         }
         if (!bundle.files().containsKey("templates/index.json")) {
             reasons.add("OUTPUT_REVIEW_REQUIRED");

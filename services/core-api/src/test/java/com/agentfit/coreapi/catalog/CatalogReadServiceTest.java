@@ -4,6 +4,8 @@ import com.agentfit.coreapi.catalog.model.CatalogRelease;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
 import com.agentfit.coreapi.catalog.model.CatalogValidator;
 import com.agentfit.coreapi.catalog.model.ToolSupport;
+import com.agentfit.coreapi.recommendation.EnvironmentTarget;
+import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.selection.PermissionMapping;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import java.time.LocalDate;
@@ -28,9 +30,33 @@ class CatalogReadServiceTest {
         assertEquals(1, snapshot.items().size());
         assertEquals("example-tool", snapshot.items().getFirst().key());
         assertTrue(snapshot.items().getFirst().support().getFirst().verified());
+        assertEquals(ToolRiskReview.Status.UNASSESSED,
+            snapshot.items().getFirst().riskReview().status());
         assertThrows(CatalogBundleLoader.CatalogUnavailableException.class,
             () -> CatalogReadService.list(directory, "b".repeat(64),
                 new CatalogReadService.Filter(null, null, null)));
+    }
+
+    @Test
+    void exposesReviewerRiskAndAuthenticationRequirementInCatalogAndRecommendation() {
+        var original = parsed();
+        var review = new ToolRiskReview(ToolRiskReview.Status.REVIEWED,
+            ToolRiskReview.Level.MEDIUM, ToolRiskReview.ExternalAuth.REQUIRED,
+            "External account authorization is needed",
+            new VerificationEvidence("https://example.org/risk-review", LocalDate.of(2026, 10, 26)));
+        var reviewed = new ParsedCatalog(original.catalogHash(), original.release(),
+            original.permissionMappings(), original.evidence(), Map.of("doc-skill", review));
+        var target = new EnvironmentTarget("WINDOWS", "claude-code", "1.0");
+
+        var catalogItem = CatalogReadService.list(reviewed, HASH,
+            new CatalogReadService.Filter("WINDOWS", "claude-code", "1.0", null))
+            .items().getFirst();
+        assertEquals(review, catalogItem.riskReview());
+        var recommended = CatalogRecommendationDetails.project(reviewed,
+            new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED,
+                List.of("doc-skill"), List.of(), List.of()),
+            Set.of("cap_document_reference"), target);
+        assertEquals(review, recommended.getFirst().riskReview());
     }
 
     @Test

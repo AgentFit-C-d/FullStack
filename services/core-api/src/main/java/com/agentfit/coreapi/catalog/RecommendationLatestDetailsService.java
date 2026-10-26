@@ -131,7 +131,7 @@ public class RecommendationLatestDetailsService {
                 detail.kind(), detail.sourceUrl(), detail.catalogVersion(), detail.supportKey(),
                 detail.coveredRequiredCapabilities(), detail.coveredOptionalCapabilities(),
                 detail.required(), detail.supportEvidence(),
-                detail.permissionOptions(), item.reason());
+                detail.permissionOptions(), item.reason(), detail.riskReview());
         }).toList();
     }
 }

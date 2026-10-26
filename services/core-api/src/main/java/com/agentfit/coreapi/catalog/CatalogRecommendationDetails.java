@@ -39,7 +39,8 @@ public final class CatalogRecommendationDetails {
                        Set<String> coveredRequiredCapabilities,
                        Set<String> coveredOptionalCapabilities, boolean required,
                        VerificationEvidence supportEvidence,
-                       List<PermissionOption> permissionOptions, String reason) {
+                       List<PermissionOption> permissionOptions, String reason,
+                       ToolRiskReview riskReview) {
         public Item {
             coveredRequiredCapabilities = Set.copyOf(coveredRequiredCapabilities);
             coveredOptionalCapabilities = Set.copyOf(coveredOptionalCapabilities);
@@ -47,6 +48,18 @@ public final class CatalogRecommendationDetails {
             if (reason == null || reason.isBlank()) {
                 throw new IllegalArgumentException("recommendation reason required");
             }
+            if (riskReview == null) throw new IllegalArgumentException("risk review status required");
+        }
+
+        public Item(String toolKey, String name, CatalogTool.Kind kind, String sourceUrl,
+                    String catalogVersion, String supportKey,
+                    Set<String> coveredRequiredCapabilities,
+                    Set<String> coveredOptionalCapabilities, boolean required,
+                    VerificationEvidence supportEvidence,
+                    List<PermissionOption> permissionOptions, String reason) {
+            this(toolKey, name, kind, sourceUrl, catalogVersion, supportKey,
+                coveredRequiredCapabilities, coveredOptionalCapabilities, required,
+                supportEvidence, permissionOptions, reason, ToolRiskReview.unassessed());
         }
     }
 
@@ -89,7 +102,8 @@ public final class CatalogRecommendationDetails {
             items.add(new Item(key, tool.name(), tool.kind(), tool.sourceUrl(),
                 tool.version(), support.key(), required ? covered : Set.of(),
                 coveredOptional, required, supportEvidence, permissions,
-                required ? reason(covered) : optionalReason(coveredOptional)));
+                required ? reason(covered) : optionalReason(coveredOptional),
+                catalog.riskReviews().getOrDefault(key, ToolRiskReview.unassessed())));
         }
         return List.copyOf(items);
     }

@@ -21,8 +21,10 @@ class CatalogCandidateValidatorCommandTest {
         assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
         assertTrue(result.stdout().contains(hash));
         assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
+        assertTrue(result.stdout().contains("RISK_REVIEW_REQUIRED"));
         assertTrue(result.stdout().contains("INDEPENDENT_APPROVAL_REQUIRED"));
-        assertFalse(result.stdout().contains("TOOL_REVIEW_REQUIRED"));
+        assertTrue(result.stdout().contains("TOOL_REVIEW_REQUIRED toolKey=example-tool "
+            + "reasons=RISK_REVIEW_REQUIRED"));
         assertFalse(result.stdout().contains("APPROVED"));
     }
 
@@ -38,7 +40,7 @@ class CatalogCandidateValidatorCommandTest {
         assertTrue(result.stdout().contains("PERMISSION_REVIEW_REQUIRED"));
         assertTrue(result.stdout().contains("OUTPUT_REVIEW_REQUIRED"));
         assertTrue(result.stdout().contains("TOOL_REVIEW_REQUIRED toolKey=playwright-mcp "
-            + "reasons=SUPPORT_NOT_RUN,PERMISSION_REVIEW_REQUIRED,OUTPUT_REVIEW_REQUIRED"));
+            + "reasons=SUPPORT_NOT_RUN,PERMISSION_REVIEW_REQUIRED,RISK_REVIEW_REQUIRED,OUTPUT_REVIEW_REQUIRED"));
         assertTrue(result.stdout().contains("INDEPENDENT_APPROVAL_REQUIRED"));
         assertFalse(result.stdout().contains("RELEASE_READY"));
     }
@@ -79,7 +81,7 @@ class CatalogCandidateValidatorCommandTest {
         assertTrue(result.stdout().contains("CANDIDATE_SCHEMA_VALID"));
         assertTrue(result.stdout().contains("SUPPORT_MISSING"));
         assertTrue(result.stdout().contains("TOOL_REVIEW_REQUIRED toolKey=example-tool "
-            + "reasons=SUPPORT_MISSING"));
+            + "reasons=SUPPORT_MISSING,RISK_REVIEW_REQUIRED"));
         assertTrue(result.stdout().contains("RELEASE_NOT_READY"));
     }
 

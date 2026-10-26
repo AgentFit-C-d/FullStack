@@ -44,7 +44,7 @@ public final class CatalogReadService {
                        String version, Set<String> capabilityKeys,
                        Set<String> dependencyKeys, Set<String> conflictKeys,
                        Set<String> includedComponentKeys, List<Support> support,
-                       List<Permission> permissions) {
+                       List<Permission> permissions, ToolRiskReview riskReview) {
         public Item {
             capabilityKeys = Set.copyOf(capabilityKeys);
             dependencyKeys = Set.copyOf(dependencyKeys);
@@ -52,6 +52,7 @@ public final class CatalogReadService {
             includedComponentKeys = Set.copyOf(includedComponentKeys);
             support = List.copyOf(support);
             permissions = List.copyOf(permissions);
+            if (riskReview == null) throw new IllegalArgumentException("risk review status required");
         }
     }
 
@@ -106,7 +107,8 @@ public final class CatalogReadService {
             items.add(new Item(tool.key(), tool.name(), tool.kind(), tool.sourceUrl(),
                 tool.version(), tool.capabilityKeys(),
                 tool.dependencyKeys(), tool.conflictKeys(), tool.includedComponentKeys(),
-                support, permissions));
+                support, permissions, parsed.riskReviews().getOrDefault(tool.key(),
+                    ToolRiskReview.unassessed())));
         }
         return new Snapshot(parsed.release().releaseId(), parsed.catalogHash(), items);
     }

@@ -50,6 +50,22 @@ class CatalogRevisionImpactTest {
     }
 
     @Test
+    void changedRiskReviewInvalidatesToolAndContainingCombination() {
+        var before = catalog("old", "1.0", EVIDENCE);
+        var reviewed = new ToolRiskReview(ToolRiskReview.Status.REVIEWED,
+            ToolRiskReview.Level.HIGH, ToolRiskReview.ExternalAuth.REQUIRED,
+            "External account and write access",
+            new VerificationEvidence("https://example.org/risk", LocalDate.of(2026, 10, 26)));
+        var after = new ParsedCatalog("new", before.release(), before.permissionMappings(),
+            before.evidence(), Map.of("tool-a", reviewed));
+
+        var impact = CatalogRevisionImpact.compare(before, after, files(), files());
+
+        assertEquals(Set.of("tool-a"), impact.toolsNeedingReview());
+        assertEquals(Set.of(PAIR), impact.combinationsNeedingReview());
+    }
+
+    @Test
     void changedStaticOutputConservativelyInvalidatesEveryToolAndCombination() {
         var before = catalog("old", "1.0", EVIDENCE);
         var after = catalog("new", "1.0", EVIDENCE);

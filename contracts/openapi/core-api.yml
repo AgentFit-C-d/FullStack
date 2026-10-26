@@ -517,6 +517,35 @@ paths:
         "413":
           description: Preview JSON body exceeds 1 MiB and is not processed
         "422": { $ref: "#/components/responses/InvalidInput" }
+  /api/tool-catalog:
+    get:
+      summary: Read the independently approved Catalog
+      operationId: getApprovedToolCatalog
+      security:
+        - agentFitSession: []
+      responses:
+        "200":
+          description: Current approved tools and their reviewed or unassessed risk state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revision, catalogHash, items]
+                properties:
+                  revision: { type: string }
+                  catalogHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, name, riskReview]
+                      properties:
+                        key: { type: string }
+                        name: { type: string }
+                        riskReview: { $ref: '#/components/schemas/ToolRiskReview' }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "503":
+          description: No approved Catalog is available
   /api/tool-candidates:
     get:
       summary: Read staged skills.sh research candidates
@@ -646,6 +675,21 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    ToolRiskReview:
+      type: object
+      required: [status]
+      description: Reviewer-supplied statement; UNASSESSED does not assert low risk or no external authentication.
+      properties:
+        status: { type: string, enum: [UNASSESSED, REVIEWED] }
+        level: { type: string, nullable: true, enum: [LOW, MEDIUM, HIGH] }
+        externalAuth: { type: string, nullable: true, enum: [REQUIRED, NOT_REQUIRED] }
+        reason: { type: string, nullable: true, maxLength: 500 }
+        evidence:
+          nullable: true
+          type: object
+          properties:
+            sourceUrl: { type: string, format: uri }
+            checkedAt: { type: string, format: date }
     InstalledComponentInput:
       type: object
       required: [toolKey]
@@ -870,9 +914,10 @@ components:
           items:
             type: object
             additionalProperties: true
-            required: [reason, required]
+            required: [reason, required, riskReview]
             properties:
               reason: { type: string, minLength: 1 }
+              riskReview: { $ref: '#/components/schemas/ToolRiskReview' }
               required: { type: boolean, description: True for the default minimum configuration; false for a separately selectable optional candidate. }
               coveredOptionalCapabilities: { type: array, items: { type: string } }
         optionalItems:
@@ -881,9 +926,10 @@ components:
           items:
             type: object
             additionalProperties: true
-            required: [reason, required]
+            required: [reason, required, riskReview]
             properties:
               reason: { type: string, minLength: 1 }
+              riskReview: { $ref: '#/components/schemas/ToolRiskReview' }
               required: { type: boolean, enum: [false] }
               coveredOptionalCapabilities: { type: array, items: { type: string } }
         savedItems:

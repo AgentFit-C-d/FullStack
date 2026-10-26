@@ -4,6 +4,8 @@
 
 **선택 도구 후보 B 경계 (2026-10-26):** AI가 근거와 함께 명시한 `OPTIONAL` 기능에 대해 승인 Catalog의 환경·전체 조합·출력 한도를 통과하는 후보를 기본 구성과 분리한다. `required`를 DB에 보존하고 POST/GET 응답의 `optionalItems`로 전달하며, 명시적으로 선택하지 않은 도구는 Preview·ZIP에 포함하지 않는다. 관련 Java 회귀 테스트는 통과했다. 현재 AI는 `OPTIONAL`을 생성하지 않고 프론트도 `optionalItems`를 표시하지 않으므로 **실제 사용자 선택 흐름과 FSB-04 전체 완료로 세지 않는다**. [남은 계약](recommendation/optional-candidates-contract-proposal.md)을 참조한다.
 
+**도구 위험도·인증 검토 정보 (2026-10-26):** Catalog v1 도구에 선택적인 `riskReview`를 추가했다. 검토 등급·외부 인증 필요 여부·이유·출처·시점이 모두 있을 때만 `REVIEWED`로 투영하며, 기존 파일은 `UNASSESSED`로 표시한다. 추천 생성·최신 조회와 Catalog API에 이 상태를 노출하고 위험도 변경을 재검토 대상으로 잡는다. 검토 기록이 없는 후보에는 `RISK_REVIEW_REQUIRED`가 표시된다. B Java 관련 67개 회귀 테스트가 통과했다. 실제 팀 검토·프론트 표시·승인 Catalog는 남아 있어 FSB-05 제품 완료로 세지 않는다. [작성 기준](catalog/catalog-manifest-authoring.md)을 참조한다.
+
 **추천 근거 표시 (2026-10-25):** 추천 항목의 설명에 실제로 충족하는 필수 Capability 이름을 담고, 최신 추천 GET에서는 DB에 저장된 당시의 설명을 반환한다. 기존 근거가 템플릿 변경으로 재생성되어 바뀌지 않도록 했다. B 추천 생성·최신 조회 단위 테스트가 통과했으며, 새 문구의 HTTP·PostgreSQL 재검증과 프론트 노출은 아직 수행하지 않았다.
 
 **브라우저 실서버 데모 (2026-10-18):** GitHub 세션에서 프로젝트 생성→텍스트 기획 분석→DRAFT 확정→역할·환경 저장→AI Capability/합성 Catalog 추천→미리보기→승인→ZIP→생성 이력까지 Core·FastAPI·PostgreSQL을 거쳐 확인했다. 설치 도구 목록·선택적 버전 입력은 DB 새로고침 복원까지 확인했고, 환경 변경 시 추천 STALE/재생성 및 현재 OS·Client·버전 Catalog 조회도 검증했다. 실도구 Catalog와 최신 단계별 디자인의 개별 API 바인딩은 미완료다. 범위·제약은 [브라우저 데모 기록](integration/demo-web-readiness-2026-10-18.md)에 정리했다.

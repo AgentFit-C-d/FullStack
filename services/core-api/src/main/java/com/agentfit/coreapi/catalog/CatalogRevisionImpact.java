@@ -42,6 +42,8 @@ public final class CatalogRevisionImpact {
             CatalogTool previous = before.release().tools().get(key);
             CatalogTool current = after.release().tools().get(key);
             if (!Objects.equals(previous, current)
+                || !Objects.equals(before.riskReviews().getOrDefault(key, ToolRiskReview.unassessed()),
+                    after.riskReviews().getOrDefault(key, ToolRiskReview.unassessed()))
                 || !Objects.equals(permissions(before, key), permissions(after, key))
                 || !Objects.equals(supportEvidence(before, previous),
                     supportEvidence(after, current))) {
@@ -72,6 +74,7 @@ public final class CatalogRevisionImpact {
             || !before.release().equals(after.release())
             || !before.permissionMappings().equals(after.permissionMappings())
             || !before.evidence().equals(after.evidence())
+            || !before.riskReviews().equals(after.riskReviews())
             || !beforeFiles.equals(afterFiles);
         return new Result(revisionChanged, affected, combinations);
     }
