@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
-import { defaultPermissionChoices, permissionKey, permissionSelections, previewPolicies } from './permissions.js'
+import { defaultPermissionChoices, permissionKey, permissionSelections } from './permissions.js'
+import { offeredItems } from './recommendationItems.js'
+import RecommendationItems from './RecommendationItems.jsx'
 import { inputChanges, inputsDirty } from './inputState.js'
 import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './projectActions.js'
 import { confirmedProfileItems } from './profileItems.js'
@@ -108,7 +110,7 @@ export default function LivePage() {
         setQuestionAnswers(answers.items || [])
         setAnswerDrafts(Object.fromEntries((answers.items || []).map(item => [item.noticeId, item.answer])))
         setSelectedKeys((latest.items || []).map(item => item.toolKey))
-        setPermissionChoices(defaultPermissionChoices(latest.items))
+        setPermissionChoices(defaultPermissionChoices(offeredItems(latest)))
       } catch (cause) { if (cause.status === 404) { setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) } else throw cause }
     } else { setInputs(null); setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) }
   }, [])
@@ -312,7 +314,7 @@ export default function LivePage() {
       setRecommendation(created)
       setQuestionAnswers([]); setAnswerDrafts({})
       setSelectedKeys((created.items || []).map(item => item.toolKey))
-      setPermissionChoices(defaultPermissionChoices(created.items))
+      setPermissionChoices(defaultPermissionChoices(offeredItems(created)))
       invalidatePreview()
     }, 'AI 필요 기능과 현재 카탈로그를 기준으로 추천 결과를 저장했습니다.')
   }
@@ -341,7 +343,7 @@ export default function LivePage() {
       const request = {
         basis: recommendation.basis, recommendationId: recommendation.recommendationId,
         target: { osFamily, clientId, clientVersion }, selectedToolKeys: selectedKeys,
-        permissionSelections: permissionSelections(recommendation.items, selectedKeys, permissionChoices),
+        permissionSelections: permissionSelections(offeredItems(recommendation), selectedKeys, permissionChoices),
         existingState: compareExisting ? 'PROVIDED' : existingState,
         providedFiles, generatorVersion: 'agentfit-web-v1',
       }
@@ -509,8 +511,30 @@ export default function LivePage() {
             <button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button>
             {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}
           </section>}
-          {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 현재 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>{requiredCapabilityLabels(recommendation).length > 0 && <p>필수 기능: {requiredCapabilityLabels(recommendation).join(', ')}</p>}{recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}<p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul><QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy} current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))} onSave={saveQuestionAnswer} /></>}</section>}
-          {recommendation?.items?.length > 0 && <section className={styles.card}>
+          {confirmed && <section className={styles.card}>
+            <h2>5. 추천과 권한 선택</h2>
+            <p>AI가 필요한 Capability를 분석하고, Core API가 현재 카탈로그의 호환성을 판정합니다.</p>
+            <button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>
+            {recommendation && <>
+              <p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>
+              {requiredCapabilityLabels(recommendation).length > 0 && <p>필수 기능: {requiredCapabilityLabels(recommendation).join(', ')}</p>}
+              {recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}
+              <p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p>
+              <RecommendationItems recommendation={recommendation} selectedKeys={selectedKeys} permissionChoices={permissionChoices}
+                onSelect={(key, checked) => {
+                  setSelectedKeys(previous => checked ? [...previous, key] : previous.filter(selected => selected !== key))
+                  invalidatePreview()
+                }}
+                onPermissionChange={(key, mapping, policy) => {
+                  setPermissionChoices(previous => ({ ...previous, [permissionKey(key, mapping)]: policy }))
+                  invalidatePreview()
+                }} />
+              <QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy}
+                current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))}
+                onSave={saveQuestionAnswer} />
+            </>}
+          </section>}
+          {offeredItems(recommendation).length > 0 && <section className={styles.card}>
             <h2>6. 설정 미리보기와 다운로드</h2>
             <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 파일 내용과 권한을 확인한 뒤 적용하세요.</p>
             <label>현재 설정 상태

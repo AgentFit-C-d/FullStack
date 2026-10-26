@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**FSB-01~12 최신 대조 (2026-10-26):** [상위 기능별 기획·구현·실검증 점검](integration/fsb-12-feature-audit-2026-10-26.md). 기본/선택 추천 후보와 이유·위험도·만료 이력을 `/app/live`에 연결했고 프론트 96개 테스트·lint·build 및 로컬 HTTP 제공을 확인했다. 7/12는 기능 경로의 구현 수이며 실제 승인 도구를 갖춘 종단 완료는 0/12다.
+
 **현재 판정 (2026-10-25):** B 내부 구현 마일스톤은 **4/12** 체크, 합성 카탈로그를 사용한 시연 경로는 PRD `FSB-01–12` 중 **7/12 동작·5/12 부분 구현**이다. 이는 서로 다른 기준이며, 실도구를 갖춘 제품 요구사항을 종단에서 완결했다고 확인한 항목은 **0/12**다. skills.sh의 실물 Skill 1종은 Windows·Claude Code 2.1.270에서 실행과 B 추천→권한→Preview→ZIP 테스트를 마쳤지만 **별도 팀 검토·승인 전**이라 운영 카탈로그에 넣지 않았다. [실물 Skill 검토](catalog/obra-tdd-skill-pilot-2026-10-25.md)와 [연동 점검](integration/2026-10-25-b-interface-audit.md)을 참조한다.
 
 **선택 도구 후보 B 경계 (2026-10-26):** AI가 근거와 함께 명시한 `OPTIONAL` 기능에 대해 승인 Catalog의 환경·전체 조합·출력 한도를 통과하는 후보를 기본 구성과 분리한다. `required`를 DB에 보존하고 POST/GET 응답의 `optionalItems`로 전달하며, 명시적으로 선택하지 않은 도구는 Preview·ZIP에 포함하지 않는다. 관련 Java 회귀 테스트는 통과했다. 현재 AI는 `OPTIONAL`을 생성하지 않고 프론트도 `optionalItems`를 표시하지 않으므로 **실제 사용자 선택 흐름과 FSB-04 전체 완료로 세지 않는다**. [남은 계약](recommendation/optional-candidates-contract-proposal.md)을 참조한다.
