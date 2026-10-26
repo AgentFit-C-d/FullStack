@@ -39,7 +39,7 @@ public final class RecommendationMetadataAssembler {
                 throw new IllegalArgumentException("invalid verified recommendation item");
             }
             items.add(new JdbcRecommendationMetadataWriter.Item(childIds.get(), item.toolKey(),
-                item.catalogVersion(), item.supportKey(), true,
+                item.catalogVersion(), item.supportKey(), item.required(),
                 item.reason(),
                 JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE));
         }

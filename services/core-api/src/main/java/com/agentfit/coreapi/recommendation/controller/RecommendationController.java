@@ -117,20 +117,33 @@ public class RecommendationController {
         return value;
     }
 
-    private static RecommendationCreatedResponse recommendationResponse(RecommendationCreationService.Created created) {
+    static RecommendationCreatedResponse recommendationResponse(RecommendationCreationService.Created created) {
         var result = created.result();
         return new RecommendationCreatedResponse(created.recommendationId(), result.decision().status(),
-            created.basis(), result.capabilities(), result.items(), result.clarificationQuestions());
+            created.basis(), result.capabilities(), requiredItems(result.items()),
+            optionalItems(result.items()), result.clarificationQuestions());
     }
 
     static RecommendationLatestResponse latestResponse(RecommendationLatestDetailsService.Snapshot snapshot) {
         List<SavedItem> savedItems = snapshot.storedItems().stream()
-            .map(item -> new SavedItem(item.toolKey(), item.toolVersion(), item.reason()))
+            .map(item -> new SavedItem(item.toolKey(), item.toolVersion(),
+                item.required(), item.reason()))
             .toList();
         return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
             snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
-            snapshot.catalogItems(), snapshot.capabilities(), snapshot.notices(), savedItems,
+            requiredItems(snapshot.catalogItems()), optionalItems(snapshot.catalogItems()),
+            snapshot.capabilities(), snapshot.notices(), savedItems,
             snapshot.evidenceLevel(), snapshot.createdAt());
+    }
+
+    private static List<CatalogRecommendationDetails.Item> requiredItems(
+        List<CatalogRecommendationDetails.Item> items) {
+        return items.stream().filter(CatalogRecommendationDetails.Item::required).toList();
+    }
+
+    private static List<CatalogRecommendationDetails.Item> optionalItems(
+        List<CatalogRecommendationDetails.Item> items) {
+        return items.stream().filter(item -> !item.required()).toList();
     }
 
     public record ExpectedVersions(long project, long developer, long environment) {}
@@ -142,11 +155,14 @@ public class RecommendationController {
 
     public record RecommendationCreatedResponse(String recommendationId, RecommendationDecision.Status status,
             PreviewBasis basis, List<AiCapabilityIntake.Claim> capabilities,
-            List<CatalogRecommendationDetails.Item> items, List<AiCapabilityIntake.Question> notices) {}
+            List<CatalogRecommendationDetails.Item> items,
+            List<CatalogRecommendationDetails.Item> optionalItems,
+            List<AiCapabilityIntake.Question> notices) {}
 
     public record RecommendationLatestResponse(String recommendationId, RecommendationDecision.Status status,
             RecommendationReadModel.Validity validity, PreviewBasis basis,
             List<CatalogRecommendationDetails.Item> items,
+            List<CatalogRecommendationDetails.Item> optionalItems,
             List<JdbcRecommendationMetadataWriter.Capability> capabilities,
             List<JdbcRecommendationMetadataWriter.Notice> notices,
             List<SavedItem> savedItems,
@@ -154,7 +170,8 @@ public class RecommendationController {
             Instant createdAt) {}
 
     /** Historical display only; this does not confer current support or usable permissions. */
-    public record SavedItem(String toolKey, String toolVersion, String reason) {}
+    public record SavedItem(String toolKey, String toolVersion, boolean required,
+                            String reason) {}
 
     public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
             String fingerprint, String selectionDigest, String contentDigest, Instant createdAt,

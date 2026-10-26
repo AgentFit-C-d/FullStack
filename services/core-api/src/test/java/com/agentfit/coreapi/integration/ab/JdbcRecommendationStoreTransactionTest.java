@@ -23,6 +23,52 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 class JdbcRecommendationStoreTransactionTest {
     @Test
+    void persistsOptionalToolAsSeparateUnselectedRecommendationItem() {
+        DataSource dataSource = new DriverManagerDataSource(
+            "jdbc:h2:mem:recommendation-optional;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        createSchema(jdbc);
+        UUID projectId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        jdbc.update("INSERT INTO \"USER\" (id, name) VALUES (?, ?)", ownerId, "owner");
+        jdbc.update("INSERT INTO project (id, user_id, version) VALUES (?, ?, ?)", projectId, ownerId, 4L);
+        var basis = new PreviewBasis(projectId.toString(), 4L, UUID.randomUUID().toString(), 2L,
+            UUID.randomUUID().toString(), 1L, 1L, 1L, "catalog-1", "a".repeat(64));
+        seedSnapshot(jdbc, projectId, basis);
+        var snapshot = new RecommendationCreationService.OwnerCheckedSnapshot(projectId.toString(), 4L,
+            basis.confirmedProfileId(), 2L, basis.confirmationEventId(), 1L, 1L, 1L,
+            Set.of("profile.projectName"), Map.of("profile.projectName", "demo"), false,
+            new EnvironmentTarget("WINDOWS", "client", "1"), Map.of());
+        var claims = CapabilityKey.keys().stream().map(key ->
+            new AiCapabilityIntake.Claim(key,
+                key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
+                    : key.equals("cap_browser_verification") ? AiCapabilityIntake.Need.OPTIONAL
+                        : AiCapabilityIntake.Need.NOT_REQUESTED,
+                "confirmed need", key.equals("cap_document_reference")
+                    || key.equals("cap_browser_verification")
+                    ? List.of("profile.projectName") : List.<String>of())).toList();
+        var evidence = new com.agentfit.coreapi.catalog.VerificationEvidence(
+            "https://example.org/support", java.time.LocalDate.of(2026, 10, 26));
+        var required = new CatalogRecommendationDetails.Item("base", "Base", null, null,
+            "1.0", "support-base", Set.of("cap_document_reference"), Set.of(), true,
+            evidence, List.of(), "필수 도구");
+        var optional = new CatalogRecommendationDetails.Item("browser", "Browser", null, null,
+            "1.0", "support-browser", Set.of(), Set.of("cap_browser_verification"), false,
+            evidence, List.of(), "선택 도구");
+        var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
+            new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED,
+                List.of("base", "browser"), List.of(), List.of()),
+            claims, List.of(), List.of(required, optional));
+
+        String id = new JdbcRecommendationStoreAdapter(dataSource)
+            .saveIfUnchanged(snapshot, basis, result);
+
+        assertEquals(List.of(true, false), jdbc.queryForList(
+            "SELECT required FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key",
+            Boolean.class, UUID.fromString(id)));
+    }
+
+    @Test
     void recommendationAndSuccessAuditCommitTogether() {
         DataSource dataSource = new DriverManagerDataSource(
             "jdbc:h2:mem:recommendation-tx;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
@@ -45,7 +91,7 @@ class JdbcRecommendationStoreTransactionTest {
             new AiCapabilityIntake.Claim(key, AiCapabilityIntake.Need.REQUIRED, "reason",
                 List.of("profile.projectName"))).toList();
         var item = new CatalogRecommendationDetails.Item("tool-1", "Tool", null, null, "1.0",
-            "support-1", Set.of(), new com.agentfit.coreapi.catalog.VerificationEvidence(
+            "support-1", Set.of(), Set.of(), true, new com.agentfit.coreapi.catalog.VerificationEvidence(
                 "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)),
             List.of(), "테스트 지원 근거");
         var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),

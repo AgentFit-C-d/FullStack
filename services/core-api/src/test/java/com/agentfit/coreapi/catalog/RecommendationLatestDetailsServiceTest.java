@@ -45,6 +45,22 @@ class RecommendationLatestDetailsServiceTest {
     }
 
     @Test
+    void restoresOptionalItemWithoutTurningItIntoRequiredAfterDatabaseRead() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithReviewedOptionalBrowser(directory);
+        var draft = storedRecommendation(hash);
+        assertEquals(List.of(true, false), draft.items().stream()
+            .map(JdbcRecommendationMetadataWriter.Item::required).toList());
+
+        var latest = service(draft.basis(), draft, () ->
+            new RecommendationCreationService.ApprovedCatalog(directory, hash))
+            .latest(draft.basis().projectId());
+
+        assertEquals(List.of(true, false), latest.catalogItems().stream()
+            .map(CatalogRecommendationDetails.Item::required).toList());
+        assertEquals(draft.items().get(1).reason(), latest.catalogItems().get(1).reason());
+    }
+
+    @Test
     void retainsSavedRecommendationReasonWhenReadingCurrentResult() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var original = storedRecommendation(hash);

@@ -37,10 +37,12 @@ public final class CatalogRecommendationDetails {
     public record Item(String toolKey, String name, CatalogTool.Kind kind, String sourceUrl,
                        String catalogVersion, String supportKey,
                        Set<String> coveredRequiredCapabilities,
+                       Set<String> coveredOptionalCapabilities, boolean required,
                        VerificationEvidence supportEvidence,
                        List<PermissionOption> permissionOptions, String reason) {
         public Item {
             coveredRequiredCapabilities = Set.copyOf(coveredRequiredCapabilities);
+            coveredOptionalCapabilities = Set.copyOf(coveredOptionalCapabilities);
             permissionOptions = List.copyOf(permissionOptions);
             if (reason == null || reason.isBlank()) {
                 throw new IllegalArgumentException("recommendation reason required");
@@ -50,6 +52,13 @@ public final class CatalogRecommendationDetails {
 
     static List<Item> project(ParsedCatalog catalog, RecommendationDecision decision,
                               Set<String> requiredCapabilities, EnvironmentTarget target) {
+        return project(catalog, decision, requiredCapabilities, Set.of(),
+            Set.copyOf(decision.toolKeys()), target);
+    }
+
+    static List<Item> project(ParsedCatalog catalog, RecommendationDecision decision,
+                              Set<String> requiredCapabilities, Set<String> optionalCapabilities,
+                              Set<String> requiredToolKeys, EnvironmentTarget target) {
         if (decision.status() != RecommendationDecision.Status.RECOMMENDED) return List.of();
         List<Item> items = new ArrayList<>();
         for (String key : decision.toolKeys()) {
@@ -73,12 +82,24 @@ public final class CatalogRecommendationDetails {
             }
             Set<String> covered = tool.capabilityKeys().stream()
                 .filter(requiredCapabilities::contains).collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Set<String> coveredOptional = tool.capabilityKeys().stream()
+                .filter(optionalCapabilities::contains)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            boolean required = requiredToolKeys.contains(key);
             items.add(new Item(key, tool.name(), tool.kind(), tool.sourceUrl(),
-                tool.version(), support.key(), covered,
-                supportEvidence, permissions,
-                reason(covered)));
+                tool.version(), support.key(), required ? covered : Set.of(),
+                coveredOptional, required, supportEvidence, permissions,
+                required ? reason(covered) : optionalReason(coveredOptional)));
         }
         return List.copyOf(items);
+    }
+
+    private static String optionalReason(Set<String> covered) {
+        if (covered.isEmpty()) throw unavailable("optional item has no explicit optional capability");
+        List<String> names = covered.stream().sorted().map(CAPABILITY_NAMES::get).toList();
+        String summary = String.join("·", names.subList(0, Math.min(2, names.size())));
+        if (names.size() > 2) summary += " 외 " + (names.size() - 2) + "개";
+        return summary + " 기능을 위한 선택 도구이며 기본 구성에 자동 포함되지 않습니다.";
     }
 
     private static String reason(Set<String> covered) {

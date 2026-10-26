@@ -103,15 +103,23 @@ public class RecommendationLatestDetailsService {
         var required = stored.capabilities().stream()
             .filter(claim -> claim.necessity() == JdbcRecommendationMetadataWriter.Necessity.REQUIRED)
             .map(JdbcRecommendationMetadataWriter.Capability::key).collect(Collectors.toUnmodifiableSet());
+        var optional = stored.capabilities().stream()
+            .filter(claim -> claim.necessity() == JdbcRecommendationMetadataWriter.Necessity.OPTIONAL)
+            .map(JdbcRecommendationMetadataWriter.Capability::key).collect(Collectors.toUnmodifiableSet());
+        var requiredToolKeys = stored.items().stream()
+            .filter(JdbcRecommendationMetadataWriter.Item::required)
+            .map(JdbcRecommendationMetadataWriter.Item::toolKey)
+            .collect(Collectors.toUnmodifiableSet());
         var decision = new RecommendationDecision(stored.status(),
             stored.items().stream().map(JdbcRecommendationMetadataWriter.Item::toolKey).toList(),
             List.of(), List.of());
-        var details = CatalogRecommendationDetails.project(parsed, decision, required, current.target());
+        var details = CatalogRecommendationDetails.project(parsed, decision, required,
+            optional, requiredToolKeys, current.target());
         Map<String, JdbcRecommendationMetadataWriter.Item> saved = stored.items().stream()
             .collect(Collectors.toMap(JdbcRecommendationMetadataWriter.Item::toolKey, Function.identity()));
         if (details.size() != saved.size() || details.stream().anyMatch(detail -> {
             var item = saved.get(detail.toolKey());
-            return item == null || !item.required()
+            return item == null || item.required() != detail.required()
                 || !item.toolVersion().equals(detail.catalogVersion())
                 || !item.supportKey().equals(detail.supportKey());
         })) {
@@ -121,7 +129,8 @@ public class RecommendationLatestDetailsService {
             var item = saved.get(detail.toolKey());
             return new CatalogRecommendationDetails.Item(detail.toolKey(), detail.name(),
                 detail.kind(), detail.sourceUrl(), detail.catalogVersion(), detail.supportKey(),
-                detail.coveredRequiredCapabilities(), detail.supportEvidence(),
+                detail.coveredRequiredCapabilities(), detail.coveredOptionalCapabilities(),
+                detail.required(), detail.supportEvidence(),
                 detail.permissionOptions(), item.reason());
         }).toList();
     }

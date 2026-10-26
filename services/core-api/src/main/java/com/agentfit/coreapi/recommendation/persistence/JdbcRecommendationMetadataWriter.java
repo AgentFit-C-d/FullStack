@@ -109,7 +109,11 @@ public final class JdbcRecommendationMetadataWriter {
                 }
             }
         }
-        if (draft.status() == RecommendationDecision.Status.RECOMMENDED && draft.items().isEmpty()
+        if (draft.status() == RecommendationDecision.Status.RECOMMENDED
+                && draft.items().stream().noneMatch(Item::required)
+            || draft.items().stream().anyMatch(item -> !item.required())
+                && draft.capabilities().stream().noneMatch(capability ->
+                    capability.necessity() == Necessity.OPTIONAL)
             || draft.status() != RecommendationDecision.Status.RECOMMENDED && !draft.items().isEmpty()
             || draft.status() == RecommendationDecision.Status.NEEDS_INFORMATION && !hasQuestion
             || draft.status() != RecommendationDecision.Status.NEEDS_INFORMATION && hasQuestion

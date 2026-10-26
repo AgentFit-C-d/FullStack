@@ -866,23 +866,37 @@ components:
         capabilities: { type: array, items: { type: object, additionalProperties: true } }
         items:
           type: array
-          description: Current, approved Catalog items only. Empty when validity is STALE; each reason is a deterministic B Catalog explanation, not an AI-generated claim.
+          description: Default minimum Catalog items only. Empty when validity is STALE; existing clients may select these by default.
           items:
             type: object
             additionalProperties: true
-            required: [reason]
+            required: [reason, required]
             properties:
               reason: { type: string, minLength: 1 }
+              required: { type: boolean, description: True for the default minimum configuration; false for a separately selectable optional candidate. }
+              coveredOptionalCapabilities: { type: array, items: { type: string } }
+        optionalItems:
+          type: array
+          description: Separately selectable, exact-combination-verified Catalog candidates. Never included in default selection or permissions; empty when validity is STALE.
+          items:
+            type: object
+            additionalProperties: true
+            required: [reason, required]
+            properties:
+              reason: { type: string, minLength: 1 }
+              required: { type: boolean, enum: [false] }
+              coveredOptionalCapabilities: { type: array, items: { type: string } }
         savedItems:
           type: array
           description: Tool keys, versions and reasons saved with the recommendation. Historical display only; these rows do not prove current support or grant permissions, including when validity is STALE.
           items:
             type: object
             additionalProperties: false
-            required: [toolKey, toolVersion, reason]
+            required: [toolKey, toolVersion, required, reason]
             properties:
               toolKey: { type: string }
               toolVersion: { type: string }
+              required: { type: boolean }
               reason: { type: string, minLength: 1 }
         notices: { type: array, items: { type: object, additionalProperties: true } }
     RecommendationQuestionAnswer:
