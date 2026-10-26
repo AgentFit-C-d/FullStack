@@ -1,6 +1,8 @@
 package com.agentfit.coreapi.recommendation.persistence;
 
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
+import com.agentfit.coreapi.catalog.VerificationEvidence;
 import com.agentfit.coreapi.persistence.ProjectDbId;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
@@ -145,17 +147,44 @@ public final class JdbcLatestRecommendationReader {
         Connection transaction, UUID id) throws SQLException {
         var result = new ArrayList<JdbcRecommendationMetadataWriter.Item>();
         try (PreparedStatement query = transaction.prepareStatement(
-            "SELECT id, tool_key, tool_version, support_key, required, reason, explanation_source "
+            "SELECT id, tool_key, tool_version, support_key, required, reason, explanation_source, "
+                + "risk_status, risk_level, external_auth, risk_reason, risk_evidence_url, risk_checked_at "
                 + "FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key FOR SHARE")) {
             query.setObject(1, id);
             try (ResultSet rows = query.executeQuery()) {
                 while (rows.next()) result.add(new JdbcRecommendationMetadataWriter.Item(
                     rows.getObject(1, UUID.class).toString(), rows.getString(2), rows.getString(3),
                     rows.getString(4), rows.getBoolean(5), rows.getString(6),
-                    JdbcRecommendationMetadataWriter.ExplanationSource.valueOf(rows.getString(7))));
+                    JdbcRecommendationMetadataWriter.ExplanationSource.valueOf(rows.getString(7)),
+                    riskReview(rows)));
             }
         }
         return List.copyOf(result);
+    }
+
+    static ToolRiskReview riskReview(ResultSet row) throws SQLException {
+        String status = row.getString(8);
+        if ("UNASSESSED".equals(status)) {
+            if (row.getString(9) != null || row.getString(10) != null
+                || row.getString(11) != null || row.getString(12) != null
+                || row.getDate(13) != null) {
+                throw new IllegalStateException("stored unassessed risk contains reviewed fields");
+            }
+            return ToolRiskReview.unassessed();
+        }
+        String level = row.getString(9);
+        String externalAuth = row.getString(10);
+        String reason = row.getString(11);
+        String evidenceUrl = row.getString(12);
+        var checkedAt = row.getDate(13);
+        if (!"REVIEWED".equals(status) || level == null || externalAuth == null
+            || reason == null || evidenceUrl == null || checkedAt == null) {
+            throw new IllegalStateException("stored risk review is incomplete");
+        }
+        return new ToolRiskReview(ToolRiskReview.Status.REVIEWED,
+            ToolRiskReview.Level.valueOf(level),
+            ToolRiskReview.ExternalAuth.valueOf(externalAuth), reason,
+            new VerificationEvidence(evidenceUrl, checkedAt.toLocalDate()));
     }
 
     private static List<JdbcRecommendationMetadataWriter.Notice> notices(

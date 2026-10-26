@@ -9,6 +9,7 @@ import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
 import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
@@ -127,7 +128,7 @@ public class RecommendationController {
     static RecommendationLatestResponse latestResponse(RecommendationLatestDetailsService.Snapshot snapshot) {
         List<SavedItem> savedItems = snapshot.storedItems().stream()
             .map(item -> new SavedItem(item.toolKey(), item.toolVersion(),
-                item.required(), item.reason()))
+                item.required(), item.reason(), item.riskReview()))
             .toList();
         return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
             snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
@@ -171,7 +172,7 @@ public class RecommendationController {
 
     /** Historical display only; this does not confer current support or usable permissions. */
     public record SavedItem(String toolKey, String toolVersion, boolean required,
-                            String reason) {}
+                            String reason, ToolRiskReview riskReview) {}
 
     public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
             String fingerprint, String selectionDigest, String contentDigest, Instant createdAt,

@@ -41,7 +41,8 @@ public final class RecommendationMetadataAssembler {
             items.add(new JdbcRecommendationMetadataWriter.Item(childIds.get(), item.toolKey(),
                 item.catalogVersion(), item.supportKey(), item.required(),
                 item.reason(),
-                JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE));
+                JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE,
+                item.riskReview()));
         }
         if (decisionKeys.size() != decision.toolKeys().size()
             || !detailKeys.equals(decisionKeys)

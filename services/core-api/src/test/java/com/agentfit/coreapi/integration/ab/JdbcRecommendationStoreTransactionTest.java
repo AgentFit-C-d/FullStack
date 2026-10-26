@@ -11,6 +11,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,9 @@ class JdbcRecommendationStoreTransactionTest {
             "https://example.org/support", java.time.LocalDate.of(2026, 10, 26));
         var required = new CatalogRecommendationDetails.Item("base", "Base", null, null,
             "1.0", "support-base", Set.of("cap_document_reference"), Set.of(), true,
-            evidence, List.of(), "필수 도구");
+            evidence, List.of(), "필수 도구", new ToolRiskReview(
+                ToolRiskReview.Status.REVIEWED, ToolRiskReview.Level.MEDIUM,
+                ToolRiskReview.ExternalAuth.REQUIRED, "외부 계정 승인 필요", evidence));
         var optional = new CatalogRecommendationDetails.Item("browser", "Browser", null, null,
             "1.0", "support-browser", Set.of(), Set.of("cap_browser_verification"), false,
             evidence, List.of(), "선택 도구");
@@ -66,6 +69,12 @@ class JdbcRecommendationStoreTransactionTest {
         assertEquals(List.of(true, false), jdbc.queryForList(
             "SELECT required FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key",
             Boolean.class, UUID.fromString(id)));
+        assertEquals(List.of("REVIEWED", "UNASSESSED"), jdbc.queryForList(
+            "SELECT risk_status FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key",
+            String.class, UUID.fromString(id)));
+        assertEquals("MEDIUM", jdbc.queryForObject(
+            "SELECT risk_level FROM recommendation_item WHERE recommendation_id = ? AND tool_key = 'base'",
+            String.class, UUID.fromString(id)));
     }
 
     @Test
@@ -150,7 +159,7 @@ class JdbcRecommendationStoreTransactionTest {
         jdbc.execute("CREATE TABLE profile_review (id UUID PRIMARY KEY, project_id UUID, target_profile_id UUID, target_profile_version BIGINT, review_version BIGINT)");
         jdbc.execute("CREATE TABLE recommendation (id UUID PRIMARY KEY, project_id UUID, confirmed_profile_id UUID, confirmed_profile_version BIGINT, confirmation_event_id UUID, project_version BIGINT, review_version BIGINT, developer_version BIGINT, environment_version BIGINT, catalog_release VARCHAR(100), catalog_hash CHAR(64), status VARCHAR(40), evidence_level VARCHAR(40), created_at TIMESTAMP)");
         jdbc.execute("CREATE TABLE recommendation_capability (recommendation_id UUID, capability_key VARCHAR(100), necessity VARCHAR(30), reason VARCHAR(200), input_refs VARCHAR ARRAY)");
-        jdbc.execute("CREATE TABLE recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID, tool_key VARCHAR(100), tool_version VARCHAR(100), support_key VARCHAR(100), required BOOLEAN, reason VARCHAR(200), explanation_source VARCHAR(30))");
+        jdbc.execute("CREATE TABLE recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID, tool_key VARCHAR(100), tool_version VARCHAR(100), support_key VARCHAR(100), required BOOLEAN, reason VARCHAR(200), explanation_source VARCHAR(30), risk_status VARCHAR(20), risk_level VARCHAR(20), external_auth VARCHAR(20), risk_reason VARCHAR(500), risk_evidence_url VARCHAR(2000), risk_checked_at DATE)");
         jdbc.execute("CREATE TABLE recommendation_notice (id UUID PRIMARY KEY, recommendation_id UUID, type VARCHAR(30), question_owner VARCHAR(30), answer_target VARCHAR(100), code VARCHAR(100), message VARCHAR(200), input_refs VARCHAR ARRAY)");
         jdbc.execute("CREATE TABLE audit_event (id UUID PRIMARY KEY, project_id UUID, actor_id UUID, event VARCHAR(100), outcome VARCHAR(30), target_type VARCHAR(50), target_id UUID, occurred_at TIMESTAMP)");
     }

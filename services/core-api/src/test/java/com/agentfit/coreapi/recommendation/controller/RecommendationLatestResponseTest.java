@@ -8,6 +8,7 @@ import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.CatalogRecommendationWorkflow;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
 import com.agentfit.coreapi.catalog.VerificationEvidence;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import com.agentfit.coreapi.catalog.model.CatalogTool;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
@@ -88,7 +89,10 @@ class RecommendationLatestResponseTest {
             "recommendation-1", storedBasis, RecommendationDecision.Status.RECOMMENDED,
             List.of("tool-1", "tool-2")), currentBasis);
         var saved = new JdbcRecommendationMetadataWriter.Item("item-1", "tool-1", "1.0",
-            "support-1", true, "저장된 추천 이유", JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE);
+            "support-1", true, "저장된 추천 이유", JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE,
+            new ToolRiskReview(ToolRiskReview.Status.REVIEWED, ToolRiskReview.Level.HIGH,
+                ToolRiskReview.ExternalAuth.REQUIRED, "외부 계정 승인 필요",
+                new VerificationEvidence("https://example.org/risk", LocalDate.of(2026, 10, 26))));
         var optional = new JdbcRecommendationMetadataWriter.Item("item-2", "tool-2", "1.0",
             "support-2", false, "선택 도구 이유", JdbcRecommendationMetadataWriter.ExplanationSource.TEMPLATE);
         var snapshot = new RecommendationLatestDetailsService.Snapshot(summary,
@@ -105,6 +109,7 @@ class RecommendationLatestResponseTest {
         assertEquals(0, json.get("items").size());
         assertEquals("tool-1", json.get("savedItems").get(0).get("toolKey").asText());
         assertEquals("저장된 추천 이유", json.get("savedItems").get(0).get("reason").asText());
+        assertEquals("HIGH", json.get("savedItems").get(0).get("riskReview").get("level").asText());
         assertEquals(false, json.get("savedItems").get(1).get("required").asBoolean());
         assertFalse(json.get("savedItems").get(0).has("permissionOptions"));
     }

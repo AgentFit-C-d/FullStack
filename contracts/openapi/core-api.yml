@@ -934,16 +934,17 @@ components:
               coveredOptionalCapabilities: { type: array, items: { type: string } }
         savedItems:
           type: array
-          description: Tool keys, versions and reasons saved with the recommendation. Historical display only; these rows do not prove current support or grant permissions, including when validity is STALE.
+          description: Tool keys, versions, reasons and risk review captured when the recommendation was created. Historical display only; these rows do not prove current support or grant permissions, including when validity is STALE.
           items:
             type: object
             additionalProperties: false
-            required: [toolKey, toolVersion, required, reason]
+            required: [toolKey, toolVersion, required, reason, riskReview]
             properties:
               toolKey: { type: string }
               toolVersion: { type: string }
               required: { type: boolean }
               reason: { type: string, minLength: 1 }
+              riskReview: { $ref: '#/components/schemas/ToolRiskReview' }
         notices: { type: array, items: { type: object, additionalProperties: true } }
     RecommendationQuestionAnswer:
       type: object
