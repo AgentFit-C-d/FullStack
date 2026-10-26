@@ -1,3 +1,22 @@
+const capabilityLabels = {
+  cap_document_reference: '문서 참조',
+  cap_repository_navigation: '저장소 탐색',
+  cap_code_review: '코드 검토',
+  cap_test_authoring: '테스트 작성',
+  cap_test_execution: '테스트 실행',
+  cap_browser_verification: '브라우저 검증',
+  cap_api_verification: 'API 검증',
+  cap_database_schema_inspection: 'DB 스키마 점검',
+  cap_ai_evaluation: 'AI 평가',
+}
+
+export function requiredCapabilityLabels(recommendation) {
+  return [...new Set((recommendation?.capabilities || [])
+    .filter(item => (item.necessity || item.need) === 'REQUIRED')
+    .map(item => capabilityLabels[item.key || item.capabilityKey])
+    .filter(Boolean))]
+}
+
 export function recommendationFeedback(recommendation) {
   if (recommendation?.validity === 'STALE') {
     return '입력이 바뀌어 이전 추천이 만료됐습니다. 추천을 다시 생성해 주세요.'

@@ -1,6 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { recommendationFeedback } from '../src/features/live/recommendationFeedback.js'
+import { recommendationFeedback, requiredCapabilityLabels } from '../src/features/live/recommendationFeedback.js'
+
+test('저장된 AI 판정에서 필수 기능만 사용자에게 설명한다', () => {
+  const labels = requiredCapabilityLabels({ capabilities: [
+    { key: 'cap_test_authoring', necessity: 'REQUIRED' },
+    { key: 'cap_test_execution', necessity: 'REQUIRED' },
+    { key: 'cap_code_review', necessity: 'NOT_REQUESTED' },
+  ] })
+  assert.deepEqual(labels, ['테스트 작성', '테스트 실행'])
+})
 
 test('추천 결과별로 다음 행동이 다른 안내를 표시한다', () => {
   assert.match(recommendationFeedback({ status: 'NEEDS_INFORMATION' }), /추가 정보/)

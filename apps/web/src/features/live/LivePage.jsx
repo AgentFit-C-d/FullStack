@@ -7,7 +7,7 @@ import { inputChanges, inputsDirty } from './inputState.js'
 import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './projectActions.js'
 import { confirmedProfileItems } from './profileItems.js'
 import { hasUnanalyzedPlanningInput } from './planningState.js'
-import { recommendationFeedback } from './recommendationFeedback.js'
+import { recommendationFeedback, requiredCapabilityLabels } from './recommendationFeedback.js'
 import { createAndReadRecommendation } from './recommendationFlow.js'
 import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
@@ -46,8 +46,8 @@ export default function LivePage() {
   const [role, setRole] = useState('FULLSTACK')
   const [responsibilities, setResponsibilities] = useState('')
   const [osFamily, setOsFamily] = useState('WINDOWS')
-  const [clientId, setClientId] = useState('demo-claude-code')
-  const [clientVersion, setClientVersion] = useState('demo-1')
+  const [clientId, setClientId] = useState('claude-code')
+  const [clientVersion, setClientVersion] = useState('')
   const [installedComponentsKnown, setInstalledComponentsKnown] = useState(false)
   const [installedComponents, setInstalledComponents] = useState([])
   const [selectedKeys, setSelectedKeys] = useState([])
@@ -97,7 +97,7 @@ export default function LivePage() {
         setInstalledComponentsKnown(savedInputs.environment.installedComponentsKnown)
         setInstalledComponents(savedInputs.environment.installedComponents || [])
       } else {
-        setOsFamily('WINDOWS'); setClientId('demo-claude-code'); setClientVersion('demo-1')
+        setOsFamily('WINDOWS'); setClientId('claude-code'); setClientVersion('')
         setInstalledComponentsKnown(false)
         setInstalledComponents([])
       }
@@ -144,7 +144,7 @@ export default function LivePage() {
     setProfileEdit({ projectName: '', projectType: '', domain: '' })
     setProfileItems([])
     setRole('FULLSTACK'); setResponsibilities(''); setOsFamily('WINDOWS')
-    setClientId('demo-claude-code'); setClientVersion('demo-1'); setInstalledComponentsKnown(false)
+    setClientId('claude-code'); setClientVersion(''); setInstalledComponentsKnown(false)
     setInstalledComponents([])
     setSelectedKeys([]); setPermissionChoices({}); setExistingState('UNKNOWN')
     setQuestionAnswers([]); setAnswerDrafts({})
@@ -314,7 +314,7 @@ export default function LivePage() {
       setSelectedKeys((created.items || []).map(item => item.toolKey))
       setPermissionChoices(defaultPermissionChoices(created.items))
       invalidatePreview()
-    }, 'AI Capability와 데모 카탈로그를 기준으로 추천을 저장했습니다.')
+    }, 'AI 필요 기능과 현재 카탈로그를 기준으로 추천 결과를 저장했습니다.')
   }
 
   async function saveQuestionAnswer(noticeId) {
@@ -343,7 +343,7 @@ export default function LivePage() {
         target: { osFamily, clientId, clientVersion }, selectedToolKeys: selectedKeys,
         permissionSelections: permissionSelections(recommendation.items, selectedKeys, permissionChoices),
         existingState: compareExisting ? 'PROVIDED' : existingState,
-        providedFiles, generatorVersion: 'agentfit-demo-web-v1',
+        providedFiles, generatorVersion: 'agentfit-web-v1',
       }
       const created = await apiRequest(`${projectPath(projectId)}/config-previews`, { method: 'POST', body: request })
       setExistingFileTargets(comparisonTargets(created.files))
@@ -375,7 +375,7 @@ export default function LivePage() {
       anchor.href = url; anchor.download = 'agentfit-config.zip'; anchor.click()
       setTimeout(() => URL.revokeObjectURL(url), 60000)
       setHistory(null)
-    }, '설정 ZIP을 다운로드했습니다. 데모 파일의 적용 범위를 확인해 주세요.')
+    }, '설정 ZIP을 다운로드했습니다. 적용 전에 파일 내용과 권한을 확인해 주세요.')
   }
 
   async function readCatalog(currentEnvironment = false) {
@@ -455,7 +455,7 @@ export default function LivePage() {
   return <div className={styles.page}>
     <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link></nav></header>
     <main className={styles.main}>
-      <div className={styles.heading}><span>AGENTFIT · LIVE DEMO</span><h1>프로젝트에서 설정 다운로드까지</h1><p>이 화면은 실제 Core API, FastAPI, PostgreSQL에 연결됩니다. 카탈로그의 도구와 설정은 검증 전 합성 데모 데이터입니다.</p></div>
+      <div className={styles.heading}><span>AGENTFIT</span><h1>프로젝트에서 설정 다운로드까지</h1><p>분석과 추천 결과는 서버에 저장됩니다. 추천 도구는 현재 카탈로그의 검증 범위에 따라 달라집니다.</p></div>
       {error && <div className={styles.error} role="alert">{error}</div>}
       {notice && <div className={styles.notice} role="status">{notice}</div>}
       {inputDirty && <div className={styles.notice}>역할·환경 변경 내용을 저장한 뒤 추천·승인·다운로드를 진행해 주세요.</div>}
@@ -505,14 +505,14 @@ export default function LivePage() {
             <label>담당 업무 (줄마다 하나)<textarea value={responsibilities} onChange={event => setResponsibilities(event.target.value)} /></label>
             <InstalledComponentsEditor known={installedComponentsKnown} items={installedComponents}
               onKnownChange={setInstalledComponentsKnown} onChange={setInstalledComponents} />
-            <p>데모 카탈로그 대상: WINDOWS / demo-claude-code / demo-1. 다른 값이면 호환 도구가 없을 수 있습니다.</p>
+            <p>AI Client 버전은 설치 상태를 확인해 직접 입력해 주세요. 확인되지 않은 버전을 임의로 채우지 않습니다.</p>
             <button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button>
             {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}
           </section>}
-          {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 데모 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>{recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}<p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul><QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy} current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))} onSave={saveQuestionAnswer} /></>}</section>}
+          {confirmed && <section className={styles.card}><h2>5. 추천과 권한 선택</h2><p>AI가 필요한 Capability를 분석하고, Core API가 현재 카탈로그의 호환성을 판정합니다.</p><button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>{recommendation && <><p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>{requiredCapabilityLabels(recommendation).length > 0 && <p>필수 기능: {requiredCapabilityLabels(recommendation).join(', ')}</p>}{recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}<p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p><ul>{(recommendation.items || []).map(item => <li key={item.toolKey}><label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)} onChange={event => { setSelectedKeys(event.target.checked ? [...selectedKeys, item.toolKey] : selectedKeys.filter(key => key !== item.toolKey)); invalidatePreview() }} /> {item.name} ({item.toolKey})</label>{selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option => <label key={option.mappingKey}>{option.mappingKey} 권한<select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy} onChange={event => { setPermissionChoices(previous => ({ ...previous, [permissionKey(item.toolKey, option.mappingKey)]: event.target.value })); invalidatePreview() }}>{previewPolicies(option).map(policy => <option key={policy} value={policy}>{policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}</option>)}</select></label>)}</li>)}</ul><QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy} current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))} onSave={saveQuestionAnswer} /></>}</section>}
           {recommendation?.items?.length > 0 && <section className={styles.card}>
             <h2>6. 설정 미리보기와 다운로드</h2>
-            <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 합성 데모 설정은 실제 설치에 사용하지 마세요.</p>
+            <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 파일 내용과 권한을 확인한 뒤 적용하세요.</p>
             <label>현재 설정 상태
               <select value={existingState} onChange={event => { setExistingState(event.target.value); invalidatePreview() }}>
                 <option value="UNKNOWN">모름</option>

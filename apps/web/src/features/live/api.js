@@ -38,6 +38,9 @@ export async function loadSession() {
 }
 
 export function environmentProfileBody(expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents = []) {
+  if (!osFamily?.trim() || !clientId?.trim() || !clientVersion?.trim()) {
+    throw new Error('OS·AI Client·Client 버전을 확인해 입력해 주세요.')
+  }
   const components = installedComponentsKnown ? installedComponents.map(item => ({
     toolKey: item.toolKey.trim(), version: item.version?.trim() || null,
   })) : []

@@ -32,10 +32,7 @@ test('서비스 목록과 생성은 인증 검사로 차단되고 단계별 경�
     assert.doesNotMatch(html, /확인하고 적용|사용자 보고 저장|프로젝트 만들기 →/)
   }
   const routes = createAppRoutes()
-  for (const stage of serviceStages) {
-    const path = `/demo/${stage.path.replace(':projectId', 'demo-a')}`
-    assert.equal(matchRoutes(routes, path).find(match => match.route.handle?.mode)?.route.handle.mode, 'demo')
-  }
+  assert.equal(matchRoutes(routes, '/demo/projects/demo-a/preview').some(match => match.route.handle?.mode === 'demo'), false)
   assert.equal(matchRoutes(routes, '/app/projects/a/complete').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
   assert.equal(matchRoutes(routes, '/app/live').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
   assert.equal(serviceWorkflowPath('id with space'), '/app/live?project=id%20with%20space')
@@ -49,9 +46,8 @@ test('서비스 로그인은 기존 디자인을 재사용하며 시연 컨트�
   const home = await renderRoute('/')
   assert.match(home, /href="\/api\/oauth2\/authorization\/github"/)
   assert.doesNotMatch(home, /GitHub 로그인 연동 전/)
-  const demo = await renderRoute('/demo/login')
-  assert.match(demo, /개발용 시연 모드로 둘러보기/)
-  assert.match(demo, /메모리에만 유지/)
+  const live = await renderRoute('/app/live')
+  assert.doesNotMatch(live, /LIVE DEMO|합성 데모 데이터/)
 })
 test('이미 인증된 사용자가 첫 화면을 열면 프로젝트 화면으로 이동한다', async () => {
   const auth = { user: { id: 'a', name: 'a' }, session: { expiresAt: '2099-01-01T00:00:00Z' } }
@@ -112,8 +108,9 @@ test('실제 프로젝트 생성 화면은 이름 입력과 서버 저장 동작
 })
 
 
-test('demo 경로와 서버 단계 경로는 서로 다른 모드로 유지된다', () => {
-  const routes = createAppRoutes()
-  assert.equal(matchRoutes(routes, '/demo/projects/a/preview').find(match => match.route.handle?.mode)?.route.handle.mode, 'demo')
-  assert.equal(matchRoutes(routes, '/app/projects/a/preview').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
+test('이전 demo 경로는 실제 서비스 화면으로만 연결된다', () => {
+  const matches = matchRoutes(createAppRoutes(), '/demo/projects/a/preview')
+  const route = matches.at(-1).route
+  assert.equal(route.handle?.mode, undefined)
+  assert.equal(route.element.props.to, '/app/live')
 })

@@ -50,17 +50,18 @@ test('기획 자료의 버전은 Spring RequestPart가 읽는 JSON 숫자로 전
 })
 
 test('설치 상태는 사용자 선언에 따라서만 KNOWN으로 저장한다', () => {
-  assert.deepEqual(environmentProfileBody(0, 'WINDOWS', 'demo-claude-code', 'demo-1', false), {
-    expectedVersion: 0, osFamily: 'WINDOWS', clientId: 'demo-claude-code',
-    clientVersion: 'demo-1', installedComponentsKnown: false, installedComponents: [],
+  assert.deepEqual(environmentProfileBody(0, 'WINDOWS', 'claude-code', '2.1.270', false), {
+    expectedVersion: 0, osFamily: 'WINDOWS', clientId: 'claude-code',
+    clientVersion: '2.1.270', installedComponentsKnown: false, installedComponents: [],
   })
-  assert.equal(environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true)
+  assert.equal(environmentProfileBody(1, 'WINDOWS', 'claude-code', '2.1.270', true)
     .installedComponentsKnown, true)
-  assert.deepEqual(environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true,
+  assert.deepEqual(environmentProfileBody(1, 'WINDOWS', 'claude-code', '2.1.270', true,
     [{ toolKey: 'skill-a', version: '' }]).installedComponents,
   [{ toolKey: 'skill-a', version: null }])
-  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'demo-claude-code', 'demo-1', true,
+  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '2.1.270', true,
     [{ toolKey: 'skill-a' }, { toolKey: 'skill-a' }]), /중복 불가/)
+  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '', true), /Client 버전/)
 })
 
 test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 처리한다', async () => {

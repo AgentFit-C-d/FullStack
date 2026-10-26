@@ -2,7 +2,7 @@ export default function InstalledComponentsEditor({ known, items, onKnownChange,
   return <div>
     <label><input type="checkbox" checked={known} onChange={event => onKnownChange(event.target.checked)} />
       설치 도구 목록을 알고 있습니다</label>
-    <p>미확인 상태는 추천 시 추가 확인 대상입니다. 목록을 알고 있다면 비어 있는 상태도 그대로 저장할 수 있습니다. 버전 입력은 선택 사항입니다.</p>
+    <p>미확인 상태는 추천 시 추가 확인 대상입니다. 목록을 알고 있다면 비어 있는 상태도 그대로 저장할 수 있습니다. 설치 도구별 버전은 선택 입력입니다.</p>
     {known && <>
       {items.map((item, index) => <div key={index}>
         <label>설치 도구 키<input aria-label={`설치 도구 ${index + 1} 키`} value={item.toolKey}

@@ -4,7 +4,7 @@
 
 - 합성 카탈로그 Compose를 중지하고 `infra/compose.catalog-review.yaml`로 교체했다. 기존 데모 DB 볼륨은 삭제하지 않았다.
 - 카탈로그 1건은 skills.sh의 `obra/superpowers/test-driven-development`에서 내려받은 실물 Skill이다. Windows + Claude Code 2.1.270에서 `cap_test_authoring`만 검증했다. 별도 팀 승인 전이므로 운영 승인 카탈로그가 아니라 로컬 검토 대상이다.
-- 프론트의 `LIVE DEMO`, `demo-claude-code`, 합성 설정 안내는 현재 실행 설정과 맞지 않는다.
+- 2026-10-26 후속 변경에서 서비스 화면의 `LIVE DEMO`와 합성 카탈로그 안내를 제거하고, 기존 `/demo/*` 주소는 실제 `/app/live`로 보낸다. 새 프로젝트는 `claude-code`를 기본 Client로 제시하되 버전을 임의로 채우지 않는다. 이전 시연 컴포넌트 파일은 아직 저장소에 남아 있지만 라우트에서 접근할 수 없다.
 
 ## 실제 저장·응답
 
@@ -34,6 +34,8 @@ Core API → FastAPI Solar 분석은 `SUCCEEDED`를 반환했고, PostgreSQL의 
 ```
 
 환경 `WINDOWS / claude-code / 2.1.270`, 설치 목록 확인됨·빈 목록, 역할 `FULLSTACK` 및 업무 `Write tests`를 저장한 후 추천 생성 API가 `NO_COMPATIBLE_TOOLS`를 반환했다. PostgreSQL `recommendation`에는 결과와 실물 카탈로그 릴리스 ID가, `recommendation_capability`에는 9개 판정이 저장됐고 `recommendation_item`은 0건이다. 현재 검증된 Skill이 테스트 작성만 보장하며 AI가 테스트 실행도 필수로 판정했기 때문이다. 테스트 코드에서 `cap_test_authoring`만 수동 입력했을 때 `RECOMMENDED`가 되는 것은 실제 AI 응답의 종단 성공을 증명하지 않는다.
+
+서비스 화면은 저장된 필수 기능 `테스트 작성, 테스트 실행`을 함께 표시한다. 이 표시는 실패 원인을 드러내지만 부족한 검증 범위를 자동으로 해결하지는 않는다.
 
 ## 기획 대비 판단과 남은 계약
 
