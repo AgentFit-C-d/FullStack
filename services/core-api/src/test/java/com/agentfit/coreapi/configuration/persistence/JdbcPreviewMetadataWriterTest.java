@@ -381,6 +381,18 @@ class JdbcPreviewMetadataWriterTest {
     }
 
     @Test
+    void rejectsStoredApprovalWhenExistingStateChangesWithoutChangingFiles() throws Exception {
+        var fixture = approvedGeneratedExport();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE config_preview SET existing_state = 'USER_SAYS_EMPTY'");
+        }
+
+        assertThrows(IllegalStateException.class,
+            () -> new JdbcConfigurationContextReader().byApprovalId(connection,
+                PROJECT.toString(), fixture.generated().history().approvalId()));
+    }
+
+    @Test
     void storesOnlyGeneratedExportMetadataAfterMatchingApprovedPreview() throws Exception {
         var fixture = approvedGeneratedExport();
         new JdbcConfigurationExportWriter().save(connection, fixture.generated().history());

@@ -999,7 +999,10 @@ components:
       properties:
         previewId: { type: string, format: uuid }
         recommendationId: { type: string, format: uuid }
-        fingerprint: { type: string, pattern: '^[0-9a-f]{64}$' }
+        fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: Approval fingerprint bound to the selected tools, permissions, generated file hashes, generator version, current basis, and existingState. Changing existingState requires a new Preview.
         selectionDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
         contentDigest: { type: string, pattern: '^[0-9a-f]{64}$' }
         createdAt: { type: string, format: date-time }

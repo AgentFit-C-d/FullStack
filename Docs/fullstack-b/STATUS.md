@@ -8,6 +8,8 @@
 
 **추천 당시 검토 이력 (2026-10-26):** B 추천 항목을 저장할 때 Catalog의 위험도·외부 인증 검토 상태와 근거를 함께 보존하고 `savedItems.riskReview`로 돌려준다. 카탈로그 변경으로 추천이 `STALE`가 되어도 과거 추천에 현재 검토 결과를 소급하지 않는다. 기존 추천 행은 V9 마이그레이션 이후 `UNASSESSED`로 표시한다. Java 저장·행 복원·HTTP 응답 테스트는 통과했으며, Docker가 꺼져 있어 PostgreSQL 마이그레이션 실서버 확인은 남았다. [구현 범위](recommendation/historical-risk-snapshot-plan-2026-10-26.md)를 참조한다.
 
+**기존 설정 상태의 승인 지문 (2026-10-26):** 기존 파일을 제공하지 않은 두 입력 상태 `UNKNOWN`과 `USER_SAYS_EMPTY`를 승인 지문에서 구분한다. 저장 메타데이터 재조회도 상태를 포함해 재계산하며 불일치하면 미리보기 재생성을 요구하는 버전 충돌로 처리한다. 관련 순수 Java 테스트 50개가 통과했다. 배포 전 생성된 미리보기는 새 지문과 일치하지 않아 다시 생성해야 한다. PostgreSQL 통합 테스트는 Docker 미가동으로, 승인 컨트롤러 테스트는 로컬 Java 24의 Mockito 에이전트 문제로 이번 실행에서 확인하지 못했다. [변경 범위](configuration/preview/existing-state-fingerprint-plan-2026-10-26.md)를 참조한다. 상위 기능 수치는 그대로다.
+
 **추천 근거 표시 (2026-10-25):** 추천 항목의 설명에 실제로 충족하는 필수 Capability 이름을 담고, 최신 추천 GET에서는 DB에 저장된 당시의 설명을 반환한다. 기존 근거가 템플릿 변경으로 재생성되어 바뀌지 않도록 했다. B 추천 생성·최신 조회 단위 테스트가 통과했으며, 새 문구의 HTTP·PostgreSQL 재검증과 프론트 노출은 아직 수행하지 않았다.
 
 **브라우저 실서버 데모 (2026-10-18):** GitHub 세션에서 프로젝트 생성→텍스트 기획 분석→DRAFT 확정→역할·환경 저장→AI Capability/합성 Catalog 추천→미리보기→승인→ZIP→생성 이력까지 Core·FastAPI·PostgreSQL을 거쳐 확인했다. 설치 도구 목록·선택적 버전 입력은 DB 새로고침 복원까지 확인했고, 환경 변경 시 추천 STALE/재생성 및 현재 OS·Client·버전 Catalog 조회도 검증했다. 실도구 Catalog와 최신 단계별 디자인의 개별 API 바인딩은 미완료다. 범위·제약은 [브라우저 데모 기록](integration/demo-web-readiness-2026-10-18.md)에 정리했다.
