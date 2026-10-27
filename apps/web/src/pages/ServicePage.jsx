@@ -1,5 +1,6 @@
 import { useLoaderData, useNavigation, useParams } from 'react-router'
 import Brand from '../components/layout/Brand.jsx'
+import LogoutButton from '../components/layout/LogoutButton.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import { Button, Card } from '../components/ui/UI.jsx'
 import { containsDemoData, isAuthenticatedSession } from '../features/service/serviceModel.js'
@@ -36,7 +37,7 @@ export function ServiceScreen({ stage, auth, resource, projectId = null }) {
   const projectList = stage.key === 'projects' && ['ready', 'empty'].includes(resource?.status) && resource.source === 'server' && Array.isArray(resource.data?.projects) && !containsDemoData(resource)
   const projectDetail = stage.key === 'planning' && resource?.status === 'ready' && resource.source === 'server' && resource.data?.project?.id === projectId && !containsDemoData(resource)
   return <main className={styles.shell}>
-    <header className={styles.header}><Brand /><Button to="/login">로그인 화면으로</Button></header>
+    <header className={styles.header}><Brand />{authenticated ? <LogoutButton /> : <Button to="/login">로그인 화면으로</Button>}</header>
     {!authenticated ? <Card padded role="status"><h1>{auth?.status === 'unauthenticated' ? '로그인이 필요해요' : '지금은 로그인 서비스를 이용할 수 없어요'}</h1><p>{auth?.status === 'unauthenticated' ? '로그인 후 다시 이용해주세요.' : '잠시 후 다시 시도해주세요.'}</p><Button to="/login">로그인 화면으로</Button></Card> : <>
       <PageHeader title={stage.title} description="프로젝트 정보를 확인해주세요." />
       {projectList ? resource.data.projects.length ? <SavedProjects projects={resource.data.projects} /> : <Card padded><h2>아직 프로젝트가 없어요</h2><p>프로젝트 이름부터 입력해 시작해 주세요.</p></Card>

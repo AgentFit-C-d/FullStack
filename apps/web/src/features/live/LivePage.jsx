@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
+import LogoutButton from '../../components/layout/LogoutButton.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
 import { defaultPermissionChoices, permissionKey, permissionSelections } from './permissions.js'
 import { offeredItems } from './recommendationItems.js'
@@ -455,7 +456,7 @@ export default function LivePage() {
     clientVersion, installedComponentsKnown, installedComponents })
 
   return <div className={styles.page}>
-    <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link></nav></header>
+    <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link>{session && <LogoutButton disabled={busy} />}</nav></header>
     <main className={styles.main}>
       <div className={styles.heading}><span>AGENTFIT</span><h1>프로젝트에서 설정 다운로드까지</h1><p>분석과 추천 결과는 서버에 저장됩니다. 추천 도구는 현재 카탈로그의 검증 범위에 따라 달라집니다.</p></div>
       {error && <div className={styles.error} role="alert">{error}</div>}

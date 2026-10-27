@@ -1,6 +1,6 @@
 .page{min-height:100vh;background:var(--bg);color:var(--ink)}
 .top{display:flex;align-items:center;justify-content:space-between;padding:18px max(24px,calc((100vw - 1180px)/2));background:#fff;border-bottom:1px solid var(--line)}
-.top nav{display:flex;gap:20px}.top a{color:var(--accent)}
+.top nav{display:flex;gap:20px;align-items:center}.top a{color:var(--accent)}
 .main{max-width:1180px;margin:0 auto;padding:40px 24px 80px}
 .heading{margin-bottom:26px}.heading span{font-size:12px;font-weight:800;letter-spacing:.15em;color:var(--accent)}.heading h1{font-size:34px;margin:8px 0}.heading p{color:var(--muted);line-height:1.6}
 .user{text-align:right;color:var(--muted);margin-bottom:16px}

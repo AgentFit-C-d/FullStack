@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLoaderData, useNavigate } from 'react-router'
 import Brand from '../components/layout/Brand.jsx'
+import LogoutButton from '../components/layout/LogoutButton.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import { Button, Card, FormField } from '../components/ui/UI.jsx'
 import { validateProjectName } from '../features/projects/projectName.js'
@@ -10,7 +11,7 @@ import styles from './ServiceProjectCreatePage.module.css'
 
 export function ServiceProjectCreateScreen({ name, onNameChange, onSubmit, busy = false, error = '' }) {
   return <main className={styles.shell}>
-    <header className={styles.header}><Brand /><Button to="/app/projects">내 프로젝트로</Button></header>
+    <header className={styles.header}><Brand /><div className={styles.headerActions}><Button to="/app/projects">내 프로젝트로</Button><LogoutButton disabled={busy} /></div></header>
     <PageHeader eyebrow="PROJECT" title="새 프로젝트 만들기" description="먼저 프로젝트 이름을 입력해주세요." />
     <form onSubmit={onSubmit} noValidate>
       <Card padded className={styles.panel}>
