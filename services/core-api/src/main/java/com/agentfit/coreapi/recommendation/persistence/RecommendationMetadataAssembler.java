@@ -134,6 +134,8 @@ public final class RecommendationMetadataAssembler {
                 "필수 기능을 지원하는 검증된 도구가 없습니다.";
             case "no_verified_compatible_combination" ->
                 "필수 기능을 모두 충족하는 검증된 도구 조합이 없습니다.";
+            case "partial_required_coverage" ->
+                "검증된 도구가 필수 기능 일부만 충족합니다. 미충족 기능을 미리보기에서 확인해 주세요.";
             default -> throw new IllegalArgumentException("unknown B recommendation reason");
         };
     }

@@ -33,9 +33,11 @@ Core API → FastAPI Solar 분석은 `SUCCEEDED`를 반환했고, PostgreSQL의 
 }
 ```
 
-환경 `WINDOWS / claude-code / 2.1.270`, 설치 목록 확인됨·빈 목록, 역할 `FULLSTACK` 및 업무 `Write tests`를 저장한 후 추천 생성 API가 `NO_COMPATIBLE_TOOLS`를 반환했다. PostgreSQL `recommendation`에는 결과와 실물 카탈로그 릴리스 ID가, `recommendation_capability`에는 9개 판정이 저장됐고 `recommendation_item`은 0건이다. 현재 검증된 Skill이 테스트 작성만 보장하며 AI가 테스트 실행도 필수로 판정했기 때문이다. 테스트 코드에서 `cap_test_authoring`만 수동 입력했을 때 `RECOMMENDED`가 되는 것은 실제 AI 응답의 종단 성공을 증명하지 않는다.
+당시에는 환경 `WINDOWS / claude-code / 2.1.270`, 설치 목록 확인됨·빈 목록, 역할 `FULLSTACK` 및 업무 `Write tests`를 저장한 후 추천 생성 API가 `NO_COMPATIBLE_TOOLS`를 반환했다. PostgreSQL `recommendation`에는 결과와 실물 카탈로그 릴리스 ID가, `recommendation_capability`에는 9개 판정이 저장됐고 `recommendation_item`은 0건이었다. 현재 검증된 Skill이 테스트 작성만 보장하며 AI가 테스트 실행도 필수로 판정했기 때문이다.
 
-서비스 화면은 저장된 필수 기능 `테스트 작성, 테스트 실행`을 함께 표시한다. 이 표시는 실패 원인을 드러내지만 부족한 검증 범위를 자동으로 해결하지는 않는다.
+**2026-10-27 변경 검증:** 전체 충족 후보가 없을 때 검증된 부분 후보를 제안하고 미충족을 유지하는 정책을 적용했다. 격리된 PostgreSQL 스키마와 실제 FastAPI `needs` HTTP를 사용한 `LiveAiPostgresRecommendationTest`에서 `Write tests`에 대해 `RECOMMENDED`, 저장된 Capability 9개(필수 2개·비요청 7개), 추천 Skill 1개, `partial_required_coverage` 안내 1개, Preview의 `unmetCapabilityKeys=["cap_test_execution"]`을 확인했다. 테스트는 실행 후 격리 스키마를 삭제한다. 이는 로컬 검토 카탈로그의 동작 증거이며 별도 팀 승인이나 운영 배포를 뜻하지 않는다.
+
+서비스 화면은 저장된 필수 기능 `테스트 작성, 테스트 실행`과 부분 추천 경고를 함께 표시한다. 부족한 테스트 실행 기능은 Preview에서도 미충족으로 남으며 자동으로 충족된 것으로 바꾸지 않는다.
 
 ## 기획 대비 판단과 남은 계약
 

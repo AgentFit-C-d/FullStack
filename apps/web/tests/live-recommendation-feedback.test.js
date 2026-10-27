@@ -18,6 +18,12 @@ test('추천 결과별로 다음 행동이 다른 안내를 표시한다', () =>
   assert.equal(recommendationFeedback({ status: 'RECOMMENDED' }), '')
 })
 
+test('검증된 부분 구성은 미충족 경고를 추천 단계에서도 보여준다', () => {
+  assert.match(recommendationFeedback({ status: 'RECOMMENDED', notices: [
+    { type: 'REASON', code: 'partial_required_coverage' },
+  ] }), /일부만 충족/)
+})
+
 test('질문 코드에 따라 실제로 수정할 입력을 안내한다', () => {
   assert.match(recommendationFeedback({ status: 'NEEDS_INFORMATION', notices: [
     { type: 'QUESTION', code: 'installed_components' },
@@ -43,5 +49,5 @@ test('호환 결과는 저장된 사유 코드로 설명한다', () => {
 })
 
 test('입력이 바뀐 추천은 저장 당시의 결과보다 만료 안내를 우선한다', () => {
-  assert.match(recommendationFeedback({ status: 'NO_COMPATIBLE_TOOLS', validity: 'STALE' }), /만료/)
+  assert.match(recommendationFeedback({ status: 'NO_COMPATIBLE_TOOLS', validity: 'STALE' }), /입력 또는 카탈로그 상태/)
 })

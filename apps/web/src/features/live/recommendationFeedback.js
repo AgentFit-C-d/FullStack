@@ -19,7 +19,7 @@ export function requiredCapabilityLabels(recommendation) {
 
 export function recommendationFeedback(recommendation) {
   if (recommendation?.validity === 'STALE') {
-    return '입력이 바뀌어 이전 추천이 만료됐습니다. 추천을 다시 생성해 주세요.'
+    return '입력 또는 카탈로그 상태가 바뀌어 이전 추천이 만료됐습니다. 현재 카탈로그를 확인한 뒤 추천을 다시 생성해 주세요.'
   }
 
   switch (recommendation?.status) {
@@ -53,7 +53,8 @@ export function recommendationFeedback(recommendation) {
         ? '이미 설치된 검증 도구가 필요한 기능을 충족해 추가 도구가 필요하지 않습니다.'
         : '필요한 기능이 확인되지 않아 추가 도구가 필요하지 않습니다.'
     case 'RECOMMENDED':
-      return ''
+      return (recommendation.notices || []).some(notice => notice.code === 'partial_required_coverage')
+        ? '필수 기능 일부만 충족하는 구성입니다. 미리보기의 미충족 항목을 확인해 주세요.' : ''
     default:
       return '추천 결과를 확인해 주세요.'
   }

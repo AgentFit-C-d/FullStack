@@ -115,8 +115,9 @@ public final class CatalogPreviewAssembler {
                 defaultCoverage.addAll(tool.capabilityKeys());
             }
         }
-        if (!defaultCoverage.containsAll(requiredCapabilityKeys)) {
-            throw new InvalidAssemblyException("stored default tools do not cover required capabilities");
+        if (!requiredCapabilityKeys.isEmpty()
+            && java.util.Collections.disjoint(defaultCoverage, requiredCapabilityKeys)) {
+            throw new InvalidAssemblyException("stored default tools cover no required capability");
         }
         for (int index = 0; index < details.size(); index++) {
             var detail = details.get(index);

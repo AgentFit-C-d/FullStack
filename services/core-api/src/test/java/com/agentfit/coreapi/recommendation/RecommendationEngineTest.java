@@ -54,6 +54,39 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void offersVerifiedPartialToolWhenNoCompleteConfigurationExists() {
+        CatalogTool authoring = tool("authoring", Set.of("cap_test_authoring"),
+            Set.of(), Set.of(), Set.of("authoring-skill"), ToolSupport.Check.PASS);
+        RecommendationEngine engine = new RecommendationEngine(new CatalogRelease("r1",
+            Map.of("authoring", authoring), Set.of()));
+
+        RecommendationDecision decision = engine.decide(input(
+            Set.of("cap_test_authoring", "cap_test_execution"), Set.of()));
+
+        assertEquals(RECOMMENDED, decision.status());
+        assertEquals(List.of("authoring"), decision.toolKeys());
+        assertEquals(List.of("partial_required_coverage"), decision.reasonCodes());
+    }
+
+    @Test
+    void partialFallbackMaximizesCoveredRequiredCapabilitiesWithoutIncludingUnrelatedTool() {
+        CatalogTool one = tool("one", Set.of(DOC), Set.of(), Set.of(),
+            Set.of("one-component"), ToolSupport.Check.PASS);
+        CatalogTool two = tool("two", Set.of(DOC, TEST), Set.of(), Set.of(),
+            Set.of("two-component"), ToolSupport.Check.PASS);
+        CatalogTool unrelated = tool("unrelated", Set.of("cap_ai_evaluation"), Set.of(), Set.of(),
+            Set.of("unrelated-component"), ToolSupport.Check.PASS);
+        var engine = new RecommendationEngine(new CatalogRelease("r1",
+            Map.of("one", one, "two", two, "unrelated", unrelated), Set.of()));
+
+        var result = engine.decide(input(Set.of(DOC, TEST, "cap_code_review"), Set.of()));
+
+        assertEquals(RECOMMENDED, result.status());
+        assertEquals(List.of("two"), result.toolKeys());
+        assertEquals(List.of("partial_required_coverage"), result.reasonCodes());
+    }
+
+    @Test
     void emptyRequiredCapabilitiesHaveDistinctNoAdditionReason() {
         RecommendationEngine engine = new RecommendationEngine(new CatalogRelease("r1", Map.of(), Set.of()));
         RecommendationDecision decision = engine.decide(input(Set.of(), Set.of()));
@@ -83,8 +116,9 @@ class RecommendationEngineTest {
         engine = new RecommendationEngine(new CatalogRelease("r2",
             Map.of("doc", verifiedDoc, "test", verifiedTest), Set.of()));
         RecommendationDecision unsupportedCombination = engine.decide(input(Set.of(DOC, TEST), Set.of()));
-        assertEquals(NO_COMPATIBLE_TOOLS, unsupportedCombination.status());
-        assertEquals(List.of("no_verified_compatible_combination"), unsupportedCombination.reasonCodes());
+        assertEquals(RECOMMENDED, unsupportedCombination.status());
+        assertEquals(List.of("doc"), unsupportedCombination.toolKeys());
+        assertEquals(List.of("partial_required_coverage"), unsupportedCombination.reasonCodes());
         engine = new RecommendationEngine(new CatalogRelease("r3",
             Map.of("doc", verifiedDoc, "test", verifiedTest),
             Set.of(new VerifiedCombination(Set.of("doc", "test"), TARGET))));
@@ -270,8 +304,11 @@ class RecommendationEngineTest {
             Map.of("doc", doc, "test", test),
             Set.of(new VerifiedCombination(Set.of("doc", "test"), TARGET))));
         assertEquals(RECOMMENDED, engine.decide(input(Set.of(DOC, TEST), Set.of())).status());
-        assertEquals(NO_COMPATIBLE_TOOLS, engine.decide(new RecommendationInput(Set.of(DOC, TEST),
-            false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of())).status());
+        RecommendationDecision partial = engine.decide(new RecommendationInput(Set.of(DOC, TEST),
+            false, false, new EnvironmentTarget("WINDOWS", "example-client", "2.0"), Map.of()));
+        assertEquals(RECOMMENDED, partial.status());
+        assertEquals(List.of("doc"), partial.toolKeys());
+        assertEquals(List.of("partial_required_coverage"), partial.reasonCodes());
     }
 
     @Test
@@ -289,9 +326,10 @@ class RecommendationEngineTest {
 
         assertEquals(RECOMMENDED, result.status());
         assertEquals(List.of("doc"), result.toolKeys());
-        assertEquals(NO_COMPATIBLE_TOOLS,
-            new RecommendationEngine(new CatalogRelease("r1", tools, Set.of()))
-                .decide(input(Set.of(DOC, TEST), Set.of())).status());
+        RecommendationDecision partial = new RecommendationEngine(new CatalogRelease("r1", tools, Set.of()))
+            .decide(input(Set.of(DOC, TEST), Set.of()));
+        assertEquals(RECOMMENDED, partial.status());
+        assertEquals(List.of("doc"), partial.toolKeys());
     }
 
     @Test

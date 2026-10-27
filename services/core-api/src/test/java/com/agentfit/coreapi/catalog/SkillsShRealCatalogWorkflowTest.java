@@ -57,6 +57,43 @@ class SkillsShRealCatalogWorkflowTest {
     }
 
     @Test
+    void realAiTestNeedsOfferOnlyVerifiedSkillAndKeepExecutionUnmet() {
+        String source = "profile.item.features.0";
+        Set<String> required = Set.of("cap_test_authoring", "cap_test_execution");
+        var claims = CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(
+            key, required.contains(key) ? AiCapabilityIntake.Need.REQUIRED
+                : AiCapabilityIntake.Need.NOT_REQUESTED,
+            "confirmed project feature", required.contains(key) ? List.of(source) : List.of())).toList();
+        var bundle = CatalogBundleLoader.load(CATALOG);
+        var target = new EnvironmentTarget("WINDOWS", "claude-code", "2.1.270");
+
+        var result = CatalogRecommendationWorkflow.evaluate(CATALOG, bundle.catalogHash(),
+            new CatalogRecommendationWorkflow.Request(claims, List.of(), Set.of(source), false,
+                target, Map.of()));
+
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, result.decision().status());
+        assertEquals(List.of("partial_required_coverage"), result.decision().reasonCodes());
+        assertEquals(List.of("obra-superpowers-test-driven-development"), result.decision().toolKeys());
+        var catalog = CatalogSemanticParser.load(CATALOG);
+        assertEquals(List.of("cap_test_execution"), PreviewCapabilityCoverage.evaluate(
+            catalog.release(), target, required, result.decision().toolKeys(), Map.of())
+            .unmetCapabilityKeys());
+        var basis = new PreviewBasis(java.util.UUID.randomUUID().toString(), 1,
+            java.util.UUID.randomUUID().toString(), 1,
+            java.util.UUID.randomUUID().toString(), 0, 1, 1,
+            result.catalogReleaseId(), result.catalogHash());
+        var saved = com.agentfit.coreapi.recommendation.persistence.RecommendationMetadataAssembler.assemble(
+            java.util.UUID.randomUUID().toString(), basis, result,
+            com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter.EvidenceLevel.ENVIRONMENT_DECLARED,
+            Instant.parse("2026-10-26T00:00:00Z"), List.of(),
+            () -> java.util.UUID.randomUUID().toString());
+        assertEquals(1, saved.items().size());
+        assertEquals(List.of("partial_required_coverage"),
+            saved.notices().stream().map(
+                com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter.Notice::code).toList());
+    }
+
+    @Test
     void unverifiedCandidateCannotBeRecommended() {
         Path staged = Path.of("..", "..", "catalog-candidates",
             "obra-tdd-windows-claude-2.1.270").toAbsolutePath().normalize();

@@ -74,11 +74,6 @@ public final class RecommendationEngine {
             return new RecommendationDecision(NO_ADDITIONS_NEEDED, List.of(), List.of(),
                 List.of("installed_components_cover_required"));
         }
-        if (!capabilities(available).containsAll(input.requiredCapabilityKeys())) {
-            return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
-                List.of("no_verified_capability_support"));
-        }
-
         List<String> candidates = available.stream().filter(key -> !installed.contains(key)).toList();
         for (String key : candidates) {
             Set<String> selected = new HashSet<>(installed);
@@ -107,8 +102,49 @@ public final class RecommendationEngine {
                 return new RecommendationDecision(RECOMMENDED, additions, List.of(), List.of());
             }
         }
+        List<List<String>> partialAdditions = new ArrayList<>();
+        for (String key : candidates) {
+            Set<String> selected = new HashSet<>(installed);
+            selected.add(key);
+            if (validSelection(selected, available, input.environment())
+                && coversNewRequired(selected, installed, input.requiredCapabilityKeys())
+                && configurationFits.test(List.of(key))) {
+                partialAdditions.add(List.of(key));
+            }
+        }
+        for (VerifiedCombination combination : release.verifiedCombinations()) {
+            if (!combination.target().equals(input.environment())
+                || !combination.toolKeys().containsAll(installed)
+                || !available.containsAll(combination.toolKeys())
+                || !validSelection(combination.toolKeys(), available, input.environment())
+                || !coversNewRequired(combination.toolKeys(), installed, input.requiredCapabilityKeys())) continue;
+            List<String> missing = combination.toolKeys().stream()
+                .filter(key -> !installed.contains(key)).sorted().toList();
+            if (!missing.isEmpty() && configurationFits.test(missing)) partialAdditions.add(missing);
+        }
+        partialAdditions.sort(Comparator
+            .comparingLong((List<String> keys) -> coveredRequired(keys, installed,
+                input.requiredCapabilityKeys())).reversed()
+            .thenComparingInt(List::size).thenComparing(RecommendationEngine::compareKeys));
+        if (!partialAdditions.isEmpty()) {
+            return new RecommendationDecision(RECOMMENDED, partialAdditions.getFirst(),
+                List.of(), List.of("partial_required_coverage"));
+        }
         return new RecommendationDecision(NO_COMPATIBLE_TOOLS, List.of(), List.of(),
-            List.of("no_verified_compatible_combination"));
+            List.of(java.util.Collections.disjoint(capabilities(available), input.requiredCapabilityKeys())
+                ? "no_verified_capability_support" : "no_verified_compatible_combination"));
+    }
+
+    private boolean coversNewRequired(Set<String> selected, Set<String> installed, Set<String> required) {
+        Set<String> uncovered = new HashSet<>(required);
+        uncovered.removeAll(capabilities(installed));
+        return !java.util.Collections.disjoint(capabilities(selected), uncovered);
+    }
+
+    private long coveredRequired(List<String> additions, Set<String> installed, Set<String> required) {
+        Set<String> selected = new HashSet<>(installed);
+        selected.addAll(additions);
+        return capabilities(selected).stream().filter(required::contains).count();
     }
 
     private static int compareKeys(List<String> left, List<String> right) {
