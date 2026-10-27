@@ -6,6 +6,7 @@
 
 1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
    [최종화 기준 비교](integration/finalization-baseline-2026-10-25.md)는 `develop`과 기존 `demo` 변경의 반영 범위와 남은 기능 경계를 정리한다.
+   [별도 AI 저장소 계약 비교](integration/external-ai-contract-alignment-2026-10-27.md)는 현재 Core와 외부 AI 저장소의 요청·인증·응답 차이 및 인계 기준을 정리한다.
 2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): B05–B12의 완료 조건과 A·AI·Catalog 인계 입력.
 3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
 4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
@@ -54,7 +55,9 @@ FullStack/Docs/
 
 B 구현은 `develop`에 병합된 Phase 1–3과 `feat/fullstack-b-finalization`의 서비스 연결 코드를 기준으로 본다. 실제 API 화면은 `/app/live`이며, `/demo` 단계 화면은 메모리 시연이다.
 
-## 현재 구현 수준
+## 1차 구현 수준 기록
+
+이 표는 1차 당시 상태를 보존한 것이다. 최신 판단은 [현재 상태](STATUS.md)와 [상위 기능별 점검](integration/fsb-12-feature-audit-2026-10-26.md)을 따른다.
 
 | 영역 | 구현된 범위 | 아직 필요한 것 |
 | --- | --- | --- |
@@ -64,9 +67,9 @@ B 구현은 `develop`에 병합된 Phase 1–3과 `feat/fullstack-b-finalization
 
 전체 검증 결과와 실행 환경은 [현재 상태](STATUS.md)와 PR 본문의 검증 항목을 확인한다. 로컬 Docker PostgreSQL 연결을 포함해 B1–B9 기록·조회, 프로젝트별 삭제·동시성 경계를 검증하며, Windows 심볼릭 링크 생성 권한이 필요한 파일시스템 테스트는 이 PC에서 건너뛴다.
 
-**1차 B 상위 목표 B01–B12 기준: 4/12 완료(33.3%), 8개 남음.** B08–B11의 메모리 검증·생성 하위 작업은 진행됐지만, 실제 Catalog·A/AI 계약·인증/DB/API와 연결되지 않아 상위 목표 완료로 계산하지 않았다.
+**4/12 평가는 1차 개발 당시의 기록이다.** 당시에는 B01–B12 중 4개를 완료로 세고 8개를 남겨 두었다.
 
-현재 코드는 도메인/메모리 경계와 B1–B9의 호출자 트랜잭션용 JDBC 기록·조회 경계까지 구현했다. **실제 Catalog 데이터, A의 실테이블·인증·Audit와 연결된 영속화, 인증된 B API, AI 연동, 사용자 승인 흐름은 완료되지 않았다.**
+이하 설명은 당시 구현 범위의 기록이다. 이후 인증된 B API, A 영속화, Preview·승인 경로가 추가되었으며 최신 연결 상태는 [현재 상태](STATUS.md)를 기준으로 판단한다.
 1차 실제 Catalog는 **Claude Code부터**, Codex는 후속이다. 현재 Java 테스트의 `example-client`/`1.0` 값은 합성 환경 fixture이며 실제 지원 증거가 아니다. 각 Client의 지원 버전·템플릿·권한 매핑·조합은 검증된 Catalog가 준비되기 전까지 활성화하지 않는다.
 
 ## 재개할 때
