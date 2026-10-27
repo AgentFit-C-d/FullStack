@@ -18,7 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** Restores B1-B4 details without AI and enriches only a current result from the approved Catalog. */
 public class RecommendationLatestDetailsService {
     /** A reads one owner-checked, consistent current basis and environment target. */
-    public record Current(PreviewBasis basis, EnvironmentTarget target) {}
+    public record Current(PreviewBasis basis, EnvironmentTarget target, boolean catalogAvailable) {
+        public Current(PreviewBasis basis, EnvironmentTarget target) {
+            this(basis, target, true);
+        }
+    }
 
     @FunctionalInterface
     public interface OwnerCheckedCurrentReader {
@@ -75,6 +79,10 @@ public class RecommendationLatestDetailsService {
         List<String> keys = stored.items().stream().map(JdbcRecommendationMetadataWriter.Item::toolKey).toList();
         var summary = RecommendationReadModel.latest(new StoredRecommendationState(
             stored.id(), stored.basis(), stored.status(), keys), current.basis());
+        if (!current.catalogAvailable()) {
+            summary = new RecommendationReadModel(summary.recommendationId(), summary.status(),
+                RecommendationReadModel.Validity.STALE, summary.basis(), summary.toolKeys());
+        }
         List<CatalogRecommendationDetails.Item> details = List.of();
         if (summary.validity() == RecommendationReadModel.Validity.CURRENT
             && summary.status() == RecommendationDecision.Status.RECOMMENDED) {

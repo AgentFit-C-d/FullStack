@@ -100,6 +100,29 @@ class RecommendationLatestDetailsServiceTest {
     }
 
     @Test
+    void unavailableCurrentCatalogLeavesSavedRecommendationReadableButStale() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var draft = storedRecommendation(hash);
+        var unavailableBasis = new PreviewBasis(draft.basis().projectId(),
+            draft.basis().projectVersion(), draft.basis().confirmedProfileId(),
+            draft.basis().confirmedProfileVersion(), draft.basis().confirmationEventId(),
+            draft.basis().reviewVersion(), draft.basis().developerVersion(),
+            draft.basis().environmentVersion(), "catalog-unavailable", "0".repeat(64));
+        AtomicInteger catalogReads = new AtomicInteger();
+        var service = new RecommendationLatestDetailsService(
+            projectId -> new RecommendationLatestDetailsService.Current(unavailableBasis, TARGET, false),
+            projectId -> draft,
+            () -> { catalogReads.incrementAndGet(); throw new AssertionError("unavailable Catalog must not load"); });
+
+        var latest = service.latest(draft.basis().projectId());
+
+        assertEquals(RecommendationReadModel.Validity.STALE, latest.summary().validity());
+        assertEquals(draft.items(), latest.storedItems());
+        assertTrue(latest.catalogItems().isEmpty());
+        assertEquals(0, catalogReads.get());
+    }
+
+    @Test
     void currentRecommendationRejectsStoredSupportMismatch() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var original = storedRecommendation(hash);
