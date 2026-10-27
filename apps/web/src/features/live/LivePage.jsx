@@ -10,6 +10,7 @@ import { inputChanges, inputsDirty } from './inputState.js'
 import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './projectActions.js'
 import { confirmedProfileItems } from './profileItems.js'
 import { hasUnanalyzedPlanningInput } from './planningState.js'
+import { previewIsCurrent } from './previewState.js'
 import { recommendationFeedback, requiredCapabilityLabels } from './recommendationFeedback.js'
 import { createAndReadRecommendation } from './recommendationFlow.js'
 import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
@@ -35,6 +36,7 @@ export default function LivePage() {
   const [questionAnswers, setQuestionAnswers] = useState([])
   const [answerDrafts, setAnswerDrafts] = useState({})
   const [preview, setPreview] = useState(null)
+  const [, setExpiryTick] = useState(0)
   const [previewRequest, setPreviewRequest] = useState(null)
   const [approval, setApproval] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -149,6 +151,13 @@ export default function LivePage() {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     scrolledTo.current = key
   }, [projectId, detail, location.hash])
+
+  useEffect(() => {
+    const delay = Date.parse(preview?.expiresAt) - Date.now()
+    if (!Number.isFinite(delay) || delay <= 0) return undefined
+    const timer = setTimeout(() => setExpiryTick(value => value + 1), delay + 1)
+    return () => clearTimeout(timer)
+  }, [preview?.expiresAt])
 
   function selectProject(id) {
     setDetail(null); setInputs(null); setRecommendation(null); setPreview(null)
@@ -369,7 +378,9 @@ export default function LivePage() {
   }
 
   async function approve() {
-    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    if (inputDirty || !previewIsCurrent(previewRequest, recommendation, preview)) {
+      setError('현재 추천에 맞는 미리보기를 다시 생성해 주세요.'); return
+    }
     await run(async () => {
       const result = await apiRequest(`${projectPath(projectId)}/config-previews/${preview.previewId}/approval`, {
         method: 'POST', body: { fingerprint: preview.fingerprint, confirmed: true },
@@ -379,7 +390,9 @@ export default function LivePage() {
   }
 
   async function download() {
-    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    if (inputDirty || !approval || !previewIsCurrent(previewRequest, recommendation, preview)) {
+      setError('현재 추천의 미리보기를 다시 확인하고 승인해 주세요.'); return
+    }
     await run(async () => {
       const blob = await apiRequest(`${projectPath(projectId)}/config-approvals/${approval.approvalId}/download`, {
         method: 'POST', body: { previewId: preview.previewId, fingerprint: preview.fingerprint,
@@ -466,6 +479,7 @@ export default function LivePage() {
   const inputReady = inputs?.developer && inputs?.environment
   const inputDirty = inputsDirty(inputs, { role, responsibilities, osFamily, clientId,
     clientVersion, installedComponentsKnown, installedComponents })
+  const previewReady = !!preview && !inputDirty && previewIsCurrent(previewRequest, recommendation, preview)
 
   return <div className={styles.page}>
     <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link>{session && <LogoutButton disabled={busy} />}</nav></header>
@@ -559,12 +573,13 @@ export default function LivePage() {
             <div className={styles.row}>
               <button type="button" disabled={busy || recommendation.validity === 'STALE' || selectedKeys.length === 0} onClick={() => createPreview()}>미리보기 생성</button>
               {existingFileTargets.length > 0 && <button type="button" disabled={busy || providedExistingFiles.length === 0 || recommendation.validity === 'STALE'} onClick={() => createPreview(true)}>기존 파일과 비교</button>}
-              {preview && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}
-              {approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}
+              {previewReady && !approval && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}
+              {previewReady && approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}
             </div>
             {selectedKeys.length === 0 && <p>설정 파일을 만들 도구를 하나 이상 선택해 주세요.</p>}
+            {preview && !previewReady && <p role="alert">현재 입력 또는 추천과 맞지 않는 미리보기입니다. 최신 추천으로 미리보기를 다시 생성해 주세요.</p>}
             {existingFileTargets.length > 0 && <ExistingFilesEditor targets={existingFileTargets} selected={providedExistingFiles} onChange={updateProvidedExistingFiles} />}
-            {preview && <>
+            {previewReady && <>
               <p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>
               {preview.files?.map(file => <details key={file.targetKey + file.relativePath}>
                 <summary>{file.relativePath} · {file.action === 'UPDATE' ? '기존 파일 교체' : '새 파일 제안'}</summary>
