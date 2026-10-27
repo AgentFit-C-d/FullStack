@@ -17,6 +17,47 @@
 
 별도 AI의 `skills.json`은 `facts` 최대 96개, 값 최대 512자, ID 정규식 `^[a-z_]+:[0-9]{1,3}$`를 요구한다. B의 현재 입력은 A의 확정 항목·담당 업무 경로를 근거 ID로 쓰고, FullStack AI는 이를 그대로 `sourceFields`에 돌려준다. ID를 바꾼다면 양방향 매핑과 근거 검증을 함께 정의해야 한다.
 
+### 현재 Core가 요구하는 needs 교환 예시
+
+아래는 설명용 최소 예시다. 실제 요청은 Core가 본문과 경로·시각에 대해 HMAC 헤더를 생성한다. 응답의 `claims`는 **고정 9종 전부** 필요하다.
+
+```json
+{
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "generation": 1,
+  "contractVersion": "recommendation-capability-v1",
+  "input": {
+    "facts": [
+      {"id": "profile.item.features.0", "field": "features", "value": "Write tests"}
+    ]
+  }
+}
+```
+
+```json
+{
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "generation": 1,
+  "contractVersion": "recommendation-capability-v1",
+  "result": {
+    "claims": [
+      {"capabilityKey":"cap_document_reference","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_repository_navigation","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_code_review","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_test_authoring","need":"REQUIRED","reason":"테스트 작성 작업이 명시됨","sourceFields":["profile.item.features.0"]},
+      {"capabilityKey":"cap_test_execution","need":"NOT_REQUESTED","reason":"실행은 명시되지 않음","sourceFields":[]},
+      {"capabilityKey":"cap_browser_verification","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_api_verification","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_database_schema_inspection","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]},
+      {"capabilityKey":"cap_ai_evaluation","need":"NOT_REQUESTED","reason":"확정 입력에 없음","sourceFields":[]}
+    ],
+    "questions": []
+  }
+}
+```
+
+이 예시는 **계약 형식**을 보여주며 `Write tests`의 실제 Capability 판단을 확정하지 않는다. 해당 표현에 테스트 실행이 포함되는지는 AI 담당자와 별도 합의가 필요하다.
+
 ## B에서 정렬한 부분
 
 - `AiCapabilityAnalyzerAdapter.facts()`가 허용된 확정 기획 항목과 담당 업무만 보내는 기존 경계를 유지하고, Map 순서와 관계없이 근거 ID 순서를 고정한다.
