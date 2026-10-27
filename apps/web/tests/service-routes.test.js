@@ -36,6 +36,9 @@ test('서비스 목록과 생성은 인증 검사로 차단되고 단계별 경�
   assert.equal(matchRoutes(routes, '/app/projects/a/complete').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
   assert.equal(matchRoutes(routes, '/app/live').find(match => match.route.handle?.mode)?.route.handle.mode, 'service')
   assert.equal(serviceWorkflowPath('id with space'), '/app/live?project=id%20with%20space')
+  assert.equal(serviceWorkflowPath('project-1', 'environment'), '/app/live?project=project-1#recommendation-inputs')
+  assert.equal(serviceWorkflowPath('project-1', 'recommendation'), '/app/live?project=project-1#recommendation-result')
+  assert.equal(serviceWorkflowPath('project-1', 'complete'), '/app/live?project=project-1#configuration-output')
 })
 test('서비스 로그인은 기존 디자인을 재사용하며 시연 컨트롤·내부 설명이 없다', async () => {
   const service = await renderRoute('/login')

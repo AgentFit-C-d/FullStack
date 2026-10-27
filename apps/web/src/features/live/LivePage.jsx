@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router'
 import Brand from '../../components/layout/Brand.jsx'
 import LogoutButton from '../../components/layout/LogoutButton.jsx'
 import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
@@ -24,6 +24,8 @@ const parsedLines = value => value.split('\n').map(line => line.trim()).filter(B
 
 export default function LivePage() {
   const [search, setSearch] = useSearchParams()
+  const location = useLocation()
+  const scrolledTo = useRef('')
   const projectId = search.get('project')
   const [session, setSession] = useState(undefined)
   const [projects, setProjects] = useState([])
@@ -137,6 +139,16 @@ export default function LivePage() {
     const timer = setInterval(() => loadProject(projectId).catch(cause => setError(cause.message)), 2500)
     return () => clearInterval(timer)
   }, [projectId, detail?.latestAttempt?.state, loadProject])
+
+  useEffect(() => {
+    if (!projectId || detail?.project?.id !== projectId || !location.hash) return
+    const key = `${projectId}:${location.hash}`
+    if (scrolledTo.current === key) return
+    const target = document.getElementById(location.hash.slice(1))
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrolledTo.current = key
+  }, [projectId, detail, location.hash])
 
   function selectProject(id) {
     setDetail(null); setInputs(null); setRecommendation(null); setPreview(null)
@@ -482,8 +494,8 @@ export default function LivePage() {
           {candidates && <div><p>{candidates.source} · {candidates.verificationStatus} · 후보 {candidates.candidates?.length || 0}개</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · 미검증, 추천 제외</li>)}</ul></div>}
         </section>
         {detail && <>
-          <section className={styles.card}><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
-          {draft && <section className={styles.card}>
+          <section className={styles.card} id="planning-input"><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
+          {draft && <section className={styles.card} id="profile-review">
             <h2>3. 분석 초안 확인</h2>
             <p>{confirmed?.sourceDraftId === draft.id ? '확정된 항목을 수정할 수 있습니다.' : `DRAFT v${draft.version} · 문서 추출 결과를 검토하고 전체 항목을 확정합니다.`}</p>
             <div className={styles.grid3}>
@@ -512,7 +524,7 @@ export default function LivePage() {
             <button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button>
             {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}
           </section>}
-          {confirmed && <section className={styles.card}>
+          {confirmed && <section className={styles.card} id="recommendation-result">
             <h2>5. 추천과 권한 선택</h2>
             <p>AI가 필요한 Capability를 분석하고, Core API가 현재 카탈로그의 호환성을 판정합니다.</p>
             <button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>
@@ -535,7 +547,7 @@ export default function LivePage() {
                 onSave={saveQuestionAnswer} />
             </>}
           </section>}
-          {offeredItems(recommendation).length > 0 && <section className={styles.card}>
+          {offeredItems(recommendation).length > 0 && <section className={styles.card} id="configuration-output">
             <h2>6. 설정 미리보기와 다운로드</h2>
             <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 파일 내용과 권한을 확인한 뒤 적용하세요.</p>
             <label>현재 설정 상태
