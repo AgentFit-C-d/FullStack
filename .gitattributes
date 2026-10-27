@@ -2,3 +2,4 @@
 demo/catalog-synthetic/** -text
 catalog-candidates/obra-tdd-windows-claude-2.1.270/** -text
 catalog-candidates/obra-tdd-windows-claude-2.1.270-verified/** -text
+catalog-candidates/obra-tdd-windows-claude-2.1.310-reviewed/** -text

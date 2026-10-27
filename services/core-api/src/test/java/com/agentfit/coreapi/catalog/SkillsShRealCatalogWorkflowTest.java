@@ -30,6 +30,34 @@ import org.junit.jupiter.api.Test;
 class SkillsShRealCatalogWorkflowTest {
     private static final Path CATALOG = Path.of("..", "..", "catalog-candidates",
         "obra-tdd-windows-claude-2.1.270-verified").toAbsolutePath().normalize();
+    private static final Path CURRENT_CLIENT_CATALOG = Path.of("..", "..", "catalog-candidates",
+        "obra-tdd-windows-claude-2.1.310-reviewed").toAbsolutePath().normalize();
+
+    @Test
+    void locallyReviewedSkillTargetsCurrentClaudeCodeVersionOnly() {
+        String source = "profile.item.features.0";
+        var claims = CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(
+            key, key.equals("cap_test_authoring")
+                ? AiCapabilityIntake.Need.REQUIRED : AiCapabilityIntake.Need.NOT_REQUESTED,
+            "confirmed project feature", key.equals("cap_test_authoring")
+                ? List.of(source) : List.of())).toList();
+        var bundle = CatalogBundleLoader.load(CURRENT_CLIENT_CATALOG);
+        var target = new EnvironmentTarget("WINDOWS", "claude-code", "2.1.310");
+        var result = CatalogRecommendationWorkflow.evaluate(CURRENT_CLIENT_CATALOG,
+            bundle.catalogHash(), new CatalogRecommendationWorkflow.Request(
+                claims, List.of(), Set.of(source), false, target, Map.of()));
+
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, result.decision().status());
+        assertEquals(List.of("obra-superpowers-test-driven-development"),
+            result.decision().toolKeys());
+        var catalog = CatalogSemanticParser.load(CURRENT_CLIENT_CATALOG);
+        assertEquals(List.of("cap_test_execution"), PreviewCapabilityCoverage.evaluate(
+            catalog.release(), target, Set.of("cap_test_authoring", "cap_test_execution"),
+            result.decision().toolKeys(), Map.of()).unmetCapabilityKeys());
+        assertTrue(CatalogReadService.list(CURRENT_CLIENT_CATALOG, bundle.catalogHash(),
+            new CatalogReadService.Filter("WINDOWS", "claude-code", "2.1.270",
+                "cap_test_authoring")).items().isEmpty());
+    }
 
     @Test
     void verifiedSkillsShSkillCanBeRecommendedAndRenderedForClaudeCode() {
