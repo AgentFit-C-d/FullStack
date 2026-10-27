@@ -55,6 +55,13 @@ public final class OptionalCatalogCandidateSelector {
                 } catch (ConfigurationSelectionValidator.InvalidSelectionException invalid) {
                     continue;
                 }
+                // Each offer must work alone and with every offer already shown to the user.
+                together.addAll(offers);
+                try {
+                    validator.validate(together, target, List.of(), List.of(), installedVersions);
+                } catch (ConfigurationSelectionValidator.InvalidSelectionException invalid) {
+                    continue;
+                }
                 List<String> renderedKeys = together.stream().sorted().toList();
                 if (!configurationFits.test(renderedKeys)) continue;
                 offers.add(candidate.key());
