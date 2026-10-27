@@ -496,7 +496,7 @@ export default function LivePage() {
             </details>
             <button type="button" disabled={busy || !profileEdit.projectName.trim() || !profileNeedsConfirmation} onClick={confirmProfile}>확인하고 확정 저장</button>
           </section>}
-          {confirmed && <section className={styles.card}>
+          {confirmed && <section className={styles.card} id="recommendation-inputs">
             <h2>4. 내 역할과 개발환경</h2>
             <p>입력 정보는 내 프로젝트에 저장됩니다. 설치 버전은 실제 PC를 검사한 값이 아닌 사용자 선언입니다.</p>
             <div className={styles.grid3}>

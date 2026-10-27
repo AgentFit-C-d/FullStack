@@ -1,5 +1,11 @@
 import styles from './LivePage.module.css'
 
+const environmentTargets = new Set([
+  'environment.target',
+  'environment.installedComponents',
+  'environment.installedComponentVersions',
+])
+
 export default function QuestionAnswersEditor({ notices, answers, drafts, busy, current = true, onDraft, onSave }) {
   if (!notices.length) return null
   return <details>
@@ -10,6 +16,7 @@ export default function QuestionAnswersEditor({ notices, answers, drafts, busy, 
       <strong>{notice.type === 'QUESTION' ? '추가 질문' : '판정 사유'} · {notice.message}</strong>
       {notice.type === 'QUESTION' && <>
         <p>답변 대상: {notice.answerTarget}</p>
+        {environmentTargets.has(notice.answerTarget) && <p><a href="#recommendation-inputs">역할·개발환경 입력으로 이동</a>해 실제 값을 확인하세요. 환경 정보를 저장한 뒤 추천을 다시 생성해야 결과에 반영됩니다.</p>}
         <textarea aria-label={`${notice.code} 답변`} value={drafts[notice.id] || ''} disabled={!current}
           onChange={event => onDraft(notice.id, event.target.value)} />
         <button type="button" disabled={!current || busy || !drafts[notice.id]?.trim()} onClick={() => onSave(notice.id)}>답변 저장</button>
