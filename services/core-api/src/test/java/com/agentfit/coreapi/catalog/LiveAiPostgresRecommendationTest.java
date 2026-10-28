@@ -55,7 +55,8 @@ class LiveAiPostgresRecommendationTest {
         String secret = System.getenv("AGENTFIT_HMAC_CURRENT_SECRET");
         boolean realReviewCatalog = "REAL_REVIEW".equals(System.getenv("AGENTFIT_LIVE_CATALOG_KIND"));
         String clientId = realReviewCatalog ? "claude-code" : "demo-claude-code";
-        String clientVersion = realReviewCatalog ? "2.1.270" : "demo-1";
+        String clientVersion = realReviewCatalog
+            ? System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_CLIENT_VERSION", "2.1.270") : "demo-1";
         String toolKey = realReviewCatalog ? "obra-superpowers-test-driven-development"
             : "demo-all-capabilities-skill";
         assumeTrue(baseUrl != null && !baseUrl.isBlank() && jdbcUrl != null && !jdbcUrl.isBlank()
@@ -99,13 +100,15 @@ class LiveAiPostgresRecommendationTest {
                 context.register(AiAnalysisClientConfiguration.class);
                 context.refresh();
                 var catalog = realReviewCatalog
-                    ? Path.of("..", "..", "catalog-candidates",
-                        "obra-tdd-windows-claude-2.1.270-verified").toAbsolutePath().normalize()
+                    ? Path.of(System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_DIRECTORY",
+                        Path.of("..", "..", "catalog-candidates", "obra-tdd-windows-claude-2.1.270-verified")
+                            .toAbsolutePath().normalize().toString()))
                     : Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
                 var snapshots = new OwnerCheckedSnapshotReaderAdapter(jdbc);
                 var approved = new ServerConfiguredCatalogReader(catalog,
                     realReviewCatalog
-                        ? "9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90"
+                        ? System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_HASH",
+                            "9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90")
                         : "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f");
                 var service = new RecommendationCreationService(
                     snapshots,

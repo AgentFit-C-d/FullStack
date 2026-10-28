@@ -32,6 +32,8 @@ class SkillsShRealCatalogWorkflowTest {
         "obra-tdd-windows-claude-2.1.270-verified").toAbsolutePath().normalize();
     private static final Path CURRENT_CLIENT_CATALOG = Path.of("..", "..", "catalog-candidates",
         "obra-tdd-windows-claude-2.1.310-reviewed").toAbsolutePath().normalize();
+    private static final Path LOCAL_REAL_CATALOG = Path.of("..", "..", "catalog-candidates",
+        "obra-tdd-windows-claude-2.1.310-risk-reviewed").toAbsolutePath().normalize();
 
     @Test
     void locallyReviewedSkillTargetsCurrentClaudeCodeVersionOnly() {
@@ -158,11 +160,20 @@ class SkillsShRealCatalogWorkflowTest {
 
     @Test
     void verifiedSkillFlowsThroughPermissionPreviewApprovalAndZip() throws Exception {
-        var bundle = CatalogBundleLoader.load(CATALOG);
+        assertZipWorks(CATALOG, "2.1.270");
+    }
+
+    @Test
+    void currentLocalSkillFlowsThroughPermissionPreviewApprovalAndZip() throws Exception {
+        assertZipWorks(LOCAL_REAL_CATALOG, "2.1.310");
+    }
+
+    private void assertZipWorks(Path catalog, String clientVersion) throws Exception {
+        var bundle = CatalogBundleLoader.load(catalog);
         String hash = bundle.catalogHash();
         String release = bundle.releaseId();
         String tool = "obra-superpowers-test-driven-development";
-        var target = new EnvironmentTarget("WINDOWS", "claude-code", "2.1.270");
+        var target = new EnvironmentTarget("WINDOWS", "claude-code", clientVersion);
         var basis = new PreviewBasis("project-1", 1, "profile-1", 1, "event-1",
             0, 0, 1, release, hash);
         var stored = new StoredRecommendationState("rec-1", basis,
@@ -171,13 +182,13 @@ class SkillsShRealCatalogWorkflowTest {
             List.of(new PermissionSelection(tool, "edit-project-files", PermissionPolicy.ASK_EACH_TIME),
                 new PermissionSelection(tool, "run-project-tests", PermissionPolicy.ASK_EACH_TIME)),
             ExistingState.UNKNOWN, List.of(), "static-v1");
-        var result = CatalogPreviewAssembler.assemble(CATALOG, hash, stored, basis, target, request);
+        var result = CatalogPreviewAssembler.assemble(catalog, hash, stored, basis, target, request);
         var clock = Clock.fixed(Instant.parse("2026-10-25T10:00:00Z"), ZoneOffset.UTC);
         var preview = new StoredPreviewState("preview-1", basis, result.fingerprint(),
             Instant.now(clock).minusSeconds(60), Instant.now(clock).plusSeconds(600));
-        StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(CATALOG, hash,
+        StoredApprovalState approval = CatalogReadyPreviewApprovalWorkflow.issue(catalog, hash,
             preview, basis, "preview-1", result.fingerprint(), true, "approval-1", clock);
-        var generated = CatalogApprovedConfigurationWorkflow.generate(CATALOG, hash,
+        var generated = CatalogApprovedConfigurationWorkflow.generate(catalog, hash,
             stored, basis, target, request, preview, approval,
             "approval-1", "preview-1", result.fingerprint(), "generation-1", clock);
         Set<String> paths = new HashSet<>();

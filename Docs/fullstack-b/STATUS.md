@@ -1,5 +1,7 @@
 # Full Stack B current status
 
+**실물 Skill 로컬 기능 연결 (2026-10-28):** 사용자가 요청한 로컬 Compose에서 Windows/Claude Code `2.1.310` TDD Skill 1종을 고정 카탈로그로 실행했다. 현재 FullStack FastAPI의 9종 판정 → PostgreSQL 추천 저장 → 부분 충족 경고·Preview를 실제 Core/AI/DB 테스트로 확인했고, 같은 후보의 권한 선택 → 승인 → ZIP도 검증했다. 웹·Core·AI health는 HTTP 200이다. 실제 브라우저 로그인부터 ZIP 수신까지의 사용자 조작은 별도 확인이 필요하며 별도 `AgentFit_AI_v2` 교체도 아직 아니다. [로컬 검증 기록](integration/local-real-catalog-run-2026-10-28.md).
+
 **별도 AI 계약·실물 후보 보강 (2026-10-28):** B에 별도 AI 저장소의 Bearer `skills/needs` 요청·검색 응답을 검증하는 클라이언트를 추가했다. 근거 ID를 A/B 확정 입력 경로로 복원하며 검색 needs를 9종 Capability로 자동 판정하지 않는다. A 예산 lease와 AI Capability 계약이 없어 실제 추천 API에는 아직 연결하지 않았다. Claude Code `2.1.310` 실물 TDD Skill의 권한·위험도·단일 구성 근거를 별도 후보에 기록했고, 후보 검증 결과는 `INDEPENDENT_APPROVAL_REQUIRED`만 남는다. [AI 계약](integration/external-ai-contract-alignment-2026-10-27.md) · [Skill 근거](catalog/obra-tdd-2.1.310-evidence-2026-10-28.md).
 
 **부분 추천 지원 (2026-10-27):** 전체 충족 구성을 우선한 뒤, 없으면 현재 환경에서 검증된 단독/조합 후보 중 필수 기능을 가장 많이 충족하는 구성을 제안한다. `partial_required_coverage`를 저장·화면에 표시하고 Preview에서도 미충족 기능 경고를 유지한다. 실제 FastAPI needs와 격리 PostgreSQL을 통한 추천 저장·조회·Preview HTTP 검증에서 TDD Skill 1종은 테스트 작성만 충족하고 테스트 실행은 미충족으로 남았다. 팀 독립 승인 전이므로 운영 Catalog 완성으로 세지 않는다.

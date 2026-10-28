@@ -1,0 +1,11 @@
+# User-authorized local run with one pinned real Skill. Scope is Windows +
+# Claude Code 2.1.310; this file does not claim independent team approval.
+services:
+  core-api:
+    environment:
+      AGENTFIT_CATALOG_DIRECTORY: /opt/agentfit/catalog-local
+      AGENTFIT_CATALOG_APPROVED_HASH: e220a4a01e8865779c78464e722dbb24dff112c7e44475c284a54c4316661527
+      AGENTFIT_SKILLS_SH_SNAPSHOT_PATH: /opt/agentfit/discovery/skills-sh-candidates.json
+    volumes:
+      - ../catalog-candidates/obra-tdd-windows-claude-2.1.310-risk-reviewed:/opt/agentfit/catalog-local:ro
+      - ../catalog-candidates:/opt/agentfit/discovery:ro
