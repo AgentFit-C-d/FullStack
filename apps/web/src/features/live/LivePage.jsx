@@ -420,6 +420,18 @@ export default function LivePage() {
     await run(async () => setCandidates(await apiRequest('/api/tool-candidates')), '미검증 Skill 후보를 조회했습니다.')
   }
 
+  async function exportCandidate(item) {
+    await run(async () => {
+      const blob = await apiRequest('/api/tool-candidates/export', {
+        method: 'POST', body: { externalId: item.externalId, contentHash: item.contentHash }, download: true,
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url; anchor.download = `agentfit-${item.externalId.split('/').at(-1)}-candidate.zip`; anchor.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    }, '선택한 Skill의 원본 파일을 받았습니다. 출처·권한·호환 조건을 확인한 뒤 적용해 주세요.')
+  }
+
   async function readHistory() {
     await run(async () => {
       const result = await apiRequest(`${projectPath(projectId)}/configuration-history`)
@@ -503,9 +515,9 @@ export default function LivePage() {
             <form onSubmit={deleteProject} className={styles.row}><input aria-label="삭제 확인용 프로젝트 이름" placeholder="삭제하려면 현재 이름 입력" value={projectDeleteName} onChange={event => setProjectDeleteName(event.target.value)} /><button disabled={busy || projectDeleteName !== detail.project.name}>프로젝트 삭제</button></form>
           </> : <p>프로젝트를 선택해 주세요.</p>}</section>
         </div>
-        <section className={styles.card}><h2>승인 카탈로그와 Skill 후보</h2><p>승인 카탈로그만 추천과 설정 생성에 사용합니다. skills.sh에서 수집한 후보는 미검증 상태로 별도 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>승인 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
+        <section className={styles.card}><h2>카탈로그와 Skill 후보</h2><p>카탈로그 도구는 추천 조합에 사용합니다. skills.sh 후보는 직접 선택해 파일을 받을 수 있으며, 호환·조합 판정이 없는 후보는 별도로 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>추천 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
           {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개{catalogTarget && ` · ${catalogTarget}`}</p><ul>{(catalog.items || []).map(item => <li key={item.key}><strong>{item.name}</strong> ({item.key}) · {item.kind}<details><summary>지원·기능 근거</summary><p>제공 기능: {(item.capabilityKeys || []).join(', ') || '없음'}</p>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">원본 링크</a>}<ul>{(item.support || []).map(support => <li key={support.key}>{support.osFamily} / {support.clientId} / {support.clientVersion} · {support.verified ? '검증 기록 있음' : '미검증'}</li>)}</ul></details></li>)}</ul>{catalog.items?.length === 0 && <p>해당 환경에 승인된 도구가 없습니다.</p>}</div>}
-          {candidates && <div><p>{candidates.source} · {candidates.verificationStatus} · 후보 {candidates.candidates?.length || 0}개</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · 미검증, 추천 제외</li>)}</ul></div>}
+          {candidates && <div><p>{candidates.source} · 후보 {candidates.candidates?.length || 0}개 · 환경·조합 미확인</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · <button type="button" disabled={busy} onClick={() => exportCandidate(item)}>선택해 ZIP 받기</button></li>)}</ul></div>}
         </section>
         {detail && <>
           <section className={styles.card} id="planning-input"><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>

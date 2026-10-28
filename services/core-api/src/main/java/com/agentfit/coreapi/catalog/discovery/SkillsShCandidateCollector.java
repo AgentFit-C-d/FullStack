@@ -171,7 +171,7 @@ public final class SkillsShCandidateCollector {
         for (JsonNode file : files) {
             String path = required(file, "path");
             String body = required(file, "contents");
-            if (!safeMarkdownPath(path) || !foldedPaths.add(path.toLowerCase(Locale.ROOT))) {
+            if (!safeTextPath(path) || !foldedPaths.add(path.toLowerCase(Locale.ROOT))) {
                 throw new DiscoveryException("unsafe skills.sh file path");
             }
             int bytes = body.getBytes(StandardCharsets.UTF_8).length;
@@ -187,10 +187,11 @@ public final class SkillsShCandidateCollector {
         return new SkillPackage(hash, Map.copyOf(contents));
     }
 
-    private static boolean safeMarkdownPath(String path) {
+    private static boolean safeTextPath(String path) {
         if (path.length() > 200 || !path.matches("[A-Za-z0-9._/-]+")
             || path.startsWith("/") || path.endsWith("/") || path.contains("//")
-            || !path.endsWith(".md")) return false;
+            || !Set.of("md", "sh", "py", "js", "json", "yaml", "yml", "txt", "toml")
+                .contains(path.substring(path.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT))) return false;
         for (String part : path.split("/")) {
             if (part.equals(".") || part.equals("..")) return false;
         }

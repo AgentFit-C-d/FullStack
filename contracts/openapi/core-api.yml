@@ -549,7 +549,7 @@ paths:
   /api/tool-candidates:
     get:
       summary: Read staged skills.sh research candidates
-      description: Candidates are unverified and are never used by recommendation or configuration generation.
+      description: Candidates can be selected for a separate source ZIP export. They are not yet included in AgentFit's compatibility recommendation decision.
       operationId: getSkillCandidates
       security:
         - agentFitSession: []
@@ -579,6 +579,36 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "503":
           description: Candidate snapshot is absent or invalid
+  /api/tool-candidates/export:
+    post:
+      summary: Export a user-selected skills.sh candidate as a ZIP
+      description: Fetches the exact pinned content hash and includes a source notice. This does not assert OS, Client version, or combination compatibility.
+      operationId: exportSkillCandidate
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalId, contentHash]
+              properties:
+                externalId: { type: string }
+                contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+      responses:
+        "200":
+          description: ZIP containing the selected Skill files and an unverified source notice
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "400": { description: Unknown or invalid candidate selection }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { description: The selected Skill changed since it was listed }
+        "502": { description: skills.sh could not provide the pinned Skill files }
+        "503": { description: Candidate snapshot is absent }
 components:
   securitySchemes:
     agentFitSession:

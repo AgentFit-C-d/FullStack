@@ -2,16 +2,16 @@
 
 ## 목적과 현재 범위
 
-skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 실험적 공개 경로에서 Skill을 검색하고 상세 응답의 해시를 확인하여 **검토 후보**로 저장한다. 후보는 검증된 Catalog 릴리스가 아니다. 현재 추천·Preview는 승인된 Catalog 파일만 읽는다. MCP 디렉터리 연동은 보류한다.
+skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 실험적 공개 경로에서 Skill을 검색하고 상세 응답의 해시를 확인하여 **후보**로 저장한다. 현재 추천·Preview 엔진은 별도 Catalog 파일을 읽으며, 후보는 사용자 선택 ZIP 경로에 연결됐다. 다음 연결 단계는 후보의 기능·환경·조합 정보를 채워 내부 추천 판정에 넣는 것이다. skills.sh의 보안 감사는 참고 자료이며 Claude Code 버전·OS·도구 조합 적합성을 대신하지 않는다. MCP 디렉터리 연동은 보류한다.
 
 ## 처리 흐름
 
 1. `SkillsShCandidateCollector.production(tokenSupplier)`가 토큰을 사용해 검색 API와 각 Skill 상세 API를 호출한다. 쿼리 길이, 결과 수(최대 20), 응답 크기(2 MiB), 연결·요청 시간을 제한한다. 중복 표시 항목을 건너뛰고 검색 ID·source·URL과 상세 ID·source가 일치하는지 확인한 뒤 SHA-256 해시를 받는다.
 2. `SkillsShCandidateRefresh.refresh(query, limit, snapshotPath)`가 수집 성공 후에만 별도의 JSON 스냅샷을 갱신한다. 새 후보 또는 이름·URL·해시가 바뀐 후보를 반환한다. 검색 결과에 다시 나타나지 않은 후보는 삭제하지 않는다.
 3. API의 인증·제한·장애 응답 또는 잘못된 JSON은 오류로 처리한다. 기존 스냅샷을 빈 목록으로 덮어쓰지 않는다. 스냅샷도 엄격하게 검증하고 임시 파일에서 원자적으로 교체한다.
-4. 담당자가 후보의 출처, 실제 파일, Claude Code 버전/OS 지원, 의존성·충돌, 권한, 조합과 설정 방법을 따로 검증한다. 검증 후 별도 Catalog 릴리스를 작성·승인해야 추천에 들어간다. 외부 API 데이터만으로 자동 설치하거나 추천하지 않는다.
+4. 후보의 출처와 파일을 고정하고 필요한 기능·Claude Code 버전/OS·의존성·충돌·권한·설정 방법을 내부 Catalog 정보로 보강한다. 현재 추천 엔진은 이 정보가 들어 있는 별도 Catalog 릴리스만 판정한다. 사용자 선택 ZIP은 이 과정과 독립적으로 동작하며 자동 설치하지 않는다.
 
-`SkillsShCandidateCollector.download(candidate)`는 검토자가 고른 **고정 해시 후보**의 실제 Markdown 파일을 다시 받는다. 검색 당시 해시와 다르면 거부하고, `SKILL.md` 필수·경로 탐색 금지·중복 경로 금지·파일 수/크기 제한을 적용한다. 반환한 파일은 여전히 조사 자료이며 서버 카탈로그 설정이나 사용자의 환경에 자동 설치하지 않는다.
+`SkillsShCandidateCollector.download(candidate)`는 고정 해시 후보의 실제 텍스트 파일을 다시 받는다. 검색 당시 해시와 다르면 거부하고, `SKILL.md` 필수·경로 탐색 금지·중복 경로 금지·파일 수/크기 제한을 적용한다. Markdown과 정해진 텍스트/스크립트 확장자만 ZIP에 보존하며 서버에서 실행하지 않는다. 로그인 사용자는 `POST /api/tool-candidates/export`에 후보 ID와 해시를 보내 선택한 Skill을 ZIP으로 받을 수 있다. ZIP에는 `.claude/skills/<slug>/` 파일과 출처·해시·호환성 미확인 고지가 들어간다. 이는 사용자의 명시적 선택이며 서버 카탈로그 설정이나 사용자의 환경에 자동 설치하지 않는다.
 
 `SkillsShCandidateDownloadCommand`는 스냅샷에 있는 ID의 고정 파일을 **새 검토 디렉터리**로 원자적으로 저장한다. 대상 폴더가 이미 있거나 상세 응답의 해시가 바뀌면 덮어쓰지 않는다. Java 21 이상에서 Core를 컴파일하고 의존성 클래스패스를 준비한 뒤 `services/core-api`에서 다음처럼 실행한다.
 

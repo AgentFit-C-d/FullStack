@@ -77,6 +77,18 @@ class SkillsShCandidateCollectorTest {
     }
 
     @Test
+    void preservesBoundedShellScriptFromSkillPackageWithoutRunningIt() {
+        detailBody = "{\"id\":\"owner/repo/example\",\"source\":\"owner/repo\","
+            + "\"hash\":\"" + HASH + "\",\"files\":["
+            + "{\"path\":\"SKILL.md\",\"contents\":\"# Example\"},"
+            + "{\"path\":\"scripts/check.sh\",\"contents\":\"echo hello\"}]}";
+        var candidate = new SkillCandidate("owner/repo/example", "Example", "owner/repo",
+            "https://skills.sh/owner/repo/example", HASH,
+            Instant.parse("2026-10-09T00:00:00Z"));
+        assertEquals("echo hello", collector("token").download(candidate).files().get("scripts/check.sh"));
+    }
+
+    @Test
     void downloadRejectsChangedHashTraversalAndMissingSkill() {
         var candidate = new SkillCandidate("owner/repo/example", "Example", "owner/repo",
             "https://skills.sh/owner/repo/example", HASH,
