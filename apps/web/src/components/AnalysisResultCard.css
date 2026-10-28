@@ -1,0 +1,25 @@
+.analysis-details { display: grid; gap: 18px; }
+.analysis-details h3 { font-size: 14px; margin: 16px 0 8px; }
+.candidate-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.candidate-chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #40516b; border-radius: 999px; background: #121a25; font-size: 12px; }
+.candidate-chip.unknown, .candidate-chip.unresolved { border-color: #755b36; }
+.candidate-chip small { color: #78ddb6; font-size: 10px; }
+.candidate-chip.unknown small, .candidate-chip.unresolved small { color: #f2c66d; }
+.candidate-chip.user-confirmed { border-color: #4b9b79; background: #153127; }
+.candidate-chip button { border: 0; border-radius: 999px; padding: 3px 7px; background: #536fae; color: #fff; font-size: 10px; cursor: pointer; }
+.candidate-chip .chip-remove { padding: 0 4px; background: transparent; color: #a9b5c7; font-size: 16px; line-height: 1; }
+.more-button { align-self: flex-start; margin-top: 10px; padding: 0; border: 0; background: transparent; color: #8da7ff; font-size: 12px; cursor: pointer; }
+.manual-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.manual-input-row input { min-width: 0; flex: 1; border: 1px solid #40516b; border-radius: 8px; padding: 8px 10px; background: #101722; color: #eef3fa; }
+.empty-field { color: #aebbd0; font-size: 12px; }
+.evidence-panel { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid #293b53; border-radius: 12px; background: #111923; }
+.evidence-item { display: grid; gap: 4px; font-size: 12px; }
+.evidence-item small { color: #8e9daf; }
+.evidence-item p { margin: 0; color: #d2dae7; line-height: 1.5; }
+.result-meta { font-size: 11px !important; color: #7f8da0 !important; }
+.result-loading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.result-loading p { margin: 0; }
+.secondary { border: 1px solid #50617d; background: #202b3a; color: #eef3fa; border-radius: 9px; padding: 8px 11px; cursor: pointer; }
+.review-notice { color: #f2c66d !important; font-size: 12px !important; }
+.review-actions { display: flex; align-items: center; gap: 10px; }
+.review-actions > span { color: #78ddb6; font-size: 12px; }

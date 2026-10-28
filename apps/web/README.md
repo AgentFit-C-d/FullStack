@@ -1,5 +1,17 @@
 # AgentFit Frontend
 
+## PR #11 병합 후 진입점과 실행
+
+- `/` 및 `/app/live`: 기존 JavaScript 서비스 화면(분석·추천·설정 흐름).
+- `/analysis.html`: develop에서 가져온 TypeScript 분석 결과 검토 화면. A의 컴포넌트와 테스트를 보존한 별도 진입점이다.
+- `npm run dev`: `vite.config.ts`를 사용하며 `/api`를 `VITE_CORE_API_URL`(기본 `http://localhost:8080`)로 프록시한다.
+- `npm test` 또는 `npm test -- --run`: 기존 Node 테스트와 A의 Vitest 테스트를 모두 실행한다.
+- `npm run build`: TypeScript 검사 후 두 HTML 진입점을 함께 빌드한다.
+- 루트 `docker-compose.yml`은 Dockerfile의 `dev` 단계를 사용해 5173 포트로 실행한다.
+- `infra/compose.web-demo.yaml`은 기본 Nginx 최종 단계를 사용해 빌드된 두 화면을 제공한다.
+
+두 화면의 사용자 흐름을 하나로 합치는 작업은 별도이다. 아래 원본 인계 설명의 과거 시연 범위와 현재 실제 API 연결 범위를 구분한다.
+
 FullStack 통합본에서는 최신 Frontend `main` (`0c39dad`)을 가져와
 `/login` GitHub 로그인, `/app` 서버 프로젝트 목록, `/app/projects/new` 서버 저장을 연결했다.
 프로젝트를 연 뒤 `/app/live`에서 실제 분석·확정·추천·설정 다운로드 흐름을 사용할 수 있다.
@@ -27,7 +39,7 @@ npm run preview
 
 초기 검증 환경은 Node.js 26.8.2, npm 11.19.1입니다. Vite 및 설치된 개발 도구의
 Node.js 요구사항을 충족하는 버전을 사용하고, 팀의 LTS 버전은 추후 통일합니다.
-`npm test`는 Node.js 내장 테스트 러너를 사용하며 추가 테스트 의존성은 없습니다.
+`npm run test:service`는 Node.js 테스트 러너, `npm run test:analysis`는 Vitest를 사용합니다.
 
 ## 시연 모드
 

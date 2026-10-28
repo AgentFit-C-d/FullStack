@@ -35,6 +35,16 @@ class JdbcAnalysisAttemptRepository implements AnalysisAttemptRepository {
     }
 
     @Override
+    public Optional<AnalysisAttempt> findById(String id) {
+        return jdbc.query("SELECT " + COLUMNS + " FROM analysis_attempt WHERE id = ?", (rs, row) -> map(rs), UUID.fromString(id)).stream().findFirst();
+    }
+
+    @Override
+    public List<AnalysisAttempt> findProcessingAttempts() {
+        return jdbc.query("SELECT " + COLUMNS + " FROM analysis_attempt WHERE status = 'PROCESSING' ORDER BY started_at", (rs, row) -> map(rs));
+    }
+
+    @Override
     public void complete(String requestId, String status, Instant finishedAt) {
         jdbc.update("UPDATE analysis_attempt SET status = ?, finished_at = ? WHERE request_id = ? AND status = 'PROCESSING'", status, Timestamp.from(finishedAt), requestId);
     }

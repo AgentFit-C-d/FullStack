@@ -3,6 +3,7 @@ package com.agentfit.coreapi.domain.project;
 import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
 import com.agentfit.coreapi.domain.auth.service.SessionPrincipalResolver;
 import com.agentfit.coreapi.domain.project.entity.Project;
+import com.agentfit.coreapi.domain.project.dto.response.PlanningInputMetadataResponse;
 import com.agentfit.coreapi.domain.project.service.ProjectService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -56,5 +57,20 @@ class ProjectMultipartWebMvcTest {
         mockMvc.perform(multipart("/api/projects").part(metadata).header("Idempotency-Key", "k-2"))
             .andExpect(status().isUnauthorized());
         verifyNoInteractions(projectService);
+    }
+
+    @Test void planningInputBindsSimpleFormFieldsAsRequestParams() throws Exception {
+        var principal = new AuthenticatedPrincipal(7, "Alice", null);
+        when(principalResolver.resolve(any(HttpServletRequest.class))).thenReturn(Optional.of(principal));
+        when(projectService.replaceInput(any(), eq("p1"), eq(3L), any(), isNull()))
+                .thenReturn(new PlanningInputMetadataResponse(4, "MARKDOWN", "plan.md", "text/markdown", 6L, 6, null));
+
+        mockMvc.perform(multipart("/api/projects/p1/planning-input")
+                        .file(new MockMultipartFile("file", "plan.md", "text/markdown", "# plan".getBytes()))
+                        .param("expectedVersion", "3")
+                        .with(request -> { request.setMethod("PUT"); return request; }))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(4));
+        verify(projectService).replaceInput(any(), eq("p1"), eq(3L), any(), isNull());
     }
 }
