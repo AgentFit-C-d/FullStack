@@ -17,6 +17,7 @@
 - 프론트엔드: 테스트 100건, lint, Vite build 성공.
 - 실제 skills.sh 공개 검색·다운로드 응답을 확인했다. 로그인된 `/app/live` 화면에서 실시간 후보 검색과 선택한 후보의 ZIP 다운로드를 실행했다.
 - 로컬 Docker Compose의 Core API·AI·웹·PostgreSQL 컨테이너가 기동한 상태에서 화면을 확인했다.
+- 최신 Core API 컨테이너 재기동 시 Flyway 9개 마이그레이션과 Tomcat 시작은 성공했다. 다만 A 소유 `FailureDiagnosticService.purgeExpired` 스케줄 작업은 PostgreSQL에 `Instant` 인자를 바인딩할 때 SQL 타입을 추론하지 못해 예외를 기록한다. 이 작업에서는 A 코드를 수정하지 않았다. 분석 실패 진단의 만료 삭제가 동작한다고 볼 수 없다.
 
 ## 계약과 운영 한계
 
