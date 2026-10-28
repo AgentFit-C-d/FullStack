@@ -11,3 +11,5 @@
 [`obra-tdd-windows-claude-2.1.270`](obra-tdd-windows-claude-2.1.270/)은 skills.sh에서 받은 실제 `test-driven-development` Skill의 고정 해시를 포함한 **미승인 후보**다. Claude Code 형식 검사와 Catalog 스키마·출력 검사는 통과했지만 실제 Skill 호출은 CLI 인증 만료로 확인하지 못했다. `standalone=NOT_RUN`이므로 추천에 사용하지 않는다. [조사 기록](../Docs/fullstack-b/catalog/obra-tdd-skill-pilot-2026-10-25.md)에 근거와 남은 확인을 적었다.
 
 [`obra-tdd-windows-claude-2.1.270-verified`](obra-tdd-windows-claude-2.1.270-verified/)는 로그인 갱신 후 Claude Code 2.1.270에서 Skill 호출과 보조 파일 읽기까지 확인한 **검토 대기 후보**다. 후보 해시는 `9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90`이며 `CANDIDATE_SCHEMA_VALID`, `RELEASE_NOT_READY reasons=INDEPENDENT_APPROVAL_REQUIRED`를 확인했다. 이 해시를 서버 승인 값으로 자동 등록하지 않는다.
+
+[`obra-tdd-windows-claude-2.1.310-risk-reviewed`](obra-tdd-windows-claude-2.1.310-risk-reviewed/)는 현재 로컬 Claude Code `2.1.310`에 한정한 별도 후보에 권한·위험도·외부 인증 근거를 기록한 **독립 승인 대기 후보**다. 해시는 `e220a4a01e8865779c78464e722dbb24dff112c7e44475c284a54c4316661527`이며 검증기의 유일한 남은 사유는 `INDEPENDENT_APPROVAL_REQUIRED`다. [근거와 범위](../Docs/fullstack-b/catalog/obra-tdd-2.1.310-evidence-2026-10-28.md)를 참조한다.
