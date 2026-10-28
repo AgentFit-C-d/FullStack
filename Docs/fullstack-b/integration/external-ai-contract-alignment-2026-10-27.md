@@ -1,5 +1,7 @@
 # 별도 AI 저장소와 Core·B 계약 정렬 — 2026-10-27
 
+> 2026-10-28 B 보강: 별도 AI의 Bearer + `deadline` + 예산 lease를 사용하는 검색용 `needs` 클라이언트를 별도 구현했다. `field:index` 근거를 A/B 원본 경로로 되돌려 검증한다. 이는 후보 탐색 계약의 수용이며, 9종 Capability 판정이나 A 분석 Worker 연결을 완료했다는 뜻은 아니다. [구현 계획](external-ai-needs-client-plan-2026-10-28.md)을 참조한다.
+
 ## 비교 기준과 현재 결론
 
 - FullStack `feat/fullstack-b-finalization`의 `59c03e0`와 별도 `D:/capstone/AgentFit_AI_v2`의 `2164a43`을 비교했다.
