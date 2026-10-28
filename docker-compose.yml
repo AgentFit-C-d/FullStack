@@ -21,12 +21,12 @@ services:
     env_file:
       - path: ./.env
         required: true
-      - path: ./.env.docker
-        required: false
     environment:
       API_INTERNAL_URL: http://core:8080
       AI_INTERNAL_ALLOWED_HTTP_HOSTS: core
       AI_SERVICE_TOKEN: ${AGENTFIT_AI_SERVICE_TOKEN:?Set AGENTFIT_AI_SERVICE_TOKEN in .env}
+      AGENTFIT_HMAC_CURRENT_KEY_ID: ${AGENTFIT_HMAC_CURRENT_KEY_ID:?Set AGENTFIT_HMAC_CURRENT_KEY_ID in .env}
+      AGENTFIT_HMAC_CURRENT_SECRET: ${AGENTFIT_HMAC_CURRENT_SECRET:?Set AGENTFIT_HMAC_CURRENT_SECRET in .env}
     ports:
       - "8001:8001"
 
@@ -40,6 +40,7 @@ services:
       AGENTFIT_DB_URL: jdbc:postgresql://db:5432/agentfit
       AGENTFIT_AI_SERVICE_URL: http://ai:8001/internal/v1/analysis
       AGENTFIT_WEB_ORIGIN: http://localhost:5173
+      AGENTFIT_GITHUB_REDIRECT_URI: ${AGENTFIT_GITHUB_REDIRECT_URI:-http://localhost:8080/api/login/oauth2/code/github}
       AGENTFIT_COOKIE_SECURE: "false"
     depends_on:
       db:
