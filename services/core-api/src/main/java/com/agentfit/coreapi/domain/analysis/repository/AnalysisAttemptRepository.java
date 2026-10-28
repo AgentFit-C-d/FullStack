@@ -2,10 +2,13 @@ package com.agentfit.coreapi.domain.analysis.repository;
 
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttempt;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface AnalysisAttemptRepository {
     default AnalysisAttempt start(AnalysisAttempt attempt) { return attempt; }
+    default Optional<AnalysisAttempt> findById(long id) { return Optional.empty(); }
+    default List<AnalysisAttempt> findProcessingAttempts() { return List.of(); }
     default Optional<AnalysisAttempt> findByRequestId(String requestId) { return Optional.empty(); }
     default void complete(String requestId, String state, Instant completedAt) { }
     default Optional<AnalysisAttempt> findProcessingByProjectId(String projectId) { return Optional.empty(); }

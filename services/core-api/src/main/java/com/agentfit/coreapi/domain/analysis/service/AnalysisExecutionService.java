@@ -9,13 +9,17 @@ import com.agentfit.coreapi.domain.project.service.*;
 import java.util.Map;
 import java.time.Instant;
 import java.util.function.Consumer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttempt;
 import com.agentfit.coreapi.domain.analysis.repository.AnalysisAttemptRepository;
+@Service
 public class AnalysisExecutionService {
     private final AiAnalysisClient client;
     private final ResultPersistenceGuard persistenceGuard;
     private final AnalysisAttemptRepository attemptRepository;
 
+    @Autowired
     public AnalysisExecutionService(AiAnalysisClient client) {
         this(client, new ResultPersistenceGuard(value -> value), new AnalysisAttemptRepository() { });
     }

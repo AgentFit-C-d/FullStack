@@ -1,0 +1,17 @@
+{
+  "fields": {
+    "project_name": "Example Project",
+    "project_type": "웹 서비스",
+    "domain": "문서 분석",
+    "features": ["기획서 분석"],
+    "frontend": ["React"],
+    "backend": ["Spring Boot"],
+    "ai": ["Solar"],
+    "database": "PostgreSQL",
+    "deployment": null,
+    "external_integrations": []
+  },
+  "quotes": {
+    "backend": [{"page": 2, "quote": "백엔드는 Spring Boot로 구현한다."}]
+  }
+}

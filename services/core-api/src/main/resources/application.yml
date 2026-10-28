@@ -22,16 +22,24 @@ spring:
     timeout: 7d
     jdbc:
       initialize-schema: never
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
 
 server:
   port: 8080
 
 agentfit:
+  web-origin: ${AGENTFIT_WEB_ORIGIN:http://localhost:5173}
   analysis:
     timeout-seconds: ${AGENTFIT_ANALYSIS_TIMEOUT_SECONDS:600}
     cleanup-interval-seconds: ${AGENTFIT_ANALYSIS_CLEANUP_INTERVAL_SECONDS:10}
+    execution-interval-seconds: ${AGENTFIT_ANALYSIS_EXECUTION_INTERVAL_SECONDS:1}
   auth:
     cookie-secure: ${AGENTFIT_COOKIE_SECURE:true}
+  internal:
+    ai-service-token: ${AGENTFIT_AI_SERVICE_TOKEN:}
   hmac:
     current-key-id: ${AGENTFIT_HMAC_CURRENT_KEY_ID:}
     current-secret: ${AGENTFIT_HMAC_CURRENT_SECRET:}

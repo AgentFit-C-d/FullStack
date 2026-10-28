@@ -1,0 +1,10 @@
+{
+  "name": "agentfit-local-dev",
+  "private": true,
+  "scripts": {
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-all.ps1",
+    "dev:all:help": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-all.ps1 -Help",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  }
+}

@@ -10,9 +10,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Core-owned HTTP client. It never forwards browser cookies or user credentials. */
 public final class HttpAiAnalysisClient implements AiAnalysisClient {
+    private static final Logger log = LoggerFactory.getLogger(HttpAiAnalysisClient.class);
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final HmacRequestSigner signer;
@@ -36,6 +39,9 @@ public final class HttpAiAnalysisClient implements AiAnalysisClient {
             String timestamp = Long.toString(Instant.now().getEpochSecond());
             HmacRequestSigner.SignedRequest signature = signer.sign("POST", endpoint.getPath(), timestamp,
                 context.requestId(), context.generation(), context.contractVersion(), body);
+            log.info("AI request prepared path={} requestId={} generation={} contractVersion={} keyId={} timestamp={} bodySha256={}",
+                endpoint.getPath(), context.requestId(), context.generation(), context.contractVersion(),
+                signature.keyId(), signature.timestamp(), sha256(body));
             HttpRequest.Builder request = HttpRequest.newBuilder(endpoint)
                 .header("Content-Type", "application/json")
                 .header("X-AgentFit-Key-Id", signature.keyId())
@@ -47,6 +53,8 @@ public final class HttpAiAnalysisClient implements AiAnalysisClient {
                 throw new NotAcceptedException();
             }
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("AI request rejected status={} requestId={} responseBodySha256={}", response.statusCode(),
+                    context.requestId(), sha256(response.body().getBytes(StandardCharsets.UTF_8)));
                 throw new IllegalStateException("AI service request failed with status " + response.statusCode());
             }
             return objectMapper.readValue(response.body(), AnalysisResponse.class);
@@ -57,6 +65,15 @@ public final class HttpAiAnalysisClient implements AiAnalysisClient {
             throw new IllegalStateException("AI service request interrupted", ex);
         } catch (Exception ex) {
             throw new IllegalStateException("AI service request failed", ex);
+        }
+    }
+
+    private static String sha256(byte[] body) {
+        try {
+            return java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(body));
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable", ex);
         }
     }
 }

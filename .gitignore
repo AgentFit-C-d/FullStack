@@ -8,6 +8,7 @@ Thumbs.db
 # Java / Spring
 services/core-api/target/
 services/core-api/.gradle/
+.m2/
 *.class
 
 # Python / FastAPI
@@ -25,3 +26,15 @@ venv/
 
 # Logs
 *.log
+services/ai-service/evaluation/*.out
+services/ai-service/evaluation/*.err
+services/ai-service/evaluation/documents/
+services/ai-service/evaluation/pending/
+services/core-api/*.out
+services/core-api/*.err
+
+# Frontend generated files
+apps/web/node_modules/
+apps/web/dist/
+apps/web/tsconfig.tsbuildinfo
+.superpowers/
