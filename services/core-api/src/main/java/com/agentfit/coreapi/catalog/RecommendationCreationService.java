@@ -134,8 +134,19 @@ public final class RecommendationCreationService {
     }
 
     public Created create(String projectId, ExpectedVersions expectedVersions) {
+        return create(projectId, expectedVersions, Set.of());
+    }
+
+    public Created create(String projectId, ExpectedVersions expectedVersions,
+                          Set<String> userOptionalCapabilityKeys) {
         if (blank(projectId) || expectedVersions == null) {
             throw new IllegalArgumentException("project ID and expected versions required");
+        }
+        if (userOptionalCapabilityKeys == null || userOptionalCapabilityKeys.size() > 9
+            || userOptionalCapabilityKeys.stream().anyMatch(Objects::isNull)
+            || !com.agentfit.coreapi.recommendation.CapabilityKey.keys()
+                .containsAll(userOptionalCapabilityKeys)) {
+            throw new IllegalArgumentException("invalid optional Capability selection");
         }
         OwnerCheckedSnapshot snapshot = Objects.requireNonNull(snapshots.load(projectId));
         if (!projectId.equals(snapshot.projectId())) {
@@ -149,9 +160,20 @@ public final class RecommendationCreationService {
         ApprovedCatalog catalog = Objects.requireNonNull(catalogs.current());
         CapabilityAssessment assessment = Objects.requireNonNull(
             analyzer.analyze(new AiInput(snapshot.aiSourceValues())));
+        AiCapabilityIntake.validate(assessment.claims(), assessment.questions(),
+            snapshot.allowedSourceFields());
+        Set<String> allowedSourceFields = snapshot.allowedSourceFields();
+        if (!userOptionalCapabilityKeys.isEmpty()) {
+            var selected = UserOptionalCapabilitySelection.apply(assessment.claims(),
+                Set.copyOf(userOptionalCapabilityKeys));
+            var allowed = new java.util.HashSet<>(allowedSourceFields);
+            for (String key : userOptionalCapabilityKeys) allowed.add("user.optional." + key);
+            allowedSourceFields = Set.copyOf(allowed);
+            assessment = new CapabilityAssessment(selected, assessment.questions());
+        }
         var result = CatalogRecommendationWorkflow.evaluate(catalog.directory(), catalog.approvedHash(),
             new CatalogRecommendationWorkflow.Request(assessment.claims(), assessment.questions(),
-                snapshot.allowedSourceFields(), snapshot.hasRelevantPendingConflict(),
+                allowedSourceFields, snapshot.hasRelevantPendingConflict(),
                 snapshot.environment(), snapshot.installedToolVersions()));
         PreviewBasis basis = snapshot.basisFor(result);
         String recommendationId = store.saveIfUnchanged(snapshot, basis, result);

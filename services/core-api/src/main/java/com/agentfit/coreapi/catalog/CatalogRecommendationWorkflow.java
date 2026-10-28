@@ -4,6 +4,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationEngine;
 import com.agentfit.coreapi.recommendation.RecommendationInputAssembler;
+import com.agentfit.coreapi.recommendation.OptionalCatalogCandidateSelector;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -78,9 +79,35 @@ public final class CatalogRecommendationWorkflow {
             throw new CatalogBundleLoader.CatalogUnavailableException(
                 "all matching configurations exceed Preview budget");
         }
+        Set<String> requiredToolKeys = Set.copyOf(decision.toolKeys());
+        Set<String> optionalCapabilities = assessment.claims().stream()
+            .filter(claim -> claim.need() == AiCapabilityIntake.Need.OPTIONAL)
+            .map(AiCapabilityIntake.Claim::capabilityKey)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (decision.status() == RecommendationDecision.Status.RECOMMENDED
+            && !optionalCapabilities.isEmpty()) {
+            List<String> optionalTools = OptionalCatalogCandidateSelector.select(
+                catalog.release(), request.environment(), request.installedToolVersions(),
+                decision.toolKeys(), optionalCapabilities, keys -> {
+                    try {
+                        PreviewAssemblyLimits.validateGenerated(CatalogStaticTemplateRenderer.render(
+                            bundle, approvedCatalogHash, Set.copyOf(keys)));
+                        return true;
+                    } catch (PreviewAssemblyLimits.LimitExceededException exception) {
+                        return false;
+                    }
+                });
+            if (!optionalTools.isEmpty()) {
+                List<String> offered = new ArrayList<>(decision.toolKeys());
+                offered.addAll(optionalTools);
+                decision = new RecommendationDecision(decision.status(), offered,
+                    decision.questionCodes(), decision.reasonCodes());
+            }
+        }
         return new Result(catalog.release().releaseId(), catalog.catalogHash(),
             decision, assessment.claims(), assessment.questions(),
             CatalogRecommendationDetails.project(catalog, decision,
-                assessment.requiredCapabilityKeys(), request.environment()));
+                assessment.requiredCapabilityKeys(), optionalCapabilities,
+                requiredToolKeys, request.environment()));
     }
 }

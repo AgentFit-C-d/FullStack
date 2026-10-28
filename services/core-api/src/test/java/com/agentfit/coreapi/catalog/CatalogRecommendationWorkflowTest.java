@@ -42,9 +42,33 @@ class CatalogRecommendationWorkflowTest {
         assertEquals("https://example.org/example-tool", item.sourceUrl());
         assertEquals("support-1", item.supportKey());
         assertEquals(Set.of("cap_document_reference"), item.coveredRequiredCapabilities());
+        assertEquals("문서 참조 기능을 지원하며 현재 개발 환경에 맞는 카탈로그 지원 기록이 있습니다.", item.reason());
+        assertEquals(item.reason(), new com.fasterxml.jackson.databind.ObjectMapper()
+            .findAndRegisterModules().valueToTree(item).get("reason").asText());
         assertEquals("https://example.org/review", item.supportEvidence().sourceUrl());
         assertEquals(PermissionPolicy.ASK_EACH_TIME,
             item.permissionOptions().getFirst().defaultPolicy());
+    }
+
+    @Test
+    void unrelatedCapabilitiesDoNotTurnOneExplicitNeedIntoQuestions() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory);
+        var claims = CapabilityKey.keys().stream().map(key ->
+            new AiCapabilityIntake.Claim(key,
+                key.equals("cap_document_reference")
+                    ? AiCapabilityIntake.Need.REQUIRED : AiCapabilityIntake.Need.NOT_REQUESTED,
+                "Confirmed work signal",
+                key.equals("cap_document_reference")
+                    ? List.of("profile.item.features.0") : List.<String>of())).toList();
+        var input = new CatalogRecommendationWorkflow.Request(claims, List.of(),
+            Set.of("profile.item.features.0"), false,
+            new EnvironmentTarget("WINDOWS", "example-client", "1.0"), Map.of());
+
+        var outcome = CatalogRecommendationWorkflow.evaluate(directory, approvedHash, input);
+
+        assertEquals(RecommendationDecision.Status.RECOMMENDED, outcome.decision().status());
+        assertEquals(List.of("example-tool"), outcome.decision().toolKeys());
+        assertTrue(outcome.clarificationQuestions().isEmpty());
     }
 
     @Test
@@ -123,6 +147,59 @@ class CatalogRecommendationWorkflowTest {
         assertEquals(List.of("fallback-tool"), outcome.decision().toolKeys());
         assertEquals(List.of("fallback-tool"), outcome.items().stream()
             .map(CatalogRecommendationDetails.Item::toolKey).toList());
+    }
+
+    @Test
+    void offersReviewedOptionalBrowserOnlyWhenAiProvidesExplicitOptionalNeed() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithReviewedOptionalBrowser(directory);
+        var outcome = CatalogRecommendationWorkflow.evaluate(directory, hash, request());
+        assertEquals(List.of("example-tool", "fallback-tool"), outcome.decision().toolKeys());
+        assertTrue(outcome.items().get(0).required());
+        assertFalse(outcome.items().get(1).required());
+        assertEquals(Set.of("cap_browser_verification"),
+            outcome.items().get(1).coveredOptionalCapabilities());
+        assertTrue(outcome.items().get(1).reason().contains("선택 도구"));
+
+        var basis = new PreviewBasis("project-1", 1, "profile-1", 1, "event-1",
+            0, 0, 1, outcome.catalogReleaseId(), outcome.catalogHash());
+        var stored = new StoredRecommendationState("recommendation-1", basis,
+            outcome.decision().status(), outcome.decision().toolKeys());
+        var storedEvidence = outcome.items().stream().map(item ->
+            new PreviewCreationService.StoredItemEvidence(item.toolKey(), item.catalogVersion(),
+                item.supportKey(), item.required())).toList();
+        var baseRequest = new CatalogPreviewRequest(basis, "recommendation-1",
+            request().environment(), List.of("example-tool"),
+            List.of(new PermissionSelection("example-tool", "read",
+                PermissionPolicy.ASK_EACH_TIME)), ExistingState.UNKNOWN, List.of(), "static-v1");
+        var baseOnly = CatalogPreviewAssembler.assembleWithCoverage(directory, hash, stored, basis,
+            request().environment(), baseRequest, Map.of(), Set.of("cap_document_reference"),
+            storedEvidence);
+        assertEquals(List.of("config/main.txt"), baseOnly.preview().files().stream()
+            .map(file -> file.relativePath()).toList());
+        var optionalRequest = new CatalogPreviewRequest(basis, "recommendation-1",
+            request().environment(), List.of("example-tool", "fallback-tool"),
+            List.of(new PermissionSelection("example-tool", "read",
+                    PermissionPolicy.ASK_EACH_TIME),
+                new PermissionSelection("fallback-tool", "read",
+                    PermissionPolicy.ASK_EACH_TIME)), ExistingState.UNKNOWN, List.of(), "static-v1");
+        var withOptional = CatalogPreviewAssembler.assembleWithCoverage(directory, hash, stored, basis,
+            request().environment(), optionalRequest, Map.of(), Set.of("cap_document_reference"),
+            storedEvidence);
+        assertEquals(Set.of("config/main.txt", "config/fallback.txt"),
+            withOptional.preview().files().stream().map(file -> file.relativePath())
+                .collect(java.util.stream.Collectors.toSet()));
+        assertEquals(2, CatalogPreviewAssembler.prepareVerified(directory, hash, stored, basis,
+            request().environment(), optionalRequest, Map.of(), storedEvidence).generatedFiles().size());
+
+        var claimsWithoutOptionalBrowser = request().claims().stream().map(claim ->
+            claim.capabilityKey().equals("cap_browser_verification")
+                ? new AiCapabilityIntake.Claim(claim.capabilityKey(),
+                    AiCapabilityIntake.Need.NOT_REQUESTED, "No browser task", List.of())
+                : claim).toList();
+        var withoutOptional = CatalogRecommendationWorkflow.evaluate(directory, hash,
+            new CatalogRecommendationWorkflow.Request(claimsWithoutOptionalBrowser, List.of(),
+                request().allowedSourceFields(), false, request().environment(), Map.of()));
+        assertEquals(List.of("example-tool"), withoutOptional.decision().toolKeys());
     }
 
     @Test

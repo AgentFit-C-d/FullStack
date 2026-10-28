@@ -36,7 +36,7 @@ CREATE TABLE recommendation_capability (
         'cap_api_verification', 'cap_database_schema_inspection', 'cap_ai_evaluation'
     )),
     necessity VARCHAR(20) NOT NULL CHECK (necessity IN (
-        'REQUIRED', 'OPTIONAL', 'UNDETERMINED'
+        'REQUIRED', 'OPTIONAL', 'UNDETERMINED', 'NOT_REQUESTED'
     )),
     reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
     input_refs TEXT[] NOT NULL,
@@ -52,6 +52,14 @@ CREATE TABLE recommendation_item (
     required BOOLEAN NOT NULL,
     reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
     explanation_source VARCHAR(20) NOT NULL CHECK (explanation_source IN ('AI', 'TEMPLATE')),
+    risk_status VARCHAR(20) NOT NULL DEFAULT 'UNASSESSED',
+    risk_level VARCHAR(20), external_auth VARCHAR(20), risk_reason VARCHAR(500),
+    risk_evidence_url TEXT, risk_checked_at DATE,
+    CHECK ((risk_status = 'UNASSESSED' AND risk_level IS NULL AND external_auth IS NULL
+            AND risk_reason IS NULL AND risk_evidence_url IS NULL AND risk_checked_at IS NULL)
+        OR (risk_status = 'REVIEWED' AND risk_level IN ('LOW', 'MEDIUM', 'HIGH')
+            AND external_auth IN ('REQUIRED', 'NOT_REQUIRED') AND risk_reason IS NOT NULL
+            AND risk_evidence_url IS NOT NULL AND risk_checked_at IS NOT NULL)),
     UNIQUE (recommendation_id, tool_key),
     UNIQUE (id, recommendation_id)
 );

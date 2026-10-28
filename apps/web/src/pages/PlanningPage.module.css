@@ -1,0 +1,23 @@
+.help { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--accent-soft); color: #50657c; font-size: 12px; line-height: 1.7; margin: 0 0 18px; }
+.help b { color: var(--accent); }
+.panel { width: 100%; max-width: 960px; }
+.tabs { display: flex; gap: 7px; background: #eceff4; border-radius: 11px; padding: 5px; width: max-content; margin-bottom: 22px; }
+.tab { border: 0; border-radius: 9px; padding: 10px 14px; background: #eef1f5; color: var(--muted); font-size: 12px; font-weight: 700; }
+.tab.active { background: var(--surface); color: var(--accent); box-shadow: 0 1px 5px #24364a18; }
+.drop { width: 100%; min-height: 190px; border: 1px dashed #b9c7d7; border-radius: 14px; display: grid; place-items: center; text-align: center; padding: 22px; background: #fafcff; color: var(--ink); }
+.drop:hover, .dragging { border-color: var(--accent); background: var(--accent-soft); }
+.drop[aria-invalid='true'] { border-color: #c6534a; background: #fffafa; }
+.drop strong { display: block; margin: 8px 0; font-size: 12px; overflow-wrap: anywhere; }
+.uploadIcon { display: grid; place-items: center; width: 37px; height: 37px; margin: 0 auto 12px; border-radius: 11px; background: var(--accent-soft); font-size: 19px; color: var(--accent); }
+.dropDescription { display: block; margin: 4px 0; font-size: 10px; color: var(--muted); }
+.fileHint { color: var(--muted); font-size: 11px !important; }
+.error { margin: 0; color: #b84d43 !important; font-size: 11px !important; line-height: 1.5 !important; }
+.textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); padding: 13px 14px; font-size: 12px; resize: vertical; min-height: 210px; line-height: 1.7; }
+.textarea::placeholder { color: #a4aebb; }
+.textarea[aria-invalid='true'] { border-color: #c6534a; background: #fffafa; }
+.count { display: flex; justify-content: flex-end; font-size: 11px; color: var(--muted); margin-top: -4px; }
+.alert { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--accent-soft); border-radius: 12px; padding: 14px 16px; background: #edf3f9; color: #50657c; font-size: 12px; line-height: 1.7; margin: 16px 0 18px; }
+.notice { color: var(--accent); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.notice:not(:empty) { padding: 14px 16px; margin-top: 16px; background: var(--accent-soft); border-radius: 12px; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 23px; }
+@media (max-width: 700px) { .actions { flex-wrap: wrap; } .actions > * { flex: 1; } }

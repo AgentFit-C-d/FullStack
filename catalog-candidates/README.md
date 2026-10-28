@@ -7,3 +7,9 @@
 `tools/catalog_manifest.py`로 작성한 매니페스트의 hash는 `2bc5b6d0559d89733f0d2d3a18a0851af8150f51c4615e0205449479f33ec2f1`이다. `CatalogCandidateValidatorCommand`의 `CANDIDATE_SCHEMA_VALID`는 2026-10-10에 확인했다. 이 명령은 Client 실행 검증 또는 독립 승인을 수행하지 않는다. 후보 파일을 바꾸면 같은 릴리스 ID의 매니페스트를 덮어쓰지 말고 새 후보 디렉터리와 새 ID를 만든다.
 
 [`playwright-mcp-0.0.83-windows-claude-2.1.270-guide-draft`](playwright-mcp-0.0.83-windows-claude-2.1.270-guide-draft/)는 원본 후보를 복사해 정적 적용·확인·복구 **안내 초안**과 출력 인덱스를 추가한 별도 미승인 버전이다. 해시는 `cf0d61dc0a6c532ed41b7f94495142b8cf88cd8e8fe624f372a37e16ba958904`이며 Java 후보 검증기가 `CANDIDATE_SCHEMA_VALID`와 함께 `SUPPORT_NOT_RUN,PERMISSION_REVIEW_REQUIRED,INDEPENDENT_APPROVAL_REQUIRED`를 보고했다. 안내 초안은 설정 명령이나 검증 완료된 Client 템플릿이 아니며 제품 릴리스 경로로 배포하지 않는다.
+
+[`obra-tdd-windows-claude-2.1.270`](obra-tdd-windows-claude-2.1.270/)은 skills.sh에서 받은 실제 `test-driven-development` Skill의 고정 해시를 포함한 **미승인 후보**다. Claude Code 형식 검사와 Catalog 스키마·출력 검사는 통과했지만 실제 Skill 호출은 CLI 인증 만료로 확인하지 못했다. `standalone=NOT_RUN`이므로 추천에 사용하지 않는다. [조사 기록](../Docs/fullstack-b/catalog/obra-tdd-skill-pilot-2026-10-25.md)에 근거와 남은 확인을 적었다.
+
+[`obra-tdd-windows-claude-2.1.270-verified`](obra-tdd-windows-claude-2.1.270-verified/)는 로그인 갱신 후 Claude Code 2.1.270에서 Skill 호출과 보조 파일 읽기까지 확인한 **검토 대기 후보**다. 후보 해시는 `9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90`이며 `CANDIDATE_SCHEMA_VALID`, `RELEASE_NOT_READY reasons=INDEPENDENT_APPROVAL_REQUIRED`를 확인했다. 이 해시를 서버 승인 값으로 자동 등록하지 않는다.
+
+[`obra-tdd-windows-claude-2.1.310-risk-reviewed`](obra-tdd-windows-claude-2.1.310-risk-reviewed/)는 현재 로컬 Claude Code `2.1.310`에 한정한 별도 후보에 권한·위험도·외부 인증 근거를 기록한 **독립 승인 대기 후보**다. 해시는 `e220a4a01e8865779c78464e722dbb24dff112c7e44475c284a54c4316661527`이며 검증기의 유일한 남은 사유는 `INDEPENDENT_APPROVAL_REQUIRED`다. [근거와 범위](../Docs/fullstack-b/catalog/obra-tdd-2.1.310-evidence-2026-10-28.md)를 참조한다.

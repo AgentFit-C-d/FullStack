@@ -35,6 +35,10 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
                     "AI_RESPONSE_CONTEXT_MISMATCH", "invalid AI response context");
             }
             Map<?, ?> result = response.result();
+            if (result.containsKey("needs") && !result.containsKey("claims")) {
+                throw new AiServiceFailureException(AiServiceFailureException.Kind.CONTRACT,
+                    "AI_NEEDS_ONLY_RESPONSE", "AI returned search needs without Capability claims");
+            }
             List<AiCapabilityIntake.Claim> claims = mapper.convertValue(result.get("claims"), mapper.getTypeFactory().constructCollectionType(List.class, AiCapabilityIntake.Claim.class));
             List<AiCapabilityIntake.Question> questions = mapper.convertValue(result.get("questions"), mapper.getTypeFactory().constructCollectionType(List.class, AiCapabilityIntake.Question.class));
             var validated = AiCapabilityIntake.validate(claims, questions, input.aiSourceValues().keySet());
@@ -47,8 +51,12 @@ public final class AiCapabilityAnalyzerAdapter implements RecommendationCreation
         }
     }
 
-    private static List<Map<String, Object>> facts(Map<String, String> sourceValues) {
-        return sourceValues.entrySet().stream().map(entry -> Map.<String, Object>of(
+    static List<Map<String, Object>> facts(Map<String, String> sourceValues) {
+        return sourceValues.entrySet().stream()
+            .filter(entry -> entry.getKey().startsWith("profile.item.")
+                || entry.getKey().startsWith("developer.responsibility."))
+            .sorted(Map.Entry.comparingByKey())
+            .map(entry -> Map.<String, Object>of(
             "id", entry.getKey(),
             "field", fieldFor(entry.getKey()),
             "value", entry.getValue()))

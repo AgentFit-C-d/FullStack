@@ -41,6 +41,41 @@ class RecommendationLatestDetailsServiceTest {
         assertEquals("support-1", item.supportKey());
         assertEquals("read", item.permissionOptions().getFirst().mappingKey());
         assertEquals(draft.items(), latest.storedItems());
+        assertEquals(draft.items().getFirst().reason(), item.reason());
+    }
+
+    @Test
+    void restoresOptionalItemWithoutTurningItIntoRequiredAfterDatabaseRead() throws Exception {
+        String hash = SyntheticCatalogBundle.writeWithReviewedOptionalBrowser(directory);
+        var draft = storedRecommendation(hash);
+        assertEquals(List.of(true, false), draft.items().stream()
+            .map(JdbcRecommendationMetadataWriter.Item::required).toList());
+
+        var latest = service(draft.basis(), draft, () ->
+            new RecommendationCreationService.ApprovedCatalog(directory, hash))
+            .latest(draft.basis().projectId());
+
+        assertEquals(List.of(true, false), latest.catalogItems().stream()
+            .map(CatalogRecommendationDetails.Item::required).toList());
+        assertEquals(draft.items().get(1).reason(), latest.catalogItems().get(1).reason());
+    }
+
+    @Test
+    void retainsSavedRecommendationReasonWhenReadingCurrentResult() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var original = storedRecommendation(hash);
+        var item = original.items().getFirst();
+        var saved = new JdbcRecommendationMetadataWriter.Draft(original.id(), original.basis(),
+            original.status(), original.evidenceLevel(), original.createdAt(),
+            original.capabilities(), List.of(new JdbcRecommendationMetadataWriter.Item(
+                item.id(), item.toolKey(), item.toolVersion(), item.supportKey(), item.required(),
+                "저장 당시 확인한 추천 근거", item.explanationSource())), original.notices());
+
+        var latest = service(saved.basis(), saved, () ->
+            new RecommendationCreationService.ApprovedCatalog(directory, hash))
+            .latest(saved.basis().projectId());
+
+        assertEquals("저장 당시 확인한 추천 근거", latest.catalogItems().getFirst().reason());
     }
 
     @Test
@@ -55,6 +90,29 @@ class RecommendationLatestDetailsServiceTest {
             catalogReads.incrementAndGet();
             throw new AssertionError("stale result must not request current Catalog details");
         });
+
+        var latest = service.latest(draft.basis().projectId());
+
+        assertEquals(RecommendationReadModel.Validity.STALE, latest.summary().validity());
+        assertEquals(draft.items(), latest.storedItems());
+        assertTrue(latest.catalogItems().isEmpty());
+        assertEquals(0, catalogReads.get());
+    }
+
+    @Test
+    void unavailableCurrentCatalogLeavesSavedRecommendationReadableButStale() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var draft = storedRecommendation(hash);
+        var unavailableBasis = new PreviewBasis(draft.basis().projectId(),
+            draft.basis().projectVersion(), draft.basis().confirmedProfileId(),
+            draft.basis().confirmedProfileVersion(), draft.basis().confirmationEventId(),
+            draft.basis().reviewVersion(), draft.basis().developerVersion(),
+            draft.basis().environmentVersion(), "catalog-unavailable", "0".repeat(64));
+        AtomicInteger catalogReads = new AtomicInteger();
+        var service = new RecommendationLatestDetailsService(
+            projectId -> new RecommendationLatestDetailsService.Current(unavailableBasis, TARGET, false),
+            projectId -> draft,
+            () -> { catalogReads.incrementAndGet(); throw new AssertionError("unavailable Catalog must not load"); });
 
         var latest = service.latest(draft.basis().projectId());
 

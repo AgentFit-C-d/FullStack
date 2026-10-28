@@ -6,6 +6,18 @@
 
 릴리스 후보 디렉터리에 `capabilities.json`, `tools.json`, `support-matrix.json`, `relations.json`, `permissions.json`, `client-capabilities.json`을 넣는다. 필요한 정적 출력은 `templates/` 또는 `guides/` 아래에 둔다. 기존 `manifest.json`이 없는 디렉터리에서 실행한다.
 
+도구별 위험도와 외부 계정 인증 준비를 검토했다면 `tools.json` 항목에 `riskReview`를 기록한다. `level`은 `LOW`·`MEDIUM`·`HIGH`, `externalAuth`는 `REQUIRED`·`NOT_REQUIRED` 중 하나다. `reason`, HTTPS `evidenceUrl`, ISO 날짜 `checkedAt`까지 모두 있어야 한다. 이 필드가 없으면 API는 `UNASSESSED`를 반환하고 후보 검증 명령은 `RISK_REVIEW_REQUIRED`를 표시한다. `UNASSESSED`는 낮은 위험도나 인증 불필요라는 뜻이 아니다.
+
+```json
+"riskReview": {
+  "level": "MEDIUM",
+  "externalAuth": "REQUIRED",
+  "reason": "외부 계정 접근 승인과 네트워크 연결이 필요함",
+  "evidenceUrl": "https://example.org/review",
+  "checkedAt": "2026-10-26"
+}
+```
+
 ```powershell
 python tools/catalog_manifest.py <후보-디렉터리> <릴리스-ID>
 ```
@@ -21,7 +33,7 @@ mvn '-Dspring-boot.run.main-class=com.agentfit.coreapi.catalog.CatalogCandidateV
 
 이어 실제 Claude Code의 정확한 OS·버전에서 문서·파일 형식·단독 동작·조합·권한 결과를 기록하고, 별도 검토자가 **독립 승인 해시**를 서버 설정 또는 신뢰된 저장소에 제공해야 한다. 어느 도구가 출력한 해시도 자동 승인 값으로 사용하지 않는다. 현재 실제 릴리스와 독립 승인 값은 없다.
 
-후보 검증 명령은 `CANDIDATE_SCHEMA_VALID` 뒤에 `RELEASE_NOT_READY reasons=...`도 출력한다. `SUPPORT_MISSING`은 지원 행 자체가 없는 도구가 있음을, `SUPPORT_NOT_RUN`은 지원 행의 검사가 남았음을, `SUPPORT_FAILED`는 지원 검사 실패가 기록됐음을 뜻한다. `PERMISSION_REVIEW_REQUIRED`는 매핑이 없는 도구에 대해 실제로 설정할 권한이 없는지 검토해야 한다는 뜻이다. `OUTPUT_REVIEW_REQUIRED`는 정적 출력 인덱스가 없음을, `COMBINATION_REVIEW_REQUIRED`는 여러 도구가 있으나 검증된 조합이 전혀 없음을 알린다. 이는 검토 항목을 찾기 위한 보수적인 신호이며, 모든 도구에 권한 매핑이나 모든 도구 쌍의 조합이 필요하다는 판정은 아니다. 독립 승인 여부는 명령이 확인할 수 없으므로 항상 `INDEPENDENT_APPROVAL_REQUIRED`가 표시된다. 따라서 이 명령은 `RELEASE_READY`를 출력하지 않는다.
+후보 검증 명령은 `CANDIDATE_SCHEMA_VALID` 뒤에 `RELEASE_NOT_READY reasons=...`도 출력한다. `SUPPORT_MISSING`은 지원 행 자체가 없는 도구가 있음을, `SUPPORT_NOT_RUN`은 지원 행의 검사가 남았음을, `SUPPORT_FAILED`는 지원 검사 실패가 기록됐음을 뜻한다. `PERMISSION_REVIEW_REQUIRED`는 매핑이 없는 도구에 대해 실제로 설정할 권한이 없는지 검토해야 한다는 뜻이다. `RISK_REVIEW_REQUIRED`는 위험도·외부 인증 검토 기록이 없음을 뜻한다. `OUTPUT_REVIEW_REQUIRED`는 정적 출력 인덱스가 없음을, `COMBINATION_REVIEW_REQUIRED`는 여러 도구가 있으나 검증된 조합이 전혀 없음을 알린다. 이는 검토 항목을 찾기 위한 보수적인 신호이며, 모든 도구에 권한 매핑이나 모든 도구 쌍의 조합이 필요하다는 판정은 아니다. 독립 승인 여부는 명령이 확인할 수 없으므로 항상 `INDEPENDENT_APPROVAL_REQUIRED`가 표시된다. 따라서 이 명령은 `RELEASE_READY`를 출력하지 않는다.
 
 검토가 남은 도구마다 `TOOL_REVIEW_REQUIRED toolKey=... reasons=...`도 도구 키 순서로 출력한다. 지원 행 누락·미실행·실패, 권한 매핑 검토, 정적 출력 인덱스 누락을 도구별로 찾기 위한 안내다. 이 줄이 없는 도구도 정확한 Client 동작·조합·독립 승인이 완료됐다는 뜻은 아니다. 현재 Playwright MCP 후보는 세 지원 검사가 `NOT_RUN`이고 권한 매핑·출력 인덱스가 없어 해당 도구에 세 가지 검토 이유가 표시된다.
 

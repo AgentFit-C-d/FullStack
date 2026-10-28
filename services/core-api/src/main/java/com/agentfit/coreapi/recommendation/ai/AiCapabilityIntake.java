@@ -34,7 +34,7 @@ public final class AiCapabilityIntake {
 
     private AiCapabilityIntake() {}
 
-    public enum Need { REQUIRED, OPTIONAL, UNDETERMINED }
+    public enum Need { REQUIRED, OPTIONAL, UNDETERMINED, NOT_REQUESTED }
 
     public record Claim(String capabilityKey, Need need, String reason, List<String> sourceFields) {}
 
@@ -87,6 +87,9 @@ public final class AiCapabilityIntake {
             if ((claim.need() == Need.REQUIRED || claim.need() == Need.OPTIONAL) && fields.isEmpty()) {
                 throw invalid();
             }
+            if (claim.need() == Need.NOT_REQUESTED && !fields.isEmpty()) {
+                throw invalid();
+            }
             if (new HashSet<>(fields).size() != fields.size()
                 || fields.stream().anyMatch(field -> !allowed.contains(field))) {
                 throw invalid();
@@ -116,6 +119,9 @@ public final class AiCapabilityIntake {
     public static boolean isApprovedSourceField(String field) {
         if (blank(field)) return false;
         if (APPROVED_DIRECT_SOURCE_FIELDS.contains(field)) return true;
+        if (field.startsWith("user.optional.")) {
+            return CapabilityKey.keys().contains(field.substring("user.optional.".length()));
+        }
 
         if (field.startsWith("developer.responsibility.")) {
             try {

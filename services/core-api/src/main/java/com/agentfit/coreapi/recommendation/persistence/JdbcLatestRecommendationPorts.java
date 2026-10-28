@@ -21,6 +21,7 @@ public final class JdbcLatestRecommendationPorts implements
     private final ObjectProvider<RecommendationCreationService.ApprovedCatalogReader> catalogs;
     private final DataSource dataSource;
     private final JdbcLatestRecommendationReader stored = new JdbcLatestRecommendationReader();
+    private static final String UNAVAILABLE_CATALOG_HASH = "0".repeat(64);
 
     public JdbcLatestRecommendationPorts(
         RecommendationCreationService.OwnerCheckedSnapshotReader snapshots,
@@ -38,16 +39,29 @@ public final class JdbcLatestRecommendationPorts implements
         if (snapshot == null || !canonicalProjectId.equals(snapshot.projectId())) {
             throw new IllegalArgumentException("current recommendation project is missing");
         }
-        var approved = catalogs.getObject().current();
-        var catalog = CatalogSemanticParser.load(approved.directory());
-        if (!catalog.catalogHash().equals(approved.approvedHash())) {
-            throw new CatalogBundleLoader.CatalogUnavailableException("Catalog hash is not approved");
+        String releaseId = "catalog-unavailable";
+        String catalogHash = UNAVAILABLE_CATALOG_HASH;
+        boolean catalogAvailable = false;
+        try {
+            var reader = catalogs.getIfAvailable();
+            if (reader != null) {
+                var approved = reader.current();
+                var catalog = CatalogSemanticParser.load(approved.directory());
+                if (!catalog.catalogHash().equals(approved.approvedHash())) {
+                    throw new CatalogBundleLoader.CatalogUnavailableException("Catalog hash is not approved");
+                }
+                releaseId = catalog.release().releaseId();
+                catalogHash = approved.approvedHash();
+                catalogAvailable = true;
+            }
+        } catch (CatalogBundleLoader.CatalogUnavailableException unavailable) {
+            // Historical metadata remains readable. New Preview/approval still require a live Catalog.
         }
         return new RecommendationLatestDetailsService.Current(new PreviewBasis(
             snapshot.projectId(), snapshot.projectVersion(), snapshot.confirmedProfileId(),
             snapshot.confirmedProfileVersion(), snapshot.confirmationEventId(),
             snapshot.reviewVersion(), snapshot.developerVersion(), snapshot.environmentVersion(),
-            catalog.release().releaseId(), approved.approvedHash()), snapshot.environment());
+            releaseId, catalogHash), snapshot.environment(), catalogAvailable);
     }
 
     @Override

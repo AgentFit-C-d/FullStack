@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.configuration.persistence;
 
 import com.agentfit.coreapi.configuration.export.StoredApprovalState;
+import com.agentfit.coreapi.configuration.export.PreviewFreshnessGate;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.configuration.export.StoredPreviewState;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
@@ -153,12 +154,14 @@ public final class JdbcConfigurationContextReader {
         try {
             PreviewFingerprint.requireConsistentExistingState(existingState, files);
             var hashes = PreviewFingerprint.computeStoredMetadata(stored.preview().basis(),
-                recommendation.recommendationId(), selected, policies, generatorVersion, files);
+                recommendation.recommendationId(), selected, policies, generatorVersion,
+                existingState, files);
             if (!hashes.selectionDigest().equals(selectionDigest)
                 || !hashes.contentDigest().equals(contentDigest)
                 || !hashes.fingerprint().equals(fingerprint)
                 || !fingerprint.equals(stored.preview().fingerprint())) {
-                throw new IllegalStateException("stored Preview metadata changed after creation");
+                throw new PreviewFreshnessGate.StalePreviewException(
+                    "Preview metadata changed; create a new Preview");
             }
         } catch (IllegalArgumentException exception) {
             throw new IllegalStateException("stored Preview metadata is invalid", exception);

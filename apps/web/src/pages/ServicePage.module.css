@@ -1,0 +1,12 @@
+.shell { max-width: 1080px; min-height: 100vh; margin: auto; padding: 28px 24px 64px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+.actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; }
+.projects { display: grid; gap: 12px; }
+.projectHeading { display: flex; align-items: baseline; justify-content: space-between; }
+.projectHeading h2 { margin: 0; }
+.project { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.project > div { display: grid; gap: 7px; }
+.project strong { font-size: 18px; }
+.project span { color: var(--muted); font-size: 13px; }
+@media (max-width: 700px) { .shell { padding: 20px 18px 40px; } .header { flex-wrap: wrap; } }
+@media (max-width: 700px) { .project { align-items: stretch; flex-direction: column; } .actions { flex-wrap: wrap; } }

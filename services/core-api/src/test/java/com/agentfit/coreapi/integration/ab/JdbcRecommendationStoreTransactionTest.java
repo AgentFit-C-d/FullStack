@@ -11,6 +11,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.ai.AiCapabilityIntake;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,60 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 class JdbcRecommendationStoreTransactionTest {
+    @Test
+    void persistsOptionalToolAsSeparateUnselectedRecommendationItem() {
+        DataSource dataSource = new DriverManagerDataSource(
+            "jdbc:h2:mem:recommendation-optional;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        createSchema(jdbc);
+        UUID projectId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        jdbc.update("INSERT INTO \"USER\" (id, name) VALUES (?, ?)", ownerId, "owner");
+        jdbc.update("INSERT INTO project (id, user_id, version) VALUES (?, ?, ?)", projectId, ownerId, 4L);
+        var basis = new PreviewBasis(projectId.toString(), 4L, UUID.randomUUID().toString(), 2L,
+            UUID.randomUUID().toString(), 1L, 1L, 1L, "catalog-1", "a".repeat(64));
+        seedSnapshot(jdbc, projectId, basis);
+        var snapshot = new RecommendationCreationService.OwnerCheckedSnapshot(projectId.toString(), 4L,
+            basis.confirmedProfileId(), 2L, basis.confirmationEventId(), 1L, 1L, 1L,
+            Set.of("profile.projectName"), Map.of("profile.projectName", "demo"), false,
+            new EnvironmentTarget("WINDOWS", "client", "1"), Map.of());
+        var claims = CapabilityKey.keys().stream().map(key ->
+            new AiCapabilityIntake.Claim(key,
+                key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
+                    : key.equals("cap_browser_verification") ? AiCapabilityIntake.Need.OPTIONAL
+                        : AiCapabilityIntake.Need.NOT_REQUESTED,
+                "confirmed need", key.equals("cap_document_reference")
+                    || key.equals("cap_browser_verification")
+                    ? List.of("profile.projectName") : List.<String>of())).toList();
+        var evidence = new com.agentfit.coreapi.catalog.VerificationEvidence(
+            "https://example.org/support", java.time.LocalDate.of(2026, 10, 26));
+        var required = new CatalogRecommendationDetails.Item("base", "Base", null, null,
+            "1.0", "support-base", Set.of("cap_document_reference"), Set.of(), true,
+            evidence, List.of(), "필수 도구", new ToolRiskReview(
+                ToolRiskReview.Status.REVIEWED, ToolRiskReview.Level.MEDIUM,
+                ToolRiskReview.ExternalAuth.REQUIRED, "외부 계정 승인 필요", evidence));
+        var optional = new CatalogRecommendationDetails.Item("browser", "Browser", null, null,
+            "1.0", "support-browser", Set.of(), Set.of("cap_browser_verification"), false,
+            evidence, List.of(), "선택 도구");
+        var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
+            new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED,
+                List.of("base", "browser"), List.of(), List.of()),
+            claims, List.of(), List.of(required, optional));
+
+        String id = new JdbcRecommendationStoreAdapter(dataSource)
+            .saveIfUnchanged(snapshot, basis, result);
+
+        assertEquals(List.of(true, false), jdbc.queryForList(
+            "SELECT required FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key",
+            Boolean.class, UUID.fromString(id)));
+        assertEquals(List.of("REVIEWED", "UNASSESSED"), jdbc.queryForList(
+            "SELECT risk_status FROM recommendation_item WHERE recommendation_id = ? ORDER BY tool_key",
+            String.class, UUID.fromString(id)));
+        assertEquals("MEDIUM", jdbc.queryForObject(
+            "SELECT risk_level FROM recommendation_item WHERE recommendation_id = ? AND tool_key = 'base'",
+            String.class, UUID.fromString(id)));
+    }
+
     @Test
     void recommendationAndSuccessAuditCommitTogether() {
         DataSource dataSource = new DriverManagerDataSource(
@@ -37,15 +92,17 @@ class JdbcRecommendationStoreTransactionTest {
             UUID.randomUUID().toString(), 1L, 1L, 1L, "catalog-1", "a".repeat(64));
         var snapshot = new RecommendationCreationService.OwnerCheckedSnapshot(projectId.toString(), 4L,
             basis.confirmedProfileId(), 2L, basis.confirmationEventId(), 1L, 1L, 1L,
-            Set.of("profile.projectName"), Map.of("profile.projectName", "demo"), false,
+            Set.of("profile.projectName", "developer.role"),
+            Map.of("profile.projectName", "demo", "developer.role", "full-stack"), false,
             new EnvironmentTarget("WINDOWS", "client", "1"), Map.of());
         seedSnapshot(jdbc, projectId, basis);
         var claims = CapabilityKey.keys().stream().map(key ->
             new AiCapabilityIntake.Claim(key, AiCapabilityIntake.Need.REQUIRED, "reason",
                 List.of("profile.projectName"))).toList();
         var item = new CatalogRecommendationDetails.Item("tool-1", "Tool", null, null, "1.0",
-            "support-1", Set.of(), new com.agentfit.coreapi.catalog.VerificationEvidence(
-                "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)), List.of());
+            "support-1", Set.of(), Set.of(), true, new com.agentfit.coreapi.catalog.VerificationEvidence(
+                "https://example.org/support", java.time.LocalDate.of(2026, 10, 17)),
+            List.of(), "테스트 지원 근거");
         var result = new CatalogRecommendationWorkflow.Result("catalog-1", "a".repeat(64),
             new RecommendationDecision(RecommendationDecision.Status.RECOMMENDED, List.of("tool-1"), List.of(), List.of()),
             claims, List.of(), List.of(item));
@@ -61,11 +118,17 @@ class JdbcRecommendationStoreTransactionTest {
                 List.of(), List.of("undetermined_capability"), List.of()),
             CapabilityKey.keys().stream().map(key -> new AiCapabilityIntake.Claim(key,
                 AiCapabilityIntake.Need.UNDETERMINED, "insufficient facts", List.of())).toList(),
-            List.of(), List.of());
+            List.of(
+                new AiCapabilityIntake.Question("profile.projectName", "브라우저 검증 여부를 확인해 주세요."),
+                new AiCapabilityIntake.Question("developer.role", "API 검증 여부를 확인해 주세요.")),
+            List.of());
         String undecidedId = new JdbcRecommendationStoreAdapter(dataSource)
             .saveIfUnchanged(snapshot, basis, undecided);
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability'",
             Integer.class, UUID.fromString(undecidedId)));
+        assertEquals(List.of("developer.role", "profile.projectName"), jdbc.queryForList(
+            "SELECT answer_target FROM recommendation_notice WHERE recommendation_id = ? AND code = 'undetermined_capability' ORDER BY answer_target",
+            String.class, UUID.fromString(undecidedId)));
 
         jdbc.update("UPDATE environment_profile SET version = 2 WHERE project_id = ?", projectId);
         assertThrows(RecommendationCreationService.SnapshotChangedException.class,
@@ -96,7 +159,7 @@ class JdbcRecommendationStoreTransactionTest {
         jdbc.execute("CREATE TABLE profile_review (id UUID PRIMARY KEY, project_id UUID, target_profile_id UUID, target_profile_version BIGINT, review_version BIGINT)");
         jdbc.execute("CREATE TABLE recommendation (id UUID PRIMARY KEY, project_id UUID, confirmed_profile_id UUID, confirmed_profile_version BIGINT, confirmation_event_id UUID, project_version BIGINT, review_version BIGINT, developer_version BIGINT, environment_version BIGINT, catalog_release VARCHAR(100), catalog_hash CHAR(64), status VARCHAR(40), evidence_level VARCHAR(40), created_at TIMESTAMP)");
         jdbc.execute("CREATE TABLE recommendation_capability (recommendation_id UUID, capability_key VARCHAR(100), necessity VARCHAR(30), reason VARCHAR(200), input_refs VARCHAR ARRAY)");
-        jdbc.execute("CREATE TABLE recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID, tool_key VARCHAR(100), tool_version VARCHAR(100), support_key VARCHAR(100), required BOOLEAN, reason VARCHAR(200), explanation_source VARCHAR(30))");
+        jdbc.execute("CREATE TABLE recommendation_item (id UUID PRIMARY KEY, recommendation_id UUID, tool_key VARCHAR(100), tool_version VARCHAR(100), support_key VARCHAR(100), required BOOLEAN, reason VARCHAR(200), explanation_source VARCHAR(30), risk_status VARCHAR(20), risk_level VARCHAR(20), external_auth VARCHAR(20), risk_reason VARCHAR(500), risk_evidence_url VARCHAR(2000), risk_checked_at DATE)");
         jdbc.execute("CREATE TABLE recommendation_notice (id UUID PRIMARY KEY, recommendation_id UUID, type VARCHAR(30), question_owner VARCHAR(30), answer_target VARCHAR(100), code VARCHAR(100), message VARCHAR(200), input_refs VARCHAR ARRAY)");
         jdbc.execute("CREATE TABLE audit_event (id UUID PRIMARY KEY, project_id UUID, actor_id UUID, event VARCHAR(100), outcome VARCHAR(30), target_type VARCHAR(50), target_id UUID, occurred_at TIMESTAMP)");
     }

@@ -107,6 +107,46 @@ class PreviewCreationServiceTest {
     }
 
     @Test
+    void savesVerifiedPartialDefaultAndReportsItsMissingRequiredCapability() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        var trusted = context(request);
+        var partial = new PreviewCreationService.TrustedContext(trusted.currentBasis(),
+            trusted.currentTarget(), trusted.recommendation(), Map.of(),
+            new PreviewCreationService.RequiredCapabilities("rec-1", request.basis(),
+                Set.of("cap_document_reference", "cap_browser_verification")),
+            trusted.storedItems());
+        var service = new PreviewCreationService(
+            (projectId, recommendationId) -> partial,
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            (context, draft) -> new StoredPreviewState("preview-1", draft.basis(),
+                draft.fingerprint(), Instant.parse("2026-10-10T11:50:00Z"),
+                Instant.parse("2026-10-10T12:00:00Z")));
+
+        var created = service.create("project-1", request);
+
+        assertEquals(List.of("cap_browser_verification"), created.coverage().unmetCapabilityKeys());
+    }
+
+    @Test
+    void rejectsStoredDefaultWithNoRequiredCoverage() throws Exception {
+        String hash = SyntheticCatalogBundle.write(directory);
+        var request = request(hash);
+        var trusted = context(request);
+        var unrelated = new PreviewCreationService.TrustedContext(trusted.currentBasis(),
+            trusted.currentTarget(), trusted.recommendation(), Map.of(),
+            new PreviewCreationService.RequiredCapabilities("rec-1", request.basis(),
+                Set.of("cap_browser_verification")), trusted.storedItems());
+        var service = new PreviewCreationService(
+            (projectId, recommendationId) -> unrelated,
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, hash),
+            (context, draft) -> fail("irrelevant default must not produce Preview"));
+
+        assertThrows(IllegalArgumentException.class,
+            () -> service.create("project-1", request));
+    }
+
+    @Test
     void refusesForeignOwnerCheckedContextBeforeCatalogOrStore() throws Exception {
         String hash = SyntheticCatalogBundle.write(directory);
         var request = request(hash);

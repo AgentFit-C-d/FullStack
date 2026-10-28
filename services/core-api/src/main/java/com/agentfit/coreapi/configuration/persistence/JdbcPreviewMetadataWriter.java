@@ -62,7 +62,7 @@ public final class JdbcPreviewMetadataWriter {
         PreviewFingerprint.requireConsistentExistingState(draft.existingState(), files);
         var hashes = PreviewFingerprint.computeStoredMetadata(draft.basis(),
             draft.recommendationId(), draft.selectedToolKeys(), draft.policies(),
-            draft.generatorVersion(), files);
+            draft.generatorVersion(), draft.existingState(), files);
         if (!hashes.selectionDigest().equals(draft.selectionDigest())
             || !hashes.contentDigest().equals(draft.contentDigest())
             || !hashes.fingerprint().equals(draft.fingerprint())) {

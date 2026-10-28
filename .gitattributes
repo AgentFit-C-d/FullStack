@@ -1,2 +1,6 @@
 # Catalog hashes cover exact bytes; Git must not change line endings on checkout.
 demo/catalog-synthetic/** -text
+catalog-candidates/obra-tdd-windows-claude-2.1.270/** -text
+catalog-candidates/obra-tdd-windows-claude-2.1.270-verified/** -text
+catalog-candidates/obra-tdd-windows-claude-2.1.310-reviewed/** -text
+catalog-candidates/obra-tdd-windows-claude-2.1.310-risk-reviewed/** -text

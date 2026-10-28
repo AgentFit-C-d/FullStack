@@ -48,7 +48,8 @@ public final class PreviewFingerprint {
             input.existingState(), input.providedFiles());
         if (files.isEmpty()) throw invalid("empty generated file set");
         MetadataDigest hashes = digestMetadata(input.basis(), input.recommendationId(),
-            input.selectedToolIds(), input.policies(), input.generatorVersion(), files);
+            input.selectedToolIds(), input.policies(), input.generatorVersion(),
+            input.existingState(), files);
         return new PreviewFingerprintResult(files, hashes.selectionDigest(),
             hashes.contentDigest(), hashes.fingerprint());
     }
@@ -58,6 +59,7 @@ public final class PreviewFingerprint {
                                                         List<String> selectedToolIds,
                                                         List<PermissionSelection> policies,
                                                         String generatorVersion,
+                                                        ExistingState existingState,
                                                         List<PreviewFile> files) {
         if (basis == null || blank(recommendationId) || blank(generatorVersion)
             || selectedToolIds == null || selectedToolIds.isEmpty() || policies == null
@@ -66,8 +68,9 @@ public final class PreviewFingerprint {
             throw invalid("incomplete stored Preview metadata");
         }
         validateBasis(basis);
+        requireConsistentExistingState(existingState, files);
         return digestMetadata(basis, recommendationId, selectedToolIds, policies,
-            generatorVersion, files);
+            generatorVersion, existingState, files);
     }
 
     /** PROVIDED means at least one supplied original was compared; other states compare none. */
@@ -83,8 +86,9 @@ public final class PreviewFingerprint {
     private static MetadataDigest digestMetadata(PreviewBasis basis, String recommendationId,
                                                   List<String> selectedToolIds,
                                                   List<PermissionSelection> choices,
-                                                  String generatorVersion,
+                                                  String generatorVersion, ExistingState existingState,
                                                   List<PreviewFile> files) {
+        requireConsistentExistingState(existingState, files);
         List<String> selected = new ArrayList<>();
         Set<String> uniqueTools = new HashSet<>();
         for (String key : selectedToolIds) {
@@ -148,6 +152,7 @@ public final class PreviewFingerprint {
         approvalTarget.put("selectionDigest", selectionDigest);
         approvalTarget.put("contentDigest", contentDigest);
         approvalTarget.put("generatorVersion", generatorVersion);
+        approvalTarget.put("existingState", existingState.name());
         return new MetadataDigest(selectionDigest, contentDigest, digest(approvalTarget));
     }
 

@@ -1,0 +1,16 @@
+.progress { margin: 18px 0 22px; }
+.head { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-bottom: 8px; }
+.head b { color: var(--accent); }
+.track { height: 5px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.track span { display: block; height: 100%; width: 10%; border-radius: inherit; background: var(--accent); }
+.steps { list-style: none; display: flex; align-items: center; gap: 7px; overflow-x: auto; padding: 2px 0 12px; margin: 25px 0 20px; flex-wrap: wrap; }
+.step { display: flex; align-items: center; gap: 7px; white-space: nowrap; color: #9aa6b5; font-size: 10px; font-weight: 700; }
+.step + .step::before { content: ''; flex: none; width: 16px; height: 1px; background: var(--line); }
+.number { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #e8edf3; color: #8290a1; font-weight: 800; }
+.current { color: var(--ink); font-weight: 700; }
+.current .number { background: var(--accent); color: #fff; box-shadow: 0 0 0 4px var(--accent-soft); }
+.done { color: #64748b; font-weight: 700; }
+.done .number { background: var(--accent-soft); color: var(--accent); }
+@media (max-width: 900px) { .step { font-size: 9px; } .step + .step::before { width: 8px; } }
+@media (max-width: 760px) { .steps { gap: 5px; } .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } }
+@media (max-width: 700px) { .step + .step::before { width: 6px; } }

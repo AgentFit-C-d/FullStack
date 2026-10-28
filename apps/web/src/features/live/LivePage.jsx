@@ -1,0 +1,711 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router'
+import Brand from '../../components/layout/Brand.jsx'
+import LogoutButton from '../../components/layout/LogoutButton.jsx'
+import { apiRequest, environmentProfileBody, loadSession, planningInputBody, projectPath, reportBody } from './api.js'
+import { defaultPermissionChoices, permissionKey, permissionSelections } from './permissions.js'
+import { offeredItems } from './recommendationItems.js'
+import RecommendationItems from './RecommendationItems.jsx'
+import { inputChanges, inputsDirty } from './inputState.js'
+import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './projectActions.js'
+import { confirmedProfileItems } from './profileItems.js'
+import { hasUnanalyzedPlanningInput } from './planningState.js'
+import { previewIsCurrent } from './previewState.js'
+import { capabilityLabel, recommendationFeedback, requiredCapabilityLabels } from './recommendationFeedback.js'
+import { createAndReadRecommendation } from './recommendationFlow.js'
+import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
+import ProfileItemsEditor from './ProfileItemsEditor.jsx'
+import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
+import ExistingFilesEditor from './ExistingFilesEditor.jsx'
+import QuestionAnswersEditor from './QuestionAnswersEditor.jsx'
+import styles from './LivePage.module.css'
+
+const isProfile = value => value?.kind === 'CONFIRMED' || value?.kind === 'DRAFT'
+const parsedLines = value => value.split('\n').map(line => line.trim()).filter(Boolean)
+
+export default function LivePage() {
+  const [search, setSearch] = useSearchParams()
+  const location = useLocation()
+  const scrolledTo = useRef('')
+  const projectId = search.get('project')
+  const [session, setSession] = useState(undefined)
+  const [projects, setProjects] = useState([])
+  const [detail, setDetail] = useState(null)
+  const [inputs, setInputs] = useState(null)
+  const [recommendation, setRecommendation] = useState(null)
+  const [questionAnswers, setQuestionAnswers] = useState([])
+  const [answerDrafts, setAnswerDrafts] = useState({})
+  const [preview, setPreview] = useState(null)
+  const [, setExpiryTick] = useState(0)
+  const [previewRequest, setPreviewRequest] = useState(null)
+  const [approval, setApproval] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [projectName, setProjectName] = useState('')
+  const [projectRename, setProjectRename] = useState(null)
+  const [projectDeleteName, setProjectDeleteName] = useState('')
+  const [planningText, setPlanningText] = useState('')
+  const [planningFile, setPlanningFile] = useState(null)
+  const [planningReady, setPlanningReady] = useState(false)
+  const [profileEdit, setProfileEdit] = useState({ projectName: '', projectType: '', domain: '' })
+  const [profileItems, setProfileItems] = useState([])
+  const [role, setRole] = useState('FULLSTACK')
+  const [responsibilities, setResponsibilities] = useState('')
+  const [osFamily, setOsFamily] = useState('WINDOWS')
+  const [clientId, setClientId] = useState('claude-code')
+  const [clientVersion, setClientVersion] = useState('')
+  const [installedComponentsKnown, setInstalledComponentsKnown] = useState(false)
+  const [installedComponents, setInstalledComponents] = useState([])
+  const [selectedKeys, setSelectedKeys] = useState([])
+  const [optionalCapabilityKeys, setOptionalCapabilityKeys] = useState([])
+  const [permissionChoices, setPermissionChoices] = useState({})
+  const [existingState, setExistingState] = useState('UNKNOWN')
+  const [existingFileTargets, setExistingFileTargets] = useState([])
+  const [providedExistingFiles, setProvidedExistingFiles] = useState([])
+  const [catalog, setCatalog] = useState(null)
+  const [catalogTarget, setCatalogTarget] = useState(null)
+  const [candidates, setCandidates] = useState(null)
+  const [liveCandidates, setLiveCandidates] = useState(null)
+  const [skillQuery, setSkillQuery] = useState('')
+  const [candidateSuggestions, setCandidateSuggestions] = useState(null)
+  const [projectSkillQuery, setProjectSkillQuery] = useState('')
+  const [candidateSuggestionError, setCandidateSuggestionError] = useState(null)
+  const [history, setHistory] = useState(null)
+  const [selectedExportId, setSelectedExportId] = useState('')
+  const [reportState, setReportState] = useState('')
+  const [reportReason, setReportReason] = useState('')
+  const candidateSuggestionKey = `${projectId}:${recommendation?.recommendationId}:${recommendation?.validity}:${recommendation?.status}`
+  const visibleCandidateSuggestions = candidateSuggestions?.key === candidateSuggestionKey
+    ? candidateSuggestions.value : null
+  const candidateSuggestionLive = candidateSuggestions?.key === candidateSuggestionKey && candidateSuggestions.live === true
+  const visibleCandidateSuggestionError = candidateSuggestionError?.key === candidateSuggestionKey
+    ? candidateSuggestionError.message : ''
+
+  const loadProjects = useCallback(async () => {
+    const response = await apiRequest('/api/projects')
+    setProjects(response.projects || [])
+  }, [])
+
+  const loadProject = useCallback(async (id) => {
+    if (!id) return
+    const base = projectPath(id)
+    const current = await apiRequest(base)
+    setDetail(current)
+    setOptionalCapabilityKeys([])
+    setPlanningReady(hasUnanalyzedPlanningInput(current))
+    setProjectRename(previous => previous?.projectId === id
+      ? previous : { projectId: id, value: current.project.name })
+    if (isProfile(current.draft)) {
+      const review = current.confirmed?.sourceDraftId === current.draft.id
+        ? current.confirmed : current.draft
+      setProfileEdit({ projectName: review.projectName || current.project.name,
+        projectType: review.projectType || '', domain: review.domain || '' })
+      setProfileItems(review.items || [])
+    }
+    if (isProfile(current.confirmed)) {
+      const savedInputs = await apiRequest(`${base}/recommendation-inputs`)
+      setInputs(savedInputs)
+      if (savedInputs.developer) {
+        setRole(savedInputs.developer.role)
+        setResponsibilities((savedInputs.developer.responsibilities || []).join('\n'))
+      } else { setRole('FULLSTACK'); setResponsibilities('') }
+      if (savedInputs.environment) {
+        setOsFamily(savedInputs.environment.osFamily)
+        setClientId(savedInputs.environment.clientId)
+        setClientVersion(savedInputs.environment.clientVersion)
+        setInstalledComponentsKnown(savedInputs.environment.installedComponentsKnown)
+        setInstalledComponents(savedInputs.environment.installedComponents || [])
+      } else {
+        setOsFamily('WINDOWS'); setClientId('claude-code'); setClientVersion('')
+        setInstalledComponentsKnown(false)
+        setInstalledComponents([])
+      }
+      try {
+        const latest = await apiRequest(`${base}/recommendations/latest`)
+        setRecommendation(latest)
+        const answers = await apiRequest(`${base}/recommendations/${encodeURIComponent(latest.recommendationId)}/answers`)
+        setQuestionAnswers(answers.items || [])
+        setAnswerDrafts(Object.fromEntries((answers.items || []).map(item => [item.noticeId, item.answer])))
+        setSelectedKeys((latest.items || []).map(item => item.toolKey))
+        setPermissionChoices(defaultPermissionChoices(offeredItems(latest)))
+      } catch (cause) { if (cause.status === 404) { setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) } else throw cause }
+    } else { setInputs(null); setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    if (!projectId || !recommendation?.recommendationId || recommendation.validity === 'STALE'
+      || !['RECOMMENDED', 'NO_COMPATIBLE_TOOLS'].includes(recommendation.status)) {
+      return () => { active = false }
+    }
+    const key = `${projectId}:${recommendation.recommendationId}:${recommendation.validity}:${recommendation.status}`
+    apiRequest(`${projectPath(projectId)}/skill-candidate-suggestions`)
+      .then(result => { if (active) setCandidateSuggestions({ key, value: result }) })
+      .catch(cause => { if (active) setCandidateSuggestionError({ key, message: cause.message }) })
+    return () => { active = false }
+  }, [projectId, recommendation?.recommendationId, recommendation?.validity, recommendation?.status])
+
+  useEffect(() => {
+    let active = true
+    loadSession().then(value => {
+      if (!active) return
+      setSession(value)
+      if (value) return loadProjects()
+    }).catch(cause => { if (active) setError(cause.message) })
+    return () => { active = false }
+  }, [loadProjects])
+
+  useEffect(() => {
+    // The state updates happen after the API request resolves, not during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (session && projectId) loadProject(projectId).catch(cause => setError(cause.message))
+  }, [session, projectId, loadProject])
+
+  useEffect(() => {
+    if (!projectId || detail?.latestAttempt?.state !== 'PROCESSING') return undefined
+    const timer = setInterval(() => loadProject(projectId).catch(cause => setError(cause.message)), 2500)
+    return () => clearInterval(timer)
+  }, [projectId, detail?.latestAttempt?.state, loadProject])
+
+  useEffect(() => {
+    if (!projectId || detail?.project?.id !== projectId || !location.hash) return
+    const key = `${projectId}:${location.hash}`
+    if (scrolledTo.current === key) return
+    const target = document.getElementById(location.hash.slice(1))
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrolledTo.current = key
+  }, [projectId, detail, location.hash])
+
+  useEffect(() => {
+    const delay = Date.parse(preview?.expiresAt) - Date.now()
+    if (!Number.isFinite(delay) || delay <= 0) return undefined
+    const timer = setTimeout(() => setExpiryTick(value => value + 1), delay + 1)
+    return () => clearTimeout(timer)
+  }, [preview?.expiresAt])
+
+  function selectProject(id) {
+    setDetail(null); setInputs(null); setRecommendation(null); setPreview(null)
+    setPreviewRequest(null); setApproval(null); setError(''); setNotice('')
+    setPlanningText(''); setPlanningFile(null)
+    setPlanningReady(false)
+    setProjectRename(null); setProjectDeleteName('')
+    setProfileEdit({ projectName: '', projectType: '', domain: '' })
+    setProfileItems([])
+    setRole('FULLSTACK'); setResponsibilities(''); setOsFamily('WINDOWS')
+    setClientId('claude-code'); setClientVersion(''); setInstalledComponentsKnown(false)
+    setInstalledComponents([])
+    setSelectedKeys([]); setPermissionChoices({}); setExistingState('UNKNOWN')
+    setQuestionAnswers([]); setAnswerDrafts({})
+    setExistingFileTargets([]); setProvidedExistingFiles([])
+    setCatalog(null); setCatalogTarget(null)
+    setHistory(null); setSelectedExportId(''); setReportState(''); setReportReason('')
+    setSearch(id ? { project: id } : {})
+  }
+
+  async function run(action, success) {
+    setBusy(true); setError(''); setNotice('')
+    try { await action(); setNotice(success) }
+    catch (cause) { setError(cause.message) }
+    finally { setBusy(false) }
+  }
+
+  async function createProject(event) {
+    event.preventDefault()
+    const name = projectName.trim()
+    if (!name || Array.from(name).length > 100) { setError('프로젝트 이름을 1~100자로 입력해 주세요.'); return }
+    await run(async () => {
+      const created = await apiRequest('/api/projects', { method: 'POST', body: { name } })
+      await loadProjects()
+      setProjectName('')
+      selectProject(created.project.id)
+    }, '프로젝트를 DB에 저장했습니다.')
+  }
+
+  async function renameProject(event) {
+    event.preventDefault()
+    if (!canRenameProject(detail)) {
+      setError('기획 자료를 저장하거나 분석하기 전의 새 프로젝트만 이름을 변경할 수 있습니다.')
+      return
+    }
+    let body
+    try { body = renameProjectRequest(projectRename?.value || '', detail.project.version) }
+    catch (cause) { setError(cause.message); return }
+    if (body.name === detail.project.name) { setError(''); setNotice('프로젝트 이름이 변경되지 않았습니다.'); return }
+    await run(async () => {
+      await apiRequest(projectPath(projectId), { method: 'PATCH', body })
+      invalidatePreview()
+      await loadProject(projectId)
+      await loadProjects()
+      setProjectRename({ projectId, value: body.name })
+    }, '프로젝트 이름을 변경했습니다. 기존 추천은 최신 상태를 다시 확인해 주세요.')
+  }
+
+  async function deleteProject(event) {
+    event.preventDefault()
+    let body
+    try { body = deleteProjectRequest(detail.project.name, projectDeleteName, detail.project.version) }
+    catch (cause) { setError(cause.message); return }
+    await run(async () => {
+      await apiRequest(projectPath(projectId), { method: 'DELETE', body })
+      selectProject('')
+      await loadProjects()
+    }, '프로젝트와 연결된 정보를 삭제했습니다.')
+  }
+
+  async function savePlanning(event) {
+    event.preventDefault()
+    if (!planningFile && !planningText.trim()) { setError('파일 또는 텍스트를 입력해 주세요.'); return }
+    await run(async () => {
+      const form = planningInputBody(detail.project.version, planningText, planningFile)
+      await apiRequest(`${projectPath(projectId)}/planning-input`, { method: 'PUT', body: form })
+      await loadProject(projectId)
+      setPlanningReady(true)
+    }, '기획 자료를 서버에 저장했습니다. 이제 분석을 시작할 수 있습니다.')
+  }
+
+  async function startAnalysis() {
+    await run(async () => {
+      await apiRequest(`${projectPath(projectId)}/analysis-attempts`, {
+        method: 'POST', body: { expectedVersion: detail.project.version },
+      })
+      setPlanningReady(false)
+      await loadProject(projectId)
+    }, '분석 작업을 접수했습니다. 처리 상태를 자동으로 확인합니다.')
+  }
+
+  async function confirmProfile() {
+    await run(async () => {
+      await apiRequest(`${projectPath(projectId)}/profile/confirm`, {
+        method: 'POST', body: {
+          expectedDraftVersion: detail.draft.version,
+          requestId: crypto.randomUUID(),
+          projectName: profileEdit.projectName.trim(),
+          projectType: profileEdit.projectType.trim() || null,
+          domain: profileEdit.domain.trim() || null,
+          items: confirmedProfileItems(profileItems),
+        },
+      })
+      await loadProject(projectId)
+      await loadProjects()
+    }, '사용자 확인을 반영한 CONFIRMED Profile을 저장했습니다.')
+  }
+
+  async function saveInputs() {
+    const form = { role, responsibilities, osFamily, clientId, clientVersion,
+      installedComponentsKnown, installedComponents }
+    const changes = inputChanges(inputs, form)
+    if (!changes.developer && !changes.environment) {
+      setError(''); setNotice('저장할 변경 내용이 없습니다.')
+      return
+    }
+    await run(async () => {
+      const base = projectPath(projectId)
+      const pendingDeveloper = { role, responsibilities }
+      const pendingEnvironment = { osFamily, clientId, clientVersion, installedComponentsKnown,
+        installedComponents }
+      const environmentBody = changes.environment ? environmentProfileBody(
+        inputs?.environment?.version || 0, osFamily, clientId, clientVersion,
+        installedComponentsKnown, installedComponents) : null
+      if (changes.developer) {
+        try {
+          await apiRequest(`${base}/developer-profile`, {
+            method: 'PUT', body: {
+              expectedVersion: inputs?.developer?.version || 0,
+              role: role.trim(), responsibilities: parsedLines(responsibilities),
+            },
+          })
+          invalidatePreview()
+        } catch (cause) {
+          await loadProject(projectId)
+          setRole(pendingDeveloper.role)
+          setResponsibilities(pendingDeveloper.responsibilities)
+          setOsFamily(pendingEnvironment.osFamily)
+          setClientId(pendingEnvironment.clientId)
+          setClientVersion(pendingEnvironment.clientVersion)
+          setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
+          setInstalledComponents(pendingEnvironment.installedComponents)
+          throw cause
+        }
+      }
+      if (changes.environment) {
+        try {
+          await apiRequest(`${base}/environment-profile`, {
+            method: 'PUT', body: environmentBody,
+          })
+          invalidatePreview()
+        } catch (cause) {
+          await loadProject(projectId)
+          setRole(pendingDeveloper.role)
+          setResponsibilities(pendingDeveloper.responsibilities)
+          setOsFamily(pendingEnvironment.osFamily)
+          setClientId(pendingEnvironment.clientId)
+          setClientVersion(pendingEnvironment.clientVersion)
+          setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
+          setInstalledComponents(pendingEnvironment.installedComponents)
+          throw new Error(`${changes.developer ? '역할은 저장됐지만 ' : ''}환경 저장은 실패했습니다. 최신 버전을 불러왔습니다. ${cause.message}`, { cause })
+        }
+      }
+      await loadProject(projectId)
+    }, '역할과 환경 선언을 DB에 저장했습니다.')
+  }
+
+  async function createRecommendation() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    await run(async () => {
+      const created = await createAndReadRecommendation(projectPath(projectId), {
+          project: detail.project.version,
+          developer: inputs?.developer?.version || 0,
+          environment: inputs?.environment?.version || 0,
+      })
+      setRecommendation(created)
+      setQuestionAnswers([]); setAnswerDrafts({})
+      setSelectedKeys((created.items || []).map(item => item.toolKey))
+      setPermissionChoices(defaultPermissionChoices(offeredItems(created)))
+      invalidatePreview()
+    }, 'AI 필요 기능과 현재 카탈로그를 기준으로 추천 결과를 저장했습니다.')
+  }
+
+  async function createOptionalRecommendation() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    if (optionalCapabilityKeys.length === 0) return
+    await run(async () => {
+      const base = projectPath(projectId)
+      await apiRequest(`${base}/recommendations/optional`, { method: 'POST', body: {
+        expectedVersions: { project: detail.project.version,
+          developer: inputs?.developer?.version || 0,
+          environment: inputs?.environment?.version || 0 },
+        optionalCapabilityKeys,
+      } })
+      const created = await apiRequest(`${base}/recommendations/latest`)
+      setRecommendation(created)
+      setQuestionAnswers([]); setAnswerDrafts({})
+      setSelectedKeys((created.items || []).map(item => item.toolKey))
+      setPermissionChoices(defaultPermissionChoices(offeredItems(created)))
+      setOptionalCapabilityKeys([])
+      invalidatePreview()
+    }, '선택한 추가 기능을 선택 후보로 반영해 추천을 다시 저장했습니다.')
+  }
+
+  async function saveQuestionAnswer(noticeId) {
+    const answer = answerDrafts[noticeId]?.trim()
+    if (!answer || Array.from(answer).length > 4000) {
+      setError('답변을 1~4000자로 입력해 주세요.'); return
+    }
+    await run(async () => {
+      const saved = await apiRequest(`${projectPath(projectId)}/recommendations/${encodeURIComponent(recommendation.recommendationId)}/answers/${encodeURIComponent(noticeId)}`, {
+        method: 'PUT', body: { answer },
+      })
+      setQuestionAnswers(previous => [...previous.filter(item => item.noticeId !== noticeId), saved])
+      setAnswerDrafts(previous => ({ ...previous, [noticeId]: saved.answer }))
+    }, '추가 질문의 답변을 저장했습니다. 추천을 갱신하려면 관련 기획·환경 입력을 수정하고 다시 실행해야 합니다.')
+  }
+
+  async function createPreview(compareExisting = false) {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    let providedFiles = []
+    try {
+      if (compareExisting) providedFiles = providedFilesForPreview(existingFileTargets, providedExistingFiles)
+    } catch (cause) { setError(cause.message); return }
+    await run(async () => {
+      const request = {
+        basis: recommendation.basis, recommendationId: recommendation.recommendationId,
+        target: { osFamily, clientId, clientVersion }, selectedToolKeys: selectedKeys,
+        permissionSelections: permissionSelections(offeredItems(recommendation), selectedKeys, permissionChoices),
+        existingState: compareExisting ? 'PROVIDED' : existingState,
+        providedFiles, generatorVersion: 'agentfit-web-v1',
+      }
+      const created = await apiRequest(`${projectPath(projectId)}/config-previews`, { method: 'POST', body: request })
+      setExistingFileTargets(comparisonTargets(created.files))
+      if (!compareExisting) setProvidedExistingFiles([])
+      setPreviewRequest(request); setPreview(created); setApproval(null)
+    }, compareExisting ? '기존 파일과 생성 파일의 차이를 계산했습니다. 변경 내용을 확인해 주세요.'
+      : '설정 미리보기를 생성했습니다. 내용과 경고를 확인해 주세요.')
+  }
+
+  async function approve() {
+    if (inputDirty || !previewIsCurrent(previewRequest, recommendation, preview)) {
+      setError('현재 추천에 맞는 미리보기를 다시 생성해 주세요.'); return
+    }
+    await run(async () => {
+      const result = await apiRequest(`${projectPath(projectId)}/config-previews/${preview.previewId}/approval`, {
+        method: 'POST', body: { fingerprint: preview.fingerprint, confirmed: true },
+      })
+      setApproval(result)
+    }, '미리보기를 승인했습니다. 미충족 경고가 있다면 다운로드 후에도 유지됩니다.')
+  }
+
+  async function download() {
+    if (inputDirty || !approval || !previewIsCurrent(previewRequest, recommendation, preview)) {
+      setError('현재 추천의 미리보기를 다시 확인하고 승인해 주세요.'); return
+    }
+    await run(async () => {
+      const blob = await apiRequest(`${projectPath(projectId)}/config-approvals/${approval.approvalId}/download`, {
+        method: 'POST', body: { previewId: preview.previewId, fingerprint: preview.fingerprint,
+          previewRequest }, download: true,
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url; anchor.download = 'agentfit-config.zip'; anchor.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+      setHistory(null)
+    }, '설정 ZIP을 다운로드했습니다. 적용 전에 파일 내용과 권한을 확인해 주세요.')
+  }
+
+  async function readCatalog(currentEnvironment = false) {
+    await run(async () => {
+      const target = currentEnvironment ? inputs?.environment : null
+      const query = target ? new URLSearchParams({ osFamily: target.osFamily,
+        clientId: target.clientId, clientVersion: target.clientVersion }) : null
+      setCatalog(await apiRequest(`/api/tool-catalog${query ? `?${query}` : ''}`))
+      setCatalogTarget(target ? `${target.osFamily} / ${target.clientId} / ${target.clientVersion}` : null)
+    }, '승인된 카탈로그를 조회했습니다.')
+  }
+
+  async function readCandidates() {
+    await run(async () => setCandidates(await apiRequest('/api/tool-candidates')), '미검증 Skill 후보를 조회했습니다.')
+  }
+
+  async function searchSkills(event) {
+    event.preventDefault()
+    const query = skillQuery.trim()
+    if (query.length < 2 || query.length > 100) return
+    await run(async () => {
+      setLiveCandidates(await apiRequest(`/api/tool-candidates/search?${new URLSearchParams({ q: query, limit: '10' })}`))
+    }, 'skills.sh에서 Skill 후보를 검색했습니다.')
+  }
+
+  async function searchRelatedSkills(event) {
+    event.preventDefault()
+    const query = projectSkillQuery.trim()
+    if (!projectId || query.length < 2 || recommendation?.validity === 'STALE') return
+    await run(async () => {
+      const value = await apiRequest(`${projectPath(projectId)}/skill-candidate-suggestions/search?${new URLSearchParams({ q: query })}`)
+      setCandidateSuggestions({ key: candidateSuggestionKey, value, live: true })
+    }, '현재 프로젝트의 필요 기능과 실시간 Skill 검색 결과를 대조했습니다.')
+  }
+
+  async function exportCandidate(item, live = false) {
+    await run(async () => {
+      const blob = await apiRequest(live ? '/api/tool-candidates/live-export' : '/api/tool-candidates/export', {
+        method: 'POST', body: { externalId: item.externalId, contentHash: item.contentHash }, download: true,
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url; anchor.download = `agentfit-${item.externalId.split('/').at(-1)}-candidate.zip`; anchor.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    }, '선택한 Skill의 원본 파일을 받았습니다. 출처·권한·호환 조건을 확인한 뒤 적용해 주세요.')
+  }
+
+  async function readHistory() {
+    await run(async () => {
+      const result = await apiRequest(`${projectPath(projectId)}/configuration-history`)
+      setHistory(result)
+      setSelectedExportId(previous => result.items?.some(item => item.id === previous) ? previous : result.items?.[0]?.id || '')
+    }, '설정 생성 이력을 조회했습니다.')
+  }
+
+  async function readMoreHistory() {
+    if (!history?.nextCursor) return
+    await run(async () => {
+      const cursor = encodeURIComponent(history.nextCursor)
+      const next = await apiRequest(`${projectPath(projectId)}/configuration-history?cursor=${cursor}`)
+      setHistory(previous => ({
+        items: [...previous.items, ...(next.items || []).filter(item => !previous.items.some(saved => saved.id === item.id))],
+        nextCursor: next.nextCursor,
+      }))
+    }, '이전 생성 이력을 불러왔습니다.')
+  }
+
+  function invalidatePreview() {
+    setPreview(null); setPreviewRequest(null); setApproval(null)
+    setExistingFileTargets([]); setProvidedExistingFiles([])
+  }
+
+  function updateProvidedExistingFiles(files) {
+    setProvidedExistingFiles(files)
+    setPreview(null); setPreviewRequest(null); setApproval(null)
+  }
+
+  async function submitReport(event) {
+    event.preventDefault()
+    if (!selectedExportId) { setError('먼저 생성 이력을 조회해 주세요.'); return }
+    let body
+    try { body = reportBody(reportState, reportReason) }
+    catch (cause) { setError(cause.message); return }
+    await run(async () => {
+      await apiRequest(`${projectPath(projectId)}/configuration-history/${encodeURIComponent(selectedExportId)}/reports`, {
+        method: 'POST', body,
+      })
+      const result = await apiRequest(`${projectPath(projectId)}/configuration-history`)
+      setHistory(result)
+    }, '적용 결과를 사용자 보고로 저장했습니다. 실제 설치 검증 결과는 아닙니다.')
+  }
+
+  const draft = isProfile(detail?.draft) ? detail.draft : null
+  const confirmed = detail?.confirmed?.kind === 'CONFIRMED' ? detail.confirmed : null
+  const reviewProfile = confirmed?.sourceDraftId === draft?.id ? confirmed : draft
+  const profileChanged = reviewProfile && (
+    profileEdit.projectName.trim() !== (reviewProfile.projectName || '')
+    || (profileEdit.projectType.trim() || null) !== (reviewProfile.projectType || null)
+    || (profileEdit.domain.trim() || null) !== (reviewProfile.domain || null)
+    || JSON.stringify(profileItems) !== JSON.stringify(reviewProfile.items || [])
+  )
+  const profileNeedsConfirmation = draft && (!confirmed || confirmed.sourceDraftId !== draft.id || profileChanged)
+  const attempt = detail?.latestAttempt
+  const inputReady = inputs?.developer && inputs?.environment
+  const inputDirty = inputsDirty(inputs, { role, responsibilities, osFamily, clientId,
+    clientVersion, installedComponentsKnown, installedComponents })
+  const previewReady = !!preview && !inputDirty && previewIsCurrent(previewRequest, recommendation, preview)
+
+  return <div className={styles.page}>
+    <header className={styles.top}><Brand /><nav><Link to="/app">내 프로젝트</Link>{session && <LogoutButton disabled={busy} />}</nav></header>
+    <main className={styles.main}>
+      <div className={styles.heading}><span>AGENTFIT</span><h1>프로젝트에서 설정 다운로드까지</h1><p>분석과 추천 결과는 서버에 저장됩니다. 추천 도구는 현재 카탈로그의 검증 범위에 따라 달라집니다.</p></div>
+      {error && <div className={styles.error} role="alert">{error}</div>}
+      {notice && <div className={styles.notice} role="status">{notice}</div>}
+      {inputDirty && <div className={styles.notice}>역할·환경 변경 내용을 저장한 뒤 추천·승인·다운로드를 진행해 주세요.</div>}
+      {session === undefined && <section className={styles.card}>세션 확인 중…</section>}
+      {session === null && <section className={styles.card}><h2>GitHub 로그인이 필요합니다</h2><p>백엔드 API는 실제 세션과 프로젝트 소유권을 확인합니다.</p><a className={styles.action} href="/api/oauth2/authorization/github">GitHub로 로그인</a></section>}
+      {session && <>
+        <div className={styles.user}>로그인: <strong>{session.user.name}</strong></div>
+        <div className={styles.columns}>
+          <section className={styles.card}><h2>1. 내 프로젝트</h2><form onSubmit={createProject} className={styles.row}><input aria-label="프로젝트 이름" placeholder="프로젝트 이름 (최대 100자)" value={projectName} onChange={event => setProjectName(event.target.value)} /><button disabled={busy}>생성</button></form>
+            <div className={styles.list}>{projects.map(project => <button key={project.id} type="button" className={project.id === projectId ? styles.selected : ''} onClick={() => selectProject(project.id)}>{project.name}</button>)}</div>
+            {!projects.length && <p>아직 저장된 프로젝트가 없습니다.</p>}
+          </section>
+          <section className={styles.card}><h2>현재 상태</h2>{detail ? <><p><strong>{detail.project.name}</strong></p><dl><dt>프로젝트 버전</dt><dd>{detail.project.version}</dd><dt>분석</dt><dd>{attempt?.state || '시작 전'}</dd><dt>기획 확정</dt><dd>{confirmed ? `완료 · v${confirmed.version}` : '미확정'}</dd><dt>추천</dt><dd>{recommendation?.status || '생성 전'}</dd></dl>
+            {canRenameProject(detail) ? <form onSubmit={renameProject} className={styles.row}><input aria-label="변경할 프로젝트 이름" value={projectRename?.projectId === projectId ? projectRename.value : ''} onChange={event => setProjectRename({ projectId, value: event.target.value })} /><button disabled={busy || !projectRename?.value?.trim() || projectRename.value.trim() === detail.project.name}>이름 변경</button></form> : <p>기획 정보가 있는 프로젝트의 이름 변경은 현재 지원하지 않습니다.</p>}
+            <p>프로젝트를 삭제하면 기획 정보와 추천·설정 이력도 함께 삭제되며 복구할 수 없습니다.</p>
+            <form onSubmit={deleteProject} className={styles.row}><input aria-label="삭제 확인용 프로젝트 이름" placeholder="삭제하려면 현재 이름 입력" value={projectDeleteName} onChange={event => setProjectDeleteName(event.target.value)} /><button disabled={busy || projectDeleteName !== detail.project.name}>프로젝트 삭제</button></form>
+          </> : <p>프로젝트를 선택해 주세요.</p>}</section>
+        </div>
+        <section className={styles.card}><h2>카탈로그와 Skill 후보</h2><p>카탈로그 도구는 추천 조합에 사용합니다. skills.sh 후보는 직접 선택해 파일을 받을 수 있으며, 호환·조합 판정이 없는 후보는 별도로 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>추천 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
+          <form onSubmit={searchSkills} className={styles.row}><input aria-label="skills.sh 검색어" placeholder="Skill 이름·작업 검색" value={skillQuery} maxLength={100} onChange={event => setSkillQuery(event.target.value)} /><button disabled={busy || skillQuery.trim().length < 2}>skills.sh 검색</button></form>
+          {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개{catalogTarget && ` · ${catalogTarget}`}</p><ul>{(catalog.items || []).map(item => <li key={item.key}><strong>{item.name}</strong> ({item.key}) · {item.kind}<details><summary>지원·기능 근거</summary><p>제공 기능: {(item.capabilityKeys || []).join(', ') || '없음'}</p>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">원본 링크</a>}<ul>{(item.support || []).map(support => <li key={support.key}>{support.osFamily} / {support.clientId} / {support.clientVersion} · {support.verified ? '검증 기록 있음' : '미검증'}</li>)}</ul></details></li>)}</ul>{catalog.items?.length === 0 && <p>해당 환경에 승인된 도구가 없습니다.</p>}</div>}
+          {candidates && <div><p>{candidates.source} · 후보 {candidates.candidates?.length || 0}개 · 환경·조합 미확인</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · <button type="button" disabled={busy} onClick={() => exportCandidate(item)}>선택해 ZIP 받기</button></li>)}</ul></div>}
+          {liveCandidates && <div><p>실시간 검색 결과 {liveCandidates.candidates?.length || 0}개 · 검증되지 않은 후보입니다. 선택 시 원격 내용의 해시를 다시 확인합니다.</p><ul>{(liveCandidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · <button type="button" disabled={busy} onClick={() => exportCandidate(item, true)}>선택해 ZIP 받기</button></li>)}</ul></div>}
+          {(candidates || liveCandidates) && <p>후보 ZIP에는 프로젝트의 <code>.claude/skills/</code> 적용 위치, 외부 인증 확인, 무해한 Client 확인, 이전 폴더 복구 방법을 담은 안내가 포함됩니다. 설치와 실행 검증은 사용자가 직접 진행합니다.</p>}
+        </section>
+        {detail && <>
+          <section className={styles.card} id="planning-input"><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
+          {draft && <section className={styles.card} id="profile-review">
+            <h2>3. 분석 초안 확인</h2>
+            <p>{confirmed?.sourceDraftId === draft.id ? '확정된 항목을 수정할 수 있습니다.' : `DRAFT v${draft.version} · 문서 추출 결과를 검토하고 전체 항목을 확정합니다.`}</p>
+            <div className={styles.grid3}>
+              <label>프로젝트명<input value={profileEdit.projectName} onChange={event => setProfileEdit({ ...profileEdit, projectName: event.target.value })} /></label>
+              <label>서비스 유형<input value={profileEdit.projectType} onChange={event => setProfileEdit({ ...profileEdit, projectType: event.target.value })} /></label>
+              <label>도메인<input value={profileEdit.domain} onChange={event => setProfileEdit({ ...profileEdit, domain: event.target.value })} /></label>
+            </div>
+            <details><summary>기획 항목 편집 ({profileItems.length}개)</summary>
+              <ProfileItemsEditor items={profileItems} onChange={setProfileItems} onError={setError} />
+            </details>
+            <button type="button" disabled={busy || !profileEdit.projectName.trim() || !profileNeedsConfirmation} onClick={confirmProfile}>확인하고 확정 저장</button>
+          </section>}
+          {confirmed && <section className={styles.card} id="recommendation-inputs">
+            <h2>4. 내 역할과 개발환경</h2>
+            <p>입력 정보는 내 프로젝트에 저장됩니다. 설치 버전은 실제 PC를 검사한 값이 아닌 사용자 선언입니다.</p>
+            <div className={styles.grid3}>
+              <label>역할<input value={role} onChange={event => setRole(event.target.value)} /></label>
+              <label>OS<input value={osFamily} onChange={event => { setOsFamily(event.target.value); invalidatePreview() }} /></label>
+              <label>AI Client<input value={clientId} onChange={event => { setClientId(event.target.value); invalidatePreview() }} /></label>
+              <label>Client 버전<input value={clientVersion} onChange={event => { setClientVersion(event.target.value); invalidatePreview() }} /></label>
+            </div>
+            <label>담당 업무 (줄마다 하나)<textarea value={responsibilities} onChange={event => setResponsibilities(event.target.value)} /></label>
+            <InstalledComponentsEditor known={installedComponentsKnown} items={installedComponents}
+              onKnownChange={setInstalledComponentsKnown} onChange={setInstalledComponents} />
+            <p>AI Client 버전은 설치 상태를 확인해 직접 입력해 주세요. 확인되지 않은 버전을 임의로 채우지 않습니다.</p>
+            <button type="button" disabled={busy} onClick={saveInputs}>역할·환경 저장</button>
+            {inputReady && <span>저장 버전: 역할 {inputs.developer.version}, 환경 {inputs.environment.version}</span>}
+          </section>}
+          {confirmed && <section className={styles.card} id="recommendation-result">
+            <h2>5. 추천과 권한 선택</h2>
+            <p>AI가 필요한 Capability를 분석하고, Core API가 현재 카탈로그의 호환성을 판정합니다.</p>
+            <button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>
+            {recommendation && <>
+              <p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>
+              {recommendation.validity === 'STALE' && <p role="alert">저장 당시 프로젝트·환경·카탈로그 조건이 현재와 달라 이 추천으로 새 미리보기나 승인을 진행할 수 없습니다. 현재 입력을 확인한 뒤 추천 생성을 다시 눌러 주세요.</p>}
+              {requiredCapabilityLabels(recommendation).length > 0 && <p>필수 기능: {requiredCapabilityLabels(recommendation).join(', ')}</p>}
+              {(recommendation.capabilities || []).length > 0 && <details><summary>기능 판정과 입력 근거</summary><ul>{recommendation.capabilities.map(claim =>
+                <li key={claim.key}><strong>{capabilityLabel(claim.key)}</strong> · {claim.necessity} · {claim.reason}
+                  {claim.inputRefs?.length > 0 && <span> · 입력 참조: {claim.inputRefs.join(', ')}</span>}</li>)}</ul></details>}
+              {recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}
+              {(recommendation.capabilities || []).some(claim => claim.necessity === 'NOT_REQUESTED') &&
+                <div><h3>추가로 고려할 기능</h3><p>AI가 요청되지 않았다고 판정한 기능도 사용자가 명시적으로 선택해 후보를 다시 찾을 수 있습니다. 필수 기능은 변경되지 않습니다.</p>
+                  <div className={styles.row}>{(recommendation.capabilities || []).filter(claim => claim.necessity === 'NOT_REQUESTED').map(claim =>
+                    <label key={claim.key}><input type="checkbox" checked={optionalCapabilityKeys.includes(claim.key)}
+                      onChange={event => setOptionalCapabilityKeys(previous => event.target.checked
+                        ? [...previous, claim.key] : previous.filter(key => key !== claim.key))} />{capabilityLabel(claim.key)}</label>)}</div>
+                  <button type="button" disabled={busy || !inputReady || optionalCapabilityKeys.length === 0}
+                    onClick={createOptionalRecommendation}>선택 기능으로 재추천</button>
+                </div>}
+              {(recommendation.capabilities || []).some(claim => claim.necessity === 'OPTIONAL') &&
+                <p>추가 고려 기능: {(recommendation.capabilities || []).filter(claim => claim.necessity === 'OPTIONAL').map(claim => capabilityLabel(claim.key)).join(', ')}</p>}
+              <p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p>
+              <RecommendationItems recommendation={recommendation} selectedKeys={selectedKeys} permissionChoices={permissionChoices}
+                onSelect={(key, checked) => {
+                  setSelectedKeys(previous => checked ? [...previous, key] : previous.filter(selected => selected !== key))
+                  invalidatePreview()
+                }}
+                onPermissionChange={(key, mapping, policy) => {
+                  setPermissionChoices(previous => ({ ...previous, [permissionKey(key, mapping)]: policy }))
+                  invalidatePreview()
+                }} />
+              <form onSubmit={searchRelatedSkills} className={styles.row}><input aria-label="프로젝트 관련 Skill 검색어" placeholder="필요 작업 검색" value={projectSkillQuery} maxLength={100} onChange={event => setProjectSkillQuery(event.target.value)} /><button disabled={busy || recommendation.validity === 'STALE' || projectSkillQuery.trim().length < 2}>관련 Skill 실시간 검색</button></form>
+              {visibleCandidateSuggestions && <div>
+                <h3>관련 Skill 후보</h3>
+                <p>{candidateSuggestionLive ? 'skills.sh 실시간 검색' : '저장된 후보 목록'}과 필요 기능을 이름 기준으로 연결했습니다. 기능 제공·OS·Claude Code 버전·권한·도구 조합은 아직 확인되지 않았습니다.</p>
+                {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys?.length > 0 &&
+                  <p>관련 후보를 찾지 못한 필수 기능: {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys.map(capabilityLabel).join(', ')}</p>}
+                {visibleCandidateSuggestions.proposedCombinationExternalIds?.length > 0 &&
+                  <p>필수 기능 이름을 기준으로 묶은 후보: {visibleCandidateSuggestions.proposedCombinationExternalIds.join(', ')}. 실제 조합 호환 여부는 미확인입니다.</p>}
+                <ul>{(visibleCandidateSuggestions.items || []).map(item => <li key={item.externalId}>
+                  <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a>
+                  {' · '}{item.relatedCapabilityKeys.map(capabilityLabel).join(', ')}
+                  {' · '}<button type="button" disabled={busy} onClick={() => exportCandidate(item, candidateSuggestionLive)}>선택해 ZIP 받기</button>
+                </li>)}</ul>
+              </div>}
+              {visibleCandidateSuggestionError && <p role="alert">관련 Skill 후보를 표시하지 못했습니다. {visibleCandidateSuggestionError}</p>}
+              <QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy}
+                current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))}
+                onSave={saveQuestionAnswer} />
+            </>}
+          </section>}
+          {offeredItems(recommendation).length > 0 && <section className={styles.card} id="configuration-output">
+            <h2>6. 설정 미리보기와 다운로드</h2>
+            <p>부분 구성을 선택해도 미충족 Capability를 표시합니다. 파일 내용과 권한을 확인한 뒤 적용하세요.</p>
+            <label>현재 설정 상태
+              <select value={existingState} onChange={event => { setExistingState(event.target.value); invalidatePreview() }}>
+                <option value="UNKNOWN">모름</option>
+                <option value="USER_SAYS_EMPTY">사용자가 비어 있다고 선언</option>
+              </select>
+            </label>
+            <div className={styles.row}>
+              <button type="button" disabled={busy || recommendation.validity === 'STALE' || selectedKeys.length === 0} onClick={() => createPreview()}>미리보기 생성</button>
+              {existingFileTargets.length > 0 && <button type="button" disabled={busy || providedExistingFiles.length === 0 || recommendation.validity === 'STALE'} onClick={() => createPreview(true)}>기존 파일과 비교</button>}
+              {previewReady && !approval && <button type="button" disabled={busy} onClick={approve}>확인하고 승인</button>}
+              {previewReady && approval && <button type="button" disabled={busy} onClick={download}>ZIP 다운로드</button>}
+            </div>
+            {selectedKeys.length === 0 && <p>설정 파일을 만들 도구를 하나 이상 선택해 주세요.</p>}
+            {preview && !previewReady && <p role="alert">현재 입력 또는 추천과 맞지 않는 미리보기입니다. 최신 추천으로 미리보기를 다시 생성해 주세요.</p>}
+            {existingFileTargets.length > 0 && <ExistingFilesEditor targets={existingFileTargets} selected={providedExistingFiles} onChange={updateProvidedExistingFiles} />}
+            {previewReady && <>
+              <p>미충족: {preview.unmetCapabilityKeys?.length ? preview.unmetCapabilityKeys.join(', ') : '없음'}</p>
+              {preview.files?.map(file => <details key={file.targetKey + file.relativePath}>
+                <summary>{file.relativePath} · {file.action === 'UPDATE' ? '기존 파일 교체' : '새 파일 제안'}</summary>
+                <p>비교 범위: {file.comparisonScope === 'PROVIDED_FILE' ? '제공한 기존 파일과 비교' : '기존 내용 미제공'}</p>
+                {file.diff && <><strong>변경 내용</strong><pre>{file.diff}</pre></>}
+                <strong>생성된 내용</strong><pre>{file.content}</pre>
+              </details>)}
+              {preview.files?.some(file => file.action === 'UPDATE') && <p>ZIP에는 생성된 파일이 들어갑니다. 기존 파일의 다른 내용은 자동 병합되지 않으므로 차이를 확인한 뒤 승인하세요.</p>}
+            </>}
+          </section>}
+          {confirmed && <section className={styles.card}><h2>7. 생성 이력과 적용 결과</h2><p>다운로드 후 이력을 조회할 수 있습니다. 적용 결과는 사용자 보고이며 설치 성공을 자동 검증하지 않습니다.</p><button type="button" disabled={busy} onClick={readHistory}>생성 이력 조회</button>
+            {history && <>{history.items?.length ? <><ul>{history.items.map(item => <li key={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.status} · {item.validity} · 파일 {item.files?.length || 0}개{item.latestUserReport && ` · 사용자 보고 ${item.latestUserReport.reportedState}`}</li>)}</ul><form onSubmit={submitReport} className={styles.stack}><label>보고할 생성 이력<select value={selectedExportId} onChange={event => setSelectedExportId(event.target.value)}>{history.items.map(item => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.id}</option>)}</select></label><label>적용 결과<select value={reportState} onChange={event => { setReportState(event.target.value); setReportReason('') }}><option value="">선택해 주세요</option><option value="APPLIED">적용했다고 보고</option><option value="FAILED">적용 실패 보고</option></select></label>{reportState === 'FAILED' && <label>실패 사유<select value={reportReason} onChange={event => setReportReason(event.target.value)}><option value="">선택해 주세요</option><option value="COPY_FAILED">파일 복사 실패</option><option value="AUTH_REQUIRED">인증 필요</option><option value="DEPENDENCY_MISSING">의존성 누락</option><option value="UNKNOWN">알 수 없음</option></select></label>}<button disabled={busy}>적용 결과 저장</button></form></> : <p>생성된 설정 이력이 없습니다.</p>}{history.nextCursor && <button type="button" disabled={busy} onClick={readMoreHistory}>이전 이력 더 보기</button>}</>}
+          </section>}
+        </>}
+      </>}
+    </main>
+  </div>
+}

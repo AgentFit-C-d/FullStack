@@ -22,7 +22,7 @@ public class CatalogController {
         public CatalogResponse { items = List.copyOf(items); }
     }
 
-    private static final Set<String> FILTERS = Set.of("clientId", "osFamily", "capabilityId");
+    private static final Set<String> FILTERS = Set.of("clientId", "clientVersion", "osFamily", "capabilityId");
     private final SessionPrincipalResolver principals;
     private final ObjectProvider<RecommendationCreationService.ApprovedCatalogReader> catalogs;
 
@@ -43,7 +43,8 @@ public class CatalogController {
             }
         }
         var filter = new CatalogReadService.Filter(value(parameters, "osFamily"),
-            value(parameters, "clientId"), value(parameters, "capabilityId"));
+            value(parameters, "clientId"), value(parameters, "clientVersion"),
+            value(parameters, "capabilityId"));
         var source = catalogs.getIfAvailable();
         if (source == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,

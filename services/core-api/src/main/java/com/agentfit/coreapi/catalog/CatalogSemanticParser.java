@@ -56,9 +56,12 @@ public final class CatalogSemanticParser {
             if (!capabilities.equals(CapabilityKey.keys())) throw unavailable("capability set mismatch");
 
             Map<String, DraftTool> drafts = new HashMap<>();
+            Map<String, ToolRiskReview> riskReviews = new HashMap<>();
             for (JsonNode item : items(bundle, "tools.json")) {
-                exact(item, Set.of("key", "name", "kind", "sourceUrl", "version",
-                    "capabilityKeys", "includedComponentKeys"));
+                Set<String> toolFields = new HashSet<>(Set.of("key", "name", "kind", "sourceUrl",
+                    "version", "capabilityKeys", "includedComponentKeys"));
+                if (item.has("riskReview")) toolFields.add("riskReview");
+                exact(item, toolFields);
                 String key = value(item, "key");
                 String name = value(item, "name");
                 CatalogTool.Kind kind;
@@ -72,6 +75,8 @@ public final class CatalogSemanticParser {
                 DraftTool draft = new DraftTool(name, kind, sourceUrl, value(item, "version"),
                     toolCapabilities, uniqueStrings(item, "includedComponentKeys"));
                 if (drafts.putIfAbsent(key, draft) != null) throw unavailable("duplicate tool");
+                riskReviews.put(key, item.has("riskReview")
+                    ? riskReview(item.path("riskReview")) : ToolRiskReview.unassessed());
             }
 
             Map<String, Set<String>> dependencies = new HashMap<>();
@@ -155,7 +160,7 @@ public final class CatalogSemanticParser {
             }
             CatalogRelease release = new CatalogRelease(bundle.releaseId(), tools, combinations);
             CatalogValidator.validate(release);
-            return new ParsedCatalog(bundle.catalogHash(), release, mappings, evidence);
+            return new ParsedCatalog(bundle.catalogHash(), release, mappings, evidence, riskReviews);
         } catch (CatalogBundleLoader.CatalogUnavailableException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -239,6 +244,20 @@ public final class CatalogSemanticParser {
         String url = httpsUrl(item, "evidenceUrl");
         try { return new VerificationEvidence(url, LocalDate.parse(value(item, "checkedAt"))); }
         catch (DateTimeParseException exception) { throw unavailable("invalid verification date"); }
+    }
+
+    private static ToolRiskReview riskReview(JsonNode item) {
+        exact(item, Set.of("level", "externalAuth", "reason", "evidenceUrl", "checkedAt"));
+        ToolRiskReview.Level level;
+        ToolRiskReview.ExternalAuth externalAuth;
+        try {
+            level = ToolRiskReview.Level.valueOf(value(item, "level"));
+            externalAuth = ToolRiskReview.ExternalAuth.valueOf(value(item, "externalAuth"));
+        } catch (IllegalArgumentException exception) {
+            throw unavailable("invalid risk review value");
+        }
+        return new ToolRiskReview(ToolRiskReview.Status.REVIEWED, level, externalAuth,
+            value(item, "reason"), evidence(item));
     }
 
     private static String httpsUrl(JsonNode item, String field) {

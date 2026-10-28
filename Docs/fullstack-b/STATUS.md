@@ -1,5 +1,31 @@
 # Full Stack B current status
 
+**skills.sh 관련 후보 표시 (2026-10-28):** 사용자 선택 후보 ZIP에 이어, 소유권 확인을 거친 프로젝트의 최신 저장 Capability와 skills.sh 후보 이름을 대조하는 API를 추가했다. 프론트는 추천 결과 아래 관련 후보·미연결 필수 기능·선택 ZIP을 표시한다. 이름 규칙은 `NAME_RULE`, 조합 상태는 `UNCONFIRMED`로 표시한다. 후보를 기존 Catalog 추천·권한 Preview·PostgreSQL 추천 항목으로 연결하는 작업은 남아 있다. [설계](../superpowers/specs/2026-10-28-skill-candidate-suggestions.md).
+
+**실물 Skill 로컬 기능 연결 (2026-10-28):** 사용자가 요청한 로컬 Compose에서 Windows/Claude Code `2.1.310` TDD Skill 1종을 고정 카탈로그로 실행했다. 현재 FullStack FastAPI의 9종 판정 → PostgreSQL 추천 저장 → 부분 충족 경고·Preview를 실제 Core/AI/DB 테스트로 확인했고, 같은 후보의 권한 선택 → 승인 → ZIP도 검증했다. 웹·Core·AI health는 HTTP 200이다. 실제 브라우저 로그인부터 ZIP 수신까지의 사용자 조작은 별도 확인이 필요하며 별도 `AgentFit_AI_v2` 교체도 아직 아니다. [로컬 검증 기록](integration/local-real-catalog-run-2026-10-28.md).
+
+**별도 AI 계약·실물 후보 보강 (2026-10-28):** B에 별도 AI 저장소의 Bearer `skills/needs` 요청·검색 응답을 검증하는 클라이언트를 추가했다. 근거 ID를 A/B 확정 입력 경로로 복원하며 검색 needs를 9종 Capability로 자동 판정하지 않는다. A 예산 lease와 AI Capability 계약이 없어 실제 추천 API에는 아직 연결하지 않았다. Claude Code `2.1.310` 실물 TDD Skill의 권한·위험도·단일 구성 근거를 별도 후보에 기록했고, 후보 검증 결과는 `INDEPENDENT_APPROVAL_REQUIRED`만 남는다. [AI 계약](integration/external-ai-contract-alignment-2026-10-27.md) · [Skill 근거](catalog/obra-tdd-2.1.310-evidence-2026-10-28.md).
+
+**부분 추천 지원 (2026-10-27):** 전체 충족 구성을 우선한 뒤, 없으면 현재 환경에서 검증된 단독/조합 후보 중 필수 기능을 가장 많이 충족하는 구성을 제안한다. `partial_required_coverage`를 저장·화면에 표시하고 Preview에서도 미충족 기능 경고를 유지한다. 실제 FastAPI needs와 격리 PostgreSQL을 통한 추천 저장·조회·Preview HTTP 검증에서 TDD Skill 1종은 테스트 작성만 충족하고 테스트 실행은 미충족으로 남았다. 팀 독립 승인 전이므로 운영 Catalog 완성으로 세지 않는다.
+
+**FSB-01~12 최신 대조 (2026-10-27):** [상위 기능별 기획·구현·실검증 점검](integration/fsb-12-feature-audit-2026-10-26.md). 기본/선택 추천 후보와 이유·위험도·만료 이력을 `/app/live`에 연결했고 프론트 97개 테스트·lint·build를 확인했다. 7/12는 기능 경로의 구현 수이며 실제 승인 도구를 갖춘 운영 종단 완료는 0/12다.
+
+**Catalog 장애 시 이력 조회 (2026-10-26):** 승인 릴리스가 없거나 파일 검증에 실패해도 저장된 추천 항목을 `STALE`로 조회할 수 있도록 B 최신 조회 경계를 보강했다. 현재 Catalog의 권한·지원 정보를 과거 결과에 억지로 붙이지 않으며 Preview·승인 경로는 여전히 승인 릴리스를 요구한다. 제품 완료 수치는 그대로다.
+
+**현재 판정 (2026-10-25):** B 내부 구현 마일스톤은 **4/12** 체크, 합성 카탈로그를 사용한 시연 경로는 PRD `FSB-01–12` 중 **7/12 동작·5/12 부분 구현**이다. 이는 서로 다른 기준이며, 실도구를 갖춘 제품 요구사항을 종단에서 완결했다고 확인한 항목은 **0/12**다. skills.sh의 실물 Skill 1종은 Windows·Claude Code 2.1.270에서 실행과 B 추천→권한→Preview→ZIP 테스트를 마쳤지만 **별도 팀 검토·승인 전**이라 운영 카탈로그에 넣지 않았다. [실물 Skill 검토](catalog/obra-tdd-skill-pilot-2026-10-25.md)와 [연동 점검](integration/2026-10-25-b-interface-audit.md)을 참조한다.
+
+**선택 도구 후보 B 경계 (2026-10-26):** AI가 근거와 함께 명시한 `OPTIONAL` 기능에 대해 승인 Catalog의 환경·전체 조합·출력 한도를 통과하는 후보를 기본 구성과 분리한다. `required`를 DB에 보존하고 POST/GET 응답의 `optionalItems`로 전달하며, 명시적으로 선택하지 않은 도구는 Preview·ZIP에 포함하지 않는다. 관련 Java 회귀 테스트는 통과했다. 현재 AI는 `OPTIONAL`을 생성하지 않고 프론트도 `optionalItems`를 표시하지 않으므로 **실제 사용자 선택 흐름과 FSB-04 전체 완료로 세지 않는다**. [남은 계약](recommendation/optional-candidates-contract-proposal.md)을 참조한다.
+
+**도구 위험도·인증 검토 정보 (2026-10-26):** Catalog v1 도구에 선택적인 `riskReview`를 추가했다. 검토 등급·외부 인증 필요 여부·이유·출처·시점이 모두 있을 때만 `REVIEWED`로 투영하며, 기존 파일은 `UNASSESSED`로 표시한다. 추천 생성·최신 조회와 Catalog API에 이 상태를 노출하고 위험도 변경을 재검토 대상으로 잡는다. 검토 기록이 없는 후보에는 `RISK_REVIEW_REQUIRED`가 표시된다. B Java 관련 67개 회귀 테스트가 통과했다. 실제 팀 검토·프론트 표시·승인 Catalog는 남아 있어 FSB-05 제품 완료로 세지 않는다. [작성 기준](catalog/catalog-manifest-authoring.md)을 참조한다.
+
+**추천 당시 검토 이력 (2026-10-26):** B 추천 항목을 저장할 때 Catalog의 위험도·외부 인증 검토 상태와 근거를 함께 보존하고 `savedItems.riskReview`로 돌려준다. 카탈로그 변경으로 추천이 `STALE`가 되어도 과거 추천에 현재 검토 결과를 소급하지 않는다. 기존 추천 행은 V9 마이그레이션 이후 `UNASSESSED`로 표시한다. Java 저장·행 복원·HTTP 응답 테스트는 통과했으며, Docker가 꺼져 있어 PostgreSQL 마이그레이션 실서버 확인은 남았다. [구현 범위](recommendation/historical-risk-snapshot-plan-2026-10-26.md)를 참조한다.
+
+**기존 설정 상태의 승인 지문 (2026-10-26):** 기존 파일을 제공하지 않은 두 입력 상태 `UNKNOWN`과 `USER_SAYS_EMPTY`를 승인 지문에서 구분한다. 저장 메타데이터 재조회도 상태를 포함해 재계산하며 불일치하면 미리보기 재생성을 요구하는 버전 충돌로 처리한다. 관련 순수 Java 테스트 50개가 통과했다. 배포 전 생성된 미리보기는 새 지문과 일치하지 않아 다시 생성해야 한다. PostgreSQL 통합 테스트는 Docker 미가동으로, 승인 컨트롤러 테스트는 로컬 Java 24의 Mockito 에이전트 문제로 이번 실행에서 확인하지 못했다. [변경 범위](configuration/preview/existing-state-fingerprint-plan-2026-10-26.md)를 참조한다. 상위 기능 수치는 그대로다.
+
+**추천 근거 표시 (2026-10-25):** 추천 항목의 설명에 실제로 충족하는 필수 Capability 이름을 담고, 최신 추천 GET에서는 DB에 저장된 당시의 설명을 반환한다. 기존 근거가 템플릿 변경으로 재생성되어 바뀌지 않도록 했다. B 추천 생성·최신 조회 단위 테스트가 통과했으며, 새 문구의 HTTP·PostgreSQL 재검증과 프론트 노출은 아직 수행하지 않았다.
+
+**브라우저 실서버 데모 (2026-10-18):** GitHub 세션에서 프로젝트 생성→텍스트 기획 분석→DRAFT 확정→역할·환경 저장→AI Capability/합성 Catalog 추천→미리보기→승인→ZIP→생성 이력까지 Core·FastAPI·PostgreSQL을 거쳐 확인했다. 설치 도구 목록·선택적 버전 입력은 DB 새로고침 복원까지 확인했고, 환경 변경 시 추천 STALE/재생성 및 현재 OS·Client·버전 Catalog 조회도 검증했다. 실도구 Catalog와 최신 단계별 디자인의 개별 API 바인딩은 미완료다. 범위·제약은 [브라우저 데모 기록](integration/demo-web-readiness-2026-10-18.md)에 정리했다.
+
 **설정 입력 HTTP 한도 (2026-10-18):** 미리보기·ZIP 다운로드 POST의 JSON 본문을 각각 1 MiB로 제한한다. Content-Length가 없거나 실제보다 작아도 읽기 한도로 413 `PAYLOAD_TOO_LARGE`를 반환하며, 경계값 요청은 원본 bytes를 컨트롤러에 전달한다. 필터 단위 테스트, 인증된 Core·AI·PostgreSQL 데모 스모크, Java 21 Core 전체 테스트가 통과했다.
 
 **데모 산출물 안내 (2026-10-18):** 합성 카탈로그에 `README.md` 안내를 추가해 미리보기와 ZIP에 설정 예시 및 설치 금지·미검증 범위가 함께 나타나게 했다. 새 카탈로그 무결성 해시를 데모 설정에 고정했다. 미리보기와 ZIP의 두 파일 bytes 일치, Java 21 Core 전체 테스트, Catalog manifest 테스트, Core·AI·PostgreSQL 데모 스모크가 통과했다. 실제 Claude Code 적용 절차는 아직 검증·승인된 Catalog가 없어 제공하지 않는다.

@@ -19,6 +19,30 @@ class RecommendationCreationServiceTest {
     @TempDir Path directory;
 
     @Test
+    void explicitUserOptionalCapabilityIsSavedSeparatelyFromAiDecision() throws Exception {
+        String approvedHash = SyntheticCatalogBundle.write(directory);
+        var service = new RecommendationCreationService(
+            RecommendationCreationServiceTest::snapshot,
+            input -> new RecommendationCreationService.CapabilityAssessment(
+                CapabilityKey.keys().stream().sorted().map(key -> new AiCapabilityIntake.Claim(key,
+                    key.equals("cap_document_reference") ? AiCapabilityIntake.Need.REQUIRED
+                        : AiCapabilityIntake.Need.NOT_REQUESTED,
+                    "AI assessment", key.equals("cap_document_reference")
+                        ? List.of("profile.item.features.0") : List.<String>of())).toList(), List.of()),
+            () -> new RecommendationCreationService.ApprovedCatalog(directory, approvedHash),
+            (snapshot, basis, result) -> {
+                var optional = result.capabilities().stream()
+                    .filter(claim -> claim.capabilityKey().equals("cap_test_execution"))
+                    .findFirst().orElseThrow();
+                assertEquals(AiCapabilityIntake.Need.OPTIONAL, optional.need());
+                assertEquals(List.of("user.optional.cap_test_execution"), optional.sourceFields());
+                return "recommendation-optional";
+            });
+        assertEquals("recommendation-optional", service.create("project-1", expected(),
+            Set.of("cap_test_execution")).recommendationId());
+    }
+
+    @Test
     void createsRecommendationFromOwnerCheckedSnapshotAiAndApprovedCatalog() throws Exception {
         String approvedHash = SyntheticCatalogBundle.write(directory);
         AtomicInteger saved = new AtomicInteger();

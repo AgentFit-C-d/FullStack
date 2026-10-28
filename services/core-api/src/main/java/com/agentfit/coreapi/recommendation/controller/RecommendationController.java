@@ -9,6 +9,7 @@ import com.agentfit.coreapi.catalog.CatalogRecommendationDetails;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.agentfit.coreapi.catalog.RecommendationCreationService;
 import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import com.agentfit.coreapi.configuration.preview.ExistingState;
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
 import com.agentfit.coreapi.configuration.preview.PreviewInputFile;
@@ -84,9 +85,7 @@ public class RecommendationController {
         ownership.requireOwned(principal, projectId);
         var snapshot = required(latest, "latest recommendation workflow").latest(projectId);
         if (snapshot == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "recommendation not found");
-        return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
-            snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
-            snapshot.catalogItems(), snapshot.capabilities(), snapshot.notices());
+        return latestResponse(snapshot);
     }
 
     @PostMapping("/config-previews")
@@ -119,10 +118,33 @@ public class RecommendationController {
         return value;
     }
 
-    private static RecommendationCreatedResponse recommendationResponse(RecommendationCreationService.Created created) {
+    static RecommendationCreatedResponse recommendationResponse(RecommendationCreationService.Created created) {
         var result = created.result();
         return new RecommendationCreatedResponse(created.recommendationId(), result.decision().status(),
-            created.basis(), result.capabilities(), result.items(), result.clarificationQuestions());
+            created.basis(), result.capabilities(), requiredItems(result.items()),
+            optionalItems(result.items()), result.clarificationQuestions());
+    }
+
+    static RecommendationLatestResponse latestResponse(RecommendationLatestDetailsService.Snapshot snapshot) {
+        List<SavedItem> savedItems = snapshot.storedItems().stream()
+            .map(item -> new SavedItem(item.toolKey(), item.toolVersion(),
+                item.required(), item.reason(), item.riskReview()))
+            .toList();
+        return new RecommendationLatestResponse(snapshot.summary().recommendationId(),
+            snapshot.summary().status(), snapshot.summary().validity(), snapshot.summary().basis(),
+            requiredItems(snapshot.catalogItems()), optionalItems(snapshot.catalogItems()),
+            snapshot.capabilities(), snapshot.notices(), savedItems,
+            snapshot.evidenceLevel(), snapshot.createdAt());
+    }
+
+    private static List<CatalogRecommendationDetails.Item> requiredItems(
+        List<CatalogRecommendationDetails.Item> items) {
+        return items.stream().filter(CatalogRecommendationDetails.Item::required).toList();
+    }
+
+    private static List<CatalogRecommendationDetails.Item> optionalItems(
+        List<CatalogRecommendationDetails.Item> items) {
+        return items.stream().filter(item -> !item.required()).toList();
     }
 
     public record ExpectedVersions(long project, long developer, long environment) {}
@@ -134,13 +156,23 @@ public class RecommendationController {
 
     public record RecommendationCreatedResponse(String recommendationId, RecommendationDecision.Status status,
             PreviewBasis basis, List<AiCapabilityIntake.Claim> capabilities,
-            List<CatalogRecommendationDetails.Item> items, List<AiCapabilityIntake.Question> notices) {}
+            List<CatalogRecommendationDetails.Item> items,
+            List<CatalogRecommendationDetails.Item> optionalItems,
+            List<AiCapabilityIntake.Question> notices) {}
 
     public record RecommendationLatestResponse(String recommendationId, RecommendationDecision.Status status,
             RecommendationReadModel.Validity validity, PreviewBasis basis,
             List<CatalogRecommendationDetails.Item> items,
+            List<CatalogRecommendationDetails.Item> optionalItems,
             List<JdbcRecommendationMetadataWriter.Capability> capabilities,
-            List<JdbcRecommendationMetadataWriter.Notice> notices) {}
+            List<JdbcRecommendationMetadataWriter.Notice> notices,
+            List<SavedItem> savedItems,
+            JdbcRecommendationMetadataWriter.EvidenceLevel evidenceLevel,
+            Instant createdAt) {}
+
+    /** Historical display only; this does not confer current support or usable permissions. */
+    public record SavedItem(String toolKey, String toolVersion, boolean required,
+                            String reason, ToolRiskReview riskReview) {}
 
     public record ConfigurationPreviewCreatedResponse(String previewId, String recommendationId,
             String fingerprint, String selectionDigest, String contentDigest, Instant createdAt,

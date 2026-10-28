@@ -18,7 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** Restores B1-B4 details without AI and enriches only a current result from the approved Catalog. */
 public class RecommendationLatestDetailsService {
     /** A reads one owner-checked, consistent current basis and environment target. */
-    public record Current(PreviewBasis basis, EnvironmentTarget target) {}
+    public record Current(PreviewBasis basis, EnvironmentTarget target, boolean catalogAvailable) {
+        public Current(PreviewBasis basis, EnvironmentTarget target) {
+            this(basis, target, true);
+        }
+    }
 
     @FunctionalInterface
     public interface OwnerCheckedCurrentReader {
@@ -75,6 +79,10 @@ public class RecommendationLatestDetailsService {
         List<String> keys = stored.items().stream().map(JdbcRecommendationMetadataWriter.Item::toolKey).toList();
         var summary = RecommendationReadModel.latest(new StoredRecommendationState(
             stored.id(), stored.basis(), stored.status(), keys), current.basis());
+        if (!current.catalogAvailable()) {
+            summary = new RecommendationReadModel(summary.recommendationId(), summary.status(),
+                RecommendationReadModel.Validity.STALE, summary.basis(), summary.toolKeys());
+        }
         List<CatalogRecommendationDetails.Item> details = List.of();
         if (summary.validity() == RecommendationReadModel.Validity.CURRENT
             && summary.status() == RecommendationDecision.Status.RECOMMENDED) {
@@ -103,20 +111,35 @@ public class RecommendationLatestDetailsService {
         var required = stored.capabilities().stream()
             .filter(claim -> claim.necessity() == JdbcRecommendationMetadataWriter.Necessity.REQUIRED)
             .map(JdbcRecommendationMetadataWriter.Capability::key).collect(Collectors.toUnmodifiableSet());
+        var optional = stored.capabilities().stream()
+            .filter(claim -> claim.necessity() == JdbcRecommendationMetadataWriter.Necessity.OPTIONAL)
+            .map(JdbcRecommendationMetadataWriter.Capability::key).collect(Collectors.toUnmodifiableSet());
+        var requiredToolKeys = stored.items().stream()
+            .filter(JdbcRecommendationMetadataWriter.Item::required)
+            .map(JdbcRecommendationMetadataWriter.Item::toolKey)
+            .collect(Collectors.toUnmodifiableSet());
         var decision = new RecommendationDecision(stored.status(),
             stored.items().stream().map(JdbcRecommendationMetadataWriter.Item::toolKey).toList(),
             List.of(), List.of());
-        var details = CatalogRecommendationDetails.project(parsed, decision, required, current.target());
+        var details = CatalogRecommendationDetails.project(parsed, decision, required,
+            optional, requiredToolKeys, current.target());
         Map<String, JdbcRecommendationMetadataWriter.Item> saved = stored.items().stream()
             .collect(Collectors.toMap(JdbcRecommendationMetadataWriter.Item::toolKey, Function.identity()));
         if (details.size() != saved.size() || details.stream().anyMatch(detail -> {
             var item = saved.get(detail.toolKey());
-            return item == null || !item.required()
+            return item == null || item.required() != detail.required()
                 || !item.toolVersion().equals(detail.catalogVersion())
                 || !item.supportKey().equals(detail.supportKey());
         })) {
             throw new IllegalArgumentException("stored recommendation differs from approved Catalog");
         }
-        return details;
+        return details.stream().map(detail -> {
+            var item = saved.get(detail.toolKey());
+            return new CatalogRecommendationDetails.Item(detail.toolKey(), detail.name(),
+                detail.kind(), detail.sourceUrl(), detail.catalogVersion(), detail.supportKey(),
+                detail.coveredRequiredCapabilities(), detail.coveredOptionalCapabilities(),
+                detail.required(), detail.supportEvidence(),
+                detail.permissionOptions(), item.reason(), detail.riskReview());
+        }).toList();
     }
 }

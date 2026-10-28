@@ -8,6 +8,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.selection.PermissionMapping;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import java.time.LocalDate;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +24,21 @@ class CatalogRevisionImpactTest {
         new VerifiedCombination(Set.of("tool-a", "tool-b"), TARGET);
     private static final VerificationEvidence EVIDENCE =
         new VerificationEvidence("https://example.org/review", LocalDate.parse("2026-10-10"));
+
+    @Test
+    void realClaudeCodeVersionChangeRequiresToolReevaluation() {
+        Path root = Path.of("..", "..", "catalog-candidates");
+        var before = CatalogBundleLoader.load(root.resolve(
+            "obra-tdd-windows-claude-2.1.270-verified"));
+        var after = CatalogBundleLoader.load(root.resolve(
+            "obra-tdd-windows-claude-2.1.310-risk-reviewed"));
+
+        var impact = CatalogRevisionImpact.compare(before, after);
+
+        assertTrue(impact.revisionChanged());
+        assertTrue(impact.toolsNeedingReview().contains(
+            "obra-superpowers-test-driven-development"));
+    }
 
     @Test
     void toolVersionChangeInvalidatesItsSupportAndContainingCombination() {
@@ -42,6 +58,22 @@ class CatalogRevisionImpactTest {
         var reviewedLater = new VerificationEvidence("https://example.org/new-review",
             LocalDate.parse("2026-10-11"));
         var after = catalog("new", "1.0", reviewedLater);
+
+        var impact = CatalogRevisionImpact.compare(before, after, files(), files());
+
+        assertEquals(Set.of("tool-a"), impact.toolsNeedingReview());
+        assertEquals(Set.of(PAIR), impact.combinationsNeedingReview());
+    }
+
+    @Test
+    void changedRiskReviewInvalidatesToolAndContainingCombination() {
+        var before = catalog("old", "1.0", EVIDENCE);
+        var reviewed = new ToolRiskReview(ToolRiskReview.Status.REVIEWED,
+            ToolRiskReview.Level.HIGH, ToolRiskReview.ExternalAuth.REQUIRED,
+            "External account and write access",
+            new VerificationEvidence("https://example.org/risk", LocalDate.of(2026, 10, 26)));
+        var after = new ParsedCatalog("new", before.release(), before.permissionMappings(),
+            before.evidence(), Map.of("tool-a", reviewed));
 
         var impact = CatalogRevisionImpact.compare(before, after, files(), files());
 

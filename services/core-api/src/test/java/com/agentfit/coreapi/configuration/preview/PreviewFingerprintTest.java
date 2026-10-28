@@ -71,6 +71,25 @@ class PreviewFingerprintTest {
     }
 
     @Test
+    void userDeclaredEmptyStateRequiresNewApprovalEvenWithoutExistingFiles() {
+        PreviewInputFile generated = new PreviewInputFile("client", "config.txt", "hello");
+        PreviewFingerprintInput unknown = input(List.of("doc"), List.of(), List.of(generated));
+        PreviewFingerprintInput declaredEmpty = new PreviewFingerprintInput(basis(), "rec-1",
+            List.of("doc"), List.of(), "generator-1", List.of(generated),
+            ExistingState.USER_SAYS_EMPTY, List.of());
+
+        var first = PreviewFingerprint.compute(unknown);
+        var second = PreviewFingerprint.compute(declaredEmpty);
+        assertEquals(first.selectionDigest(), second.selectionDigest());
+        assertEquals(first.contentDigest(), second.contentDigest());
+        assertNotEquals(first.fingerprint(), second.fingerprint());
+        var restoredAsEmpty = PreviewFingerprint.computeStoredMetadata(basis(), "rec-1",
+            List.of("doc"), List.of(), "generator-1", ExistingState.USER_SAYS_EMPTY,
+            first.files());
+        assertNotEquals(first.fingerprint(), restoredAsEmpty.fingerprint());
+    }
+
+    @Test
     void rejectsMissingConfirmationMalformedHashAndDuplicateChoices() {
         PreviewInputFile generated = new PreviewInputFile("client", "config.txt", "hello");
         PreviewBasis missingEvent = new PreviewBasis("project-1", 7, "profile-1", 3, "", 2,
@@ -102,7 +121,7 @@ class PreviewFingerprintTest {
             result.selectionDigest());
         assertEquals("90ec155580a359f9d6cc9ed26ffda0f323911c8d44dfa95818e6347ad05ca52d",
             result.contentDigest());
-        assertEquals("da82fd3d4600d8d424b348431440dfca6bdb01e144b45310a7ae4957241d12bb",
+        assertEquals("ea7f05ac85ef6d2ea456a5d3e623136c87f0ca32c350101e557f7b821ae4cb5a",
             result.fingerprint());
     }
 

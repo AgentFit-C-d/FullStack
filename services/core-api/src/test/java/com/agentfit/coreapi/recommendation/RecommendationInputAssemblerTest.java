@@ -47,4 +47,23 @@ class RecommendationInputAssemblerTest {
         assertThrows(IllegalArgumentException.class,
             () -> RecommendationInputAssembler.assemble(partial, false, null, null));
     }
+
+    @Test
+    void explicitNotRequestedClaimsDoNotForceAdditionalQuestions() {
+        List<AiCapabilityIntake.Claim> claims = CapabilityKey.keys().stream().map(key ->
+            new AiCapabilityIntake.Claim(key,
+                key.equals("cap_browser_verification")
+                    ? AiCapabilityIntake.Need.REQUIRED : AiCapabilityIntake.Need.NOT_REQUESTED,
+                "확정된 작업을 기준으로 판정",
+                key.equals("cap_browser_verification")
+                    ? List.of("profile.item.features.0") : List.<String>of())).toList();
+        var assessment = AiCapabilityIntake.validate(claims, List.of(),
+            Set.of("profile.item.features.0"));
+
+        var input = RecommendationInputAssembler.assemble(assessment, false,
+            new EnvironmentTarget("WINDOWS", "demo-claude-code", "demo-1"), Map.of());
+
+        assertEquals(Set.of("cap_browser_verification"), input.requiredCapabilityKeys());
+        assertFalse(input.hasRelevantUndeterminedCapability());
+    }
 }

@@ -6,7 +6,7 @@ AgentFit MVP 모노레포입니다. A와 B 코드는 단일 Spring Boot Core API
 
 ```text
 apps/
-  web/                 # Next.js frontend, to be added by frontend team
+  web/                 # React/Vite frontend demo and live API flow
 services/
   core-api/            # Spring Boot API for A/B domain, persistence, audit, and orchestration
   ai-service/          # FastAPI service for AI request handling and structured extraction
@@ -24,11 +24,21 @@ Docs/
 
 ## Setup Scope
 
-구조는 기준 문서의 흐름을 따릅니다: Next.js -> Spring Boot Core API -> FastAPI AI Service -> external LLM. PostgreSQL 읽기·쓰기는 Core API만 소유합니다.
+현재 데모 흐름은 React/Vite -> Spring Boot Core API -> FastAPI AI Service -> external LLM 구조입니다. PostgreSQL 읽기·쓰기는 Core API만 소유합니다.
 
 소스가 병합되어 함께 컴파일되는 것과 인증된 사용자 흐름이 실제로 연결된 것은 다릅니다. 현재 B workflow는 A/AI의 신뢰 adapter, 승인된 Catalog, 원자 저장 port가 제공될 때만 활성화됩니다. A snapshot·AI 계약·공개 API·Flyway 통합·프로젝트 삭제 transaction은 아직 후속 통합 작업입니다. 자세한 상태는 [A/B 병합 연계 현황](Docs/ab-integration-status.md)을 확인하세요.
 
 현재 기준 런타임은 Java 21 / Spring Boot 3.3.5 및 Python 3.11+ / FastAPI입니다. Maven wrapper는 포함하지 않습니다.
+
+## Browser demo
+
+`demo` 브랜치에는 프론트 화면과 실제 API용 `/app` 경로가 포함됩니다. Docker Desktop을 켜고 Git에서 제외된 `env.docker`를 준비한 뒤 실행합니다.
+
+```powershell
+docker compose --env-file env.docker -f infra/compose.fullstack.yaml -f infra/compose.demo.yaml -f infra/compose.web-demo.yaml up --build -d
+```
+
+`http://localhost:8080`에서 GitHub 로그인을 진행합니다. GitHub OAuth 콜백은 `http://localhost:8080/api/login/oauth2/code/github`으로 등록되어 있어야 합니다. `/demo`는 메모리 시연이며 `/app`만 실제 API를 사용합니다. 합성 카탈로그와 설정 ZIP은 실사용 검증 결과가 아닙니다. 자세한 내용은 [web README](apps/web/README.md)를 참고하세요.
 
 ## Docker full-stack development
 

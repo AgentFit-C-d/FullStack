@@ -40,6 +40,21 @@ class AiCapabilityIntakeTest {
     }
 
     @Test
+    void acceptsExplicitNotRequestedWithoutTreatingItAsUnresolved() {
+        var result = AiCapabilityIntake.validate(List.of(
+            claim("cap_browser_verification", AiCapabilityIntake.Need.REQUIRED,
+                List.of("profile.item.features.0")),
+            claim("cap_ai_evaluation", AiCapabilityIntake.Need.NOT_REQUESTED, List.of())),
+            List.of(), ALLOWED_FIELDS);
+
+        assertEquals(Set.of("cap_browser_verification"), result.requiredCapabilityKeys());
+        assertFalse(result.hasUndeterminedCapability());
+        assertThrows(IllegalArgumentException.class, () -> AiCapabilityIntake.validate(List.of(
+            claim("cap_ai_evaluation", AiCapabilityIntake.Need.NOT_REQUESTED,
+                List.of("profile.item.features.0"))), List.of(), ALLOWED_FIELDS));
+    }
+
+    @Test
     void rejectsUnknownOrDuplicateCapabilityIds() {
         assertThrows(IllegalArgumentException.class, () -> AiCapabilityIntake.validate(
             List.of(claim("cap_invented", AiCapabilityIntake.Need.REQUIRED, List.of("profile.item.features.0"))),

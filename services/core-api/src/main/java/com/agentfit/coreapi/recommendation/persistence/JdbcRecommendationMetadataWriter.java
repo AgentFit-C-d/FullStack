@@ -1,6 +1,7 @@
 package com.agentfit.coreapi.recommendation.persistence;
 
 import com.agentfit.coreapi.configuration.preview.PreviewBasis;
+import com.agentfit.coreapi.catalog.ToolRiskReview;
 import com.agentfit.coreapi.persistence.ProjectDbId;
 import com.agentfit.coreapi.recommendation.CapabilityKey;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
@@ -18,14 +19,21 @@ import java.util.UUID;
 /** Writes B1-B4 only after A has locked and owner-checked the current project snapshot. */
 public final class JdbcRecommendationMetadataWriter {
     public enum EvidenceLevel { PLAN_ONLY, ENVIRONMENT_DECLARED }
-    public enum Necessity { REQUIRED, OPTIONAL, UNDETERMINED }
+    public enum Necessity { REQUIRED, OPTIONAL, UNDETERMINED, NOT_REQUESTED }
     public enum ExplanationSource { AI, TEMPLATE }
     public enum NoticeType { QUESTION, REASON }
     public enum QuestionOwner { AI, B }
 
     public record Capability(String key, Necessity necessity, String reason, List<String> inputRefs) {}
     public record Item(String id, String toolKey, String toolVersion, String supportKey,
-                       boolean required, String reason, ExplanationSource explanationSource) {}
+                       boolean required, String reason, ExplanationSource explanationSource,
+                       ToolRiskReview riskReview) {
+        public Item(String id, String toolKey, String toolVersion, String supportKey,
+                    boolean required, String reason, ExplanationSource explanationSource) {
+            this(id, toolKey, toolVersion, supportKey, required, reason, explanationSource,
+                ToolRiskReview.unassessed());
+        }
+    }
     public record Notice(String id, NoticeType type, QuestionOwner questionOwner,
                          String answerTarget, String code, String message, List<String> inputRefs) {}
     public record Draft(String id, PreviewBasis basis, RecommendationDecision.Status status,
@@ -85,7 +93,7 @@ public final class JdbcRecommendationMetadataWriter {
             if (item == null || !childIds.add(uuid(item.id())) || blank(item.toolKey())
                 || !toolKeys.add(item.toolKey()) || blank(item.toolVersion())
                 || blank(item.supportKey()) || blank(item.reason())
-                || item.explanationSource() == null) {
+                || item.explanationSource() == null || item.riskReview() == null) {
                 throw new IllegalArgumentException("invalid recommendation item");
             }
         }
@@ -109,7 +117,11 @@ public final class JdbcRecommendationMetadataWriter {
                 }
             }
         }
-        if (draft.status() == RecommendationDecision.Status.RECOMMENDED && draft.items().isEmpty()
+        if (draft.status() == RecommendationDecision.Status.RECOMMENDED
+                && draft.items().stream().noneMatch(Item::required)
+            || draft.items().stream().anyMatch(item -> !item.required())
+                && draft.capabilities().stream().noneMatch(capability ->
+                    capability.necessity() == Necessity.OPTIONAL)
             || draft.status() != RecommendationDecision.Status.RECOMMENDED && !draft.items().isEmpty()
             || draft.status() == RecommendationDecision.Status.NEEDS_INFORMATION && !hasQuestion
             || draft.status() != RecommendationDecision.Status.NEEDS_INFORMATION && hasQuestion
@@ -173,7 +185,9 @@ public final class JdbcRecommendationMetadataWriter {
                                     List<Item> items) throws SQLException {
         try (PreparedStatement insert = transaction.prepareStatement(
             "INSERT INTO recommendation_item (id, recommendation_id, tool_key, tool_version, "
-                + "support_key, required, reason, explanation_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+                + "support_key, required, reason, explanation_source, risk_status, risk_level, "
+                + "external_auth, risk_reason, risk_evidence_url, risk_checked_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             for (Item item : items) {
                 insert.setObject(1, uuid(item.id()));
                 insert.setObject(2, recommendationId);
@@ -183,6 +197,14 @@ public final class JdbcRecommendationMetadataWriter {
                 insert.setBoolean(6, item.required());
                 insert.setString(7, item.reason());
                 insert.setString(8, item.explanationSource().name());
+                var risk = item.riskReview();
+                insert.setString(9, risk.status().name());
+                insert.setString(10, risk.level() == null ? null : risk.level().name());
+                insert.setString(11, risk.externalAuth() == null ? null : risk.externalAuth().name());
+                insert.setString(12, risk.reason());
+                insert.setString(13, risk.evidence() == null ? null : risk.evidence().sourceUrl());
+                insert.setDate(14, risk.evidence() == null ? null
+                    : java.sql.Date.valueOf(risk.evidence().checkedAt()));
                 insert.executeUpdate();
             }
         }

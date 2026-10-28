@@ -3,16 +3,13 @@ package com.agentfit.coreapi.catalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.agentfit.coreapi.domain.analysis.client.HttpAiAnalysisClient;
+import com.agentfit.coreapi.catalog.discovery.SkillCandidateSuggestionController;
 import com.agentfit.coreapi.domain.analysis.config.AiAnalysisClientConfiguration;
 import com.agentfit.coreapi.domain.analysis.service.HmacKeyRing;
 import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
@@ -26,6 +23,7 @@ import com.agentfit.coreapi.integration.ab.JdbcPreviewStoreAdapter;
 import com.agentfit.coreapi.integration.ab.OwnerCheckedSnapshotReaderAdapter;
 import com.agentfit.coreapi.integration.ab.RecommendationInputsService;
 import com.agentfit.coreapi.recommendation.controller.RecommendationController;
+import com.agentfit.coreapi.recommendation.controller.OptionalRecommendationController;
 import com.agentfit.coreapi.recommendation.persistence.JdbcLatestRecommendationPorts;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +33,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -56,6 +55,12 @@ class LiveAiPostgresRecommendationTest {
         String jdbcUrl = System.getenv("AGENTFIT_TEST_POSTGRES_URL");
         String keyId = System.getenv("AGENTFIT_HMAC_CURRENT_KEY_ID");
         String secret = System.getenv("AGENTFIT_HMAC_CURRENT_SECRET");
+        boolean realReviewCatalog = "REAL_REVIEW".equals(System.getenv("AGENTFIT_LIVE_CATALOG_KIND"));
+        String clientId = realReviewCatalog ? "claude-code" : "demo-claude-code";
+        String clientVersion = realReviewCatalog
+            ? System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_CLIENT_VERSION", "2.1.270") : "demo-1";
+        String toolKey = realReviewCatalog ? "obra-superpowers-test-driven-development"
+            : "demo-all-capabilities-skill";
         assumeTrue(baseUrl != null && !baseUrl.isBlank() && jdbcUrl != null && !jdbcUrl.isBlank()
             && keyId != null && !keyId.isBlank() && secret != null && !secret.isBlank(),
             "live AI and PostgreSQL smoke is opt-in");
@@ -79,11 +84,11 @@ class LiveAiPostgresRecommendationTest {
                 profile, project, "demo", "web", "development", owner);
             jdbc.update("INSERT INTO project_profile_item (id, project_profile_id, field_key, ordinal, name, source, evidence, created_at, updated_at) VALUES (?, ?, 'features', 0, ?, 'DOCUMENT', '[]'::jsonb, now(), now())",
                 UUID.randomUUID(), profile,
-                "문서, repo 코드 탐색, 코드 검토, 테스트 작성 및 실행, 브라우저 검증, API 연동, DB 점검, AI 모델 평가");
+                realReviewCatalog ? "Write tests" : "브라우저 검증");
             jdbc.update("INSERT INTO profile_confirmation_event (id, project_id, confirmed_profile_id, confirmed_profile_version, project_version, actor_id, confirmed_at, request_id, profile_snapshot) VALUES (?, ?, ?, 1, 1, ?, now(), ?, '{}'::jsonb)",
                 confirmation, project, profile, owner, "live-ai-db-demo");
             assertEquals(1, new RecommendationInputsService(dataSource).saveEnvironment(project.toString(), 0,
-                "WINDOWS", "demo-claude-code", "demo-1", true, java.util.List.of()));
+                "WINDOWS", clientId, clientVersion, true, java.util.List.of()));
 
             var ring = HmacKeyRing.from(new HmacKeyRing.Configuration(keyId, secret,
                 null, null, null, Instant.now()));
@@ -96,10 +101,17 @@ class LiveAiPostgresRecommendationTest {
                 context.getBeanFactory().registerSingleton("demoHmacKeyRing", ring);
                 context.register(AiAnalysisClientConfiguration.class);
                 context.refresh();
-                var catalog = Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
+                var catalog = realReviewCatalog
+                    ? Path.of(System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_DIRECTORY",
+                        Path.of("..", "..", "catalog-candidates", "obra-tdd-windows-claude-2.1.270-verified")
+                            .toAbsolutePath().normalize().toString()))
+                    : Path.of("..", "..", "demo", "catalog-synthetic").toAbsolutePath().normalize();
                 var snapshots = new OwnerCheckedSnapshotReaderAdapter(jdbc);
                 var approved = new ServerConfiguredCatalogReader(catalog,
-                    "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f");
+                    realReviewCatalog
+                        ? System.getenv().getOrDefault("AGENTFIT_LIVE_CATALOG_HASH",
+                            "9baf88eda910d9fc96a35163aeacb9ae0c08edd04a3bef9f5ed46c47da3ddf90")
+                        : "30c2557218e9d92c7b2d254c8df3aaf5d8960ebb13aece7f7146d1f65b567c7f");
                 var service = new RecommendationCreationService(
                     snapshots,
                     new AiCapabilityAnalyzerAdapter(context.getBean(HttpAiAnalysisClient.class), new ObjectMapper()),
@@ -122,14 +134,34 @@ class LiveAiPostgresRecommendationTest {
                 beans.registerSingleton("previewWorkflow", new PreviewCreationService(
                     new JdbcPreviewContextAdapter(dataSource), approved,
                     new JdbcPreviewStoreAdapter(dataSource)));
-                var principals = mock(SessionPrincipalResolver.class);
-                var ownership = mock(ProjectOwnershipGuard.class);
                 var principal = new AuthenticatedPrincipal(0, "demo-owner", null, owner);
-                when(principals.resolve(any())).thenReturn(Optional.of(principal));
+                var principals = new SessionPrincipalResolver(null) {
+                    @Override
+                    public Optional<AuthenticatedPrincipal> resolve(jakarta.servlet.http.HttpServletRequest request) {
+                        return Optional.of(principal);
+                    }
+                };
+                var ownerChecks = new AtomicInteger();
+                var ownership = new ProjectOwnershipGuard(null) {
+                    @Override
+                    public com.agentfit.coreapi.domain.project.entity.Project requireOwned(
+                            AuthenticatedPrincipal authenticated, String projectId) {
+                        assertEquals(principal, authenticated);
+                        assertEquals(project.toString(), projectId);
+                        ownerChecks.incrementAndGet();
+                        return null;
+                    }
+                };
                 var mvc = MockMvcBuilders.standaloneSetup(new RecommendationController(principals, ownership,
                     beans.getBeanProvider(RecommendationCreationService.class),
                     beans.getBeanProvider(RecommendationLatestDetailsService.class),
-                    beans.getBeanProvider(PreviewCreationService.class)))
+                    beans.getBeanProvider(PreviewCreationService.class)),
+                    new OptionalRecommendationController(principals, ownership,
+                        beans.getBeanProvider(RecommendationCreationService.class)),
+                    new SkillCandidateSuggestionController(principals, ownership,
+                        beans.getBeanProvider(RecommendationLatestDetailsService.class),
+                        Path.of("..", "..", "catalog-candidates", "skills-sh-candidates.json")
+                            .toAbsolutePath().normalize().toString()))
                     .setControllerAdvice(new GlobalExceptionHandler()).build();
                 String path = "/api/projects/" + project + "/recommendations";
                 var created = mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON)
@@ -144,8 +176,16 @@ class LiveAiPostgresRecommendationTest {
                     UUID.class, recommendation));
                 assertEquals(9, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ?",
                     Integer.class, recommendation));
+                assertEquals(realReviewCatalog ? 7 : 8, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ? AND necessity = 'NOT_REQUESTED'",
+                    Integer.class, recommendation));
+                assertEquals(realReviewCatalog ? 2 : 1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability WHERE recommendation_id = ? AND necessity = 'REQUIRED'",
+                    Integer.class, recommendation));
                 assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_item WHERE recommendation_id = ?",
                     Integer.class, recommendation));
+                if (realReviewCatalog) {
+                    assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_notice WHERE recommendation_id = ? AND code = 'partial_required_coverage'",
+                        Integer.class, recommendation));
+                }
                 assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_event WHERE target_id = ? AND event = 'RECOMMENDATION_CREATED'",
                     Integer.class, recommendation));
                 mvc.perform(get(path + "/latest"))
@@ -153,22 +193,63 @@ class LiveAiPostgresRecommendationTest {
                     .andExpect(jsonPath("$.recommendationId").value(recommendationId))
                     .andExpect(jsonPath("$.status").value("RECOMMENDED"))
                     .andExpect(jsonPath("$.validity").value("CURRENT"));
+                mvc.perform(get("/api/projects/" + project + "/skill-candidate-suggestions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.combinationStatus").value("UNCONFIRMED"))
+                    .andExpect(jsonPath("$.items[0].evidence").value("NAME_RULE"));
                 String previewBody = "{\"basis\":" + createdJson.get("basis") + ","
                     + "\"recommendationId\":\"" + recommendationId + "\","
-                    + "\"target\":{\"osFamily\":\"WINDOWS\",\"clientId\":\"demo-claude-code\",\"clientVersion\":\"demo-1\"},"
-                    + "\"selectedToolKeys\":[\"demo-all-capabilities-skill\"],"
-                    + "\"permissionSelections\":[{\"toolKey\":\"demo-all-capabilities-skill\",\"mappingKey\":\"read\",\"policy\":\"ASK_EACH_TIME\"}],"
+                    + "\"target\":{\"osFamily\":\"WINDOWS\",\"clientId\":\"" + clientId
+                    + "\",\"clientVersion\":\"" + clientVersion + "\"},"
+                    + "\"selectedToolKeys\":[\"" + toolKey + "\"],"
+                    + (realReviewCatalog
+                        ? "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"edit-project-files\",\"policy\":\"ASK_EACH_TIME\"},{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"run-project-tests\",\"policy\":\"ASK_EACH_TIME\"}],"
+                        : "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"read\",\"policy\":\"ASK_EACH_TIME\"}],")
                     + "\"existingState\":\"UNKNOWN\",\"providedFiles\":[],\"generatorVersion\":\"static-v1\"}";
                 var preview = mvc.perform(post("/api/projects/" + project + "/config-previews")
                         .contentType(MediaType.APPLICATION_JSON).content(previewBody))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.recommendationId").value(recommendationId))
                     .andReturn();
+                assertEquals(201, preview.getResponse().getStatus(),
+                    preview.getResponse().getContentAsString());
+                assertEquals(recommendationId, new ObjectMapper().readTree(
+                    preview.getResponse().getContentAsString()).get("recommendationId").asText());
+                if (realReviewCatalog) {
+                    assertEquals("cap_test_execution", new ObjectMapper().readTree(
+                        preview.getResponse().getContentAsString()).get("unmetCapabilityKeys").get(0).asText());
+                }
                 String previewId = new ObjectMapper().readTree(preview.getResponse().getContentAsString())
                     .get("previewId").asText();
                 assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM config_preview WHERE id = ?",
                     Integer.class, UUID.fromString(previewId)));
-                verify(ownership, org.mockito.Mockito.times(3)).requireOwned(principal, project.toString());
+                String optionalKey = jdbc.queryForObject(
+                    "SELECT capability_key FROM recommendation_capability WHERE recommendation_id = ? "
+                        + "AND necessity = 'NOT_REQUESTED' ORDER BY capability_key LIMIT 1",
+                    String.class, recommendation);
+                var optionalCreated = mvc.perform(post(path + "/optional")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"expectedVersions\":{\"project\":1,\"developer\":0,"
+                        + "\"environment\":1},\"optionalCapabilityKeys\":[\"" + optionalKey + "\"]}"))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+                var optionalJson = new ObjectMapper().readTree(
+                    optionalCreated.getResponse().getContentAsString());
+                UUID optionalRecommendation = UUID.fromString(optionalJson.get("recommendationId").asText());
+                assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability "
+                    + "WHERE recommendation_id = ? AND capability_key = ? AND necessity = 'OPTIONAL'",
+                    Integer.class, optionalRecommendation, optionalKey));
+                String optionalPreviewBody = "{\"basis\":" + optionalJson.get("basis") + ","
+                    + "\"recommendationId\":\"" + optionalRecommendation + "\","
+                    + "\"target\":{\"osFamily\":\"WINDOWS\",\"clientId\":\"" + clientId
+                    + "\",\"clientVersion\":\"" + clientVersion + "\"},"
+                    + "\"selectedToolKeys\":[\"" + toolKey + "\"],"
+                    + (realReviewCatalog
+                        ? "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"edit-project-files\",\"policy\":\"ASK_EACH_TIME\"},{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"run-project-tests\",\"policy\":\"ASK_EACH_TIME\"}],"
+                        : "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"read\",\"policy\":\"ASK_EACH_TIME\"}],")
+                    + "\"existingState\":\"UNKNOWN\",\"providedFiles\":[],\"generatorVersion\":\"static-v1\"}";
+                mvc.perform(post("/api/projects/" + project + "/config-previews")
+                    .contentType(MediaType.APPLICATION_JSON).content(optionalPreviewBody))
+                    .andExpect(status().isCreated());
+                assertEquals(6, ownerChecks.get());
             }
         } finally {
             try (var connection = DriverManager.getConnection(jdbcUrl, user, password);

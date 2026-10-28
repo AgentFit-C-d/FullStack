@@ -79,6 +79,42 @@ class CatalogSemanticParserTest {
     }
 
     @Test
+    void treatsLegacyToolRiskAsUnassessedAndKeepsReviewedRiskEvidence() {
+        assertEquals(ToolRiskReview.Status.UNASSESSED,
+            parse(files()).riskReviews().get("example-tool").status());
+
+        Map<String, String> reviewed = files();
+        reviewed.put("tools.json", TOOLS.replace("\"includedComponentKeys\":[\"example-component\"]",
+            "\"includedComponentKeys\":[\"example-component\"],\"riskReview\":{"
+                + "\"level\":\"MEDIUM\",\"externalAuth\":\"REQUIRED\","
+                + "\"reason\":\"External account authorization is needed\","
+                + "\"evidenceUrl\":\"https://example.org/risk-review\","
+                + "\"checkedAt\":\"2026-10-26\"}"));
+        var risk = parse(reviewed).riskReviews().get("example-tool");
+        assertEquals(ToolRiskReview.Status.REVIEWED, risk.status());
+        assertEquals(ToolRiskReview.Level.MEDIUM, risk.level());
+        assertEquals(ToolRiskReview.ExternalAuth.REQUIRED, risk.externalAuth());
+        assertEquals("External account authorization is needed", risk.reason());
+        assertEquals("https://example.org/risk-review", risk.evidence().sourceUrl());
+    }
+
+    @Test
+    void rejectsPartialOrUnsupportedRiskReview() {
+        Map<String, String> partial = files();
+        partial.put("tools.json", TOOLS.replace("\"includedComponentKeys\":[\"example-component\"]",
+            "\"includedComponentKeys\":[\"example-component\"],\"riskReview\":{\"level\":\"LOW\"}"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(partial));
+
+        Map<String, String> unknown = files();
+        unknown.put("tools.json", TOOLS.replace("\"includedComponentKeys\":[\"example-component\"]",
+            "\"includedComponentKeys\":[\"example-component\"],\"riskReview\":{"
+                + "\"level\":\"CRITICAL\",\"externalAuth\":\"NOT_REQUIRED\","
+                + "\"reason\":\"Reviewed\",\"evidenceUrl\":\"https://example.org/risk\","
+                + "\"checkedAt\":\"2026-10-26\"}"));
+        assertThrows(CatalogBundleLoader.CatalogUnavailableException.class, () -> parse(unknown));
+    }
+
+    @Test
     void rejectsInvalidToolKindAndBlankName() {
         Map<String, String> unknownKind = files();
         unknownKind.put("tools.json", TOOLS.replace("\"kind\":\"SKILL\"", "\"kind\":\"OTHER\""));

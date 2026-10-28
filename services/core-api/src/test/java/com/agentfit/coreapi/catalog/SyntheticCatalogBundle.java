@@ -55,6 +55,11 @@ final class SyntheticCatalogBundle {
             "PASS", false, false, true);
     }
 
+    static String writeWithReviewedOptionalBrowser(Path directory) throws Exception {
+        return write(directory, true, "literal config\n", true, false,
+            "PASS", false, false, true, true);
+    }
+
     private static String write(Path directory, boolean includeTemplate, String templateContent,
                                 boolean includeFallback, boolean oversizedCombination) throws Exception {
         return write(directory, includeTemplate, templateContent, includeFallback,
@@ -87,6 +92,16 @@ final class SyntheticCatalogBundle {
                                 boolean includeFallback, boolean oversizedCombination,
                                 String standaloneCheck, boolean installedDependency,
                                 boolean withoutSupport, boolean fallbackCoversBrowser) throws Exception {
+        return write(directory, includeTemplate, templateContent, includeFallback,
+            oversizedCombination, standaloneCheck, installedDependency, withoutSupport,
+            fallbackCoversBrowser, false);
+    }
+
+    private static String write(Path directory, boolean includeTemplate, String templateContent,
+                                boolean includeFallback, boolean oversizedCombination,
+                                String standaloneCheck, boolean installedDependency,
+                                boolean withoutSupport, boolean fallbackCoversBrowser,
+                                boolean reviewedOptionalCombination) throws Exception {
         String capabilities = CapabilityKey.keys().stream().sorted()
             .map(key -> "{\"key\":\"" + key + "\"}")
             .reduce((a, b) -> a + "," + b).orElseThrow();
@@ -133,7 +148,7 @@ final class SyntheticCatalogBundle {
                 + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
                 + "\"clientVersion\":\"1.0\",\"evidenceUrl\":\"https://example.org/combination\","
                 + "\"checkedAt\":\"2026-10-09\"}" : "")
-            + (oversizedCombination ? "{\"toolKeys\":[\"example-tool\",\"fallback-tool\"],"
+            + (oversizedCombination || reviewedOptionalCombination ? "{\"toolKeys\":[\"example-tool\",\"fallback-tool\"],"
                 + "\"osFamily\":\"WINDOWS\",\"clientId\":\"example-client\","
                 + "\"clientVersion\":\"1.0\",\"evidenceUrl\":\"https://example.org/combination\","
                 + "\"checkedAt\":\"2026-10-09\"}" : "") + "]}");

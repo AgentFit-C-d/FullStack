@@ -7,10 +7,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: { input: { service: 'index.html', analysis: 'analysis.html' } },
+    },
     server: {
       host: '0.0.0.0',
       proxy: { '/api': { target: env.VITE_CORE_API_URL || 'http://localhost:8080', changeOrigin: true } },
     },
-    test: { environment: 'jsdom', setupFiles: ['./src/testSetup.ts'] },
+    test: {
+      include: ['src/**/*.test.{ts,tsx}'],
+      environment: 'jsdom',
+      setupFiles: ['./src/testSetup.ts'],
+    },
   };
 });

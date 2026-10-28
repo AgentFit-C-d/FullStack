@@ -1,0 +1,18 @@
+.page{min-height:100vh;background:var(--bg);color:var(--ink)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px max(24px,calc((100vw - 1180px)/2));background:#fff;border-bottom:1px solid var(--line)}
+.top nav{display:flex;gap:20px;align-items:center}.top a{color:var(--accent)}
+.main{max-width:1180px;margin:0 auto;padding:40px 24px 80px}
+.heading{margin-bottom:26px}.heading span{font-size:12px;font-weight:800;letter-spacing:.15em;color:var(--accent)}.heading h1{font-size:34px;margin:8px 0}.heading p{color:var(--muted);line-height:1.6}
+.user{text-align:right;color:var(--muted);margin-bottom:16px}
+.columns{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card h2{font-size:20px;margin:0 0 14px}.card p{line-height:1.6}.card pre{white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto;background:#f6f8fb;padding:14px;border-radius:8px}
+.card details{margin:14px 0}.card summary{cursor:pointer;font-weight:600}.card li{margin:7px 0}
+.card input:not([type=file]):not([type=checkbox]),.card textarea,.card select{border:1px solid var(--line);border-radius:8px;padding:11px 12px;font:inherit;min-width:0;background:#fff;color:var(--ink)}
+.card textarea{width:100%;min-height:90px;resize:vertical}.card label{display:grid;gap:6px;font-weight:600}.card li label{display:inline-flex;align-items:center;gap:8px}
+.card button,.action{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}.card button:disabled{opacity:.5;cursor:not-allowed}.card button:hover:not(:disabled),.action:hover{background:var(--accent-hover)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.row input{flex:1}.stack{display:grid;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.list{display:grid;gap:8px;margin-top:14px}.list button{text-align:left;background:var(--accent-soft);color:var(--ink)}.list .selected{background:var(--accent);color:#fff}
+.card dl{display:grid;grid-template-columns:1fr 1fr;gap:9px}.card dt{color:var(--muted)}.card dd{margin:0;text-align:right;font-weight:700}
+.error,.notice{padding:14px 18px;border-radius:10px;margin-bottom:16px}.error{background:#fff0ed;color:#9e312a}.notice{background:#e8f3ec;color:#286447}
+.existingFiles{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:10px;background:#f8faff}.existingFiles h3{margin:0 0 8px;font-size:17px}.existingFile{padding:10px 0;border-top:1px solid var(--line)}.existingFile:first-of-type{border-top:0}.existingFile textarea{margin-top:10px}
+@media(max-width:750px){.columns,.grid3{grid-template-columns:1fr}.heading h1{font-size:27px}.main{padding:24px 14px 60px}.top{padding:16px}}

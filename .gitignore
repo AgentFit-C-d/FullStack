@@ -24,9 +24,14 @@ venv/
 .env
 .env.*
 !.env.example
+env.docker
 
 # Logs
 *.log
+
+# Web build and dependencies
+apps/web/node_modules/
+apps/web/dist/
 
 # Local skills.sh discovery and triage state (not an approved Catalog release)
 catalog-candidates/skills-sh-candidates.json

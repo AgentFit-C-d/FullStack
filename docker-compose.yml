@@ -53,6 +53,7 @@ services:
   web:
     build:
       context: ./apps/web
+      target: dev
     environment:
       VITE_CORE_API_URL: http://core:8080
     depends_on:

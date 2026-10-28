@@ -15,6 +15,7 @@
 | [Playwright MCP 후보 파일럿](playwright-mcp-pilot-2026-10-10.md) | 고정 npm 버전의 로컬 MCP·Edge 탐색과 미검증 항목 |
 | [skills.sh 후보 수집](skills-sh-discovery.md) | 외부 API 검색, 변경 감지, 검토 대기 파일과 승인 경계 |
 | [승인 Catalog 조회](catalog-read-model.md) | OS·Client·Capability 필터와 지원 행별 검증 근거의 내부 읽기 모델 |
+| [Claude Code 2.1.310 Skill 근거](obra-tdd-2.1.310-evidence-2026-10-28.md) | 실물 Skill 1종의 고정 버전·권한·단일 구성·남은 독립 승인 |
 
 릴리스 파일·의미 검증·정확한 대상 조합을 구현할 때 사용한 상세 체크리스트는 [계획 기록](../archive/README.md)에 있다.
 
