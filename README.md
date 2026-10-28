@@ -62,3 +62,18 @@ Default ports:
 - AI service: Both health tests passed. Run `python -m pytest -q` from `services/ai-service` after installing the development dependencies.
 
 These checks cover the scaffold only, not database, business, or AI integration.
+
+## Docker development
+
+Copy `.env.example` to `.env` and fill in the required credentials. Put
+`UPSTAGE_API_KEY` in `.env.docker` if you prefer to keep the provider key
+separate. Neither file is committed.
+
+```powershell
+npm run docker:up
+```
+
+This starts PostgreSQL, Core API (`http://localhost:8080`), AI Service
+(`http://localhost:8001`), and the web app (`http://localhost:5173`). Stop
+them with `npm run docker:down`. Use `docker compose down -v` only when you
+intentionally want to delete the local PostgreSQL data volume.

@@ -36,7 +36,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             GitHubOAuth2UserService githubOAuth2UserService,
-            SessionRegistry sessionRegistry) throws Exception {
+            SessionRegistry sessionRegistry,
+            @Value("${agentfit.web-origin:http://localhost:5173}") String webOrigin) throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieName("XSRF-TOKEN");
         csrfRepository.setCookiePath("/");
@@ -46,11 +47,13 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfRepository)
-                .csrfTokenRequestHandler(csrfHandler))
+                .csrfTokenRequestHandler(csrfHandler)
+                .ignoringRequestMatchers("/internal/v1/**"))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/api/oauth2/authorization/**", "/api/login/oauth2/code/**",
                     "/api/auth/csrf", "/api/auth/get-session").permitAll()
                 .requestMatchers("/api/auth/logout").authenticated()
+                .requestMatchers("/internal/v1/inputs/**", "/internal/v1/budget/**").permitAll()
                 .anyRequest().authenticated())
             .sessionManagement(session -> session
                 .maximumSessions(1)
@@ -63,8 +66,8 @@ public class SecurityConfig {
                 .authorizationEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/authorization"))
                 .redirectionEndpoint(endpoint -> endpoint.baseUri("/api/login/oauth2/code/*"))
                 .userInfoEndpoint(endpoint -> endpoint.userService(githubOAuth2UserService))
-                .successHandler(redirectHandler("/?login=success"))
-                .failureHandler((request, response, exception) -> response.sendRedirect("/?login=failed")))
+                .successHandler(redirectHandler(frontendRedirect(webOrigin, "success")))
+                .failureHandler((request, response, exception) -> response.sendRedirect(frontendRedirect(webOrigin, "failed"))))
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
                 .invalidateHttpSession(true)
@@ -104,6 +107,10 @@ public class SecurityConfig {
 
     private AuthenticationSuccessHandler redirectHandler(String location) {
         return (request, response, authentication) -> response.sendRedirect(location);
+    }
+
+    static String frontendRedirect(String webOrigin, String status) {
+        return webOrigin.replaceFirst("/+$", "") + "/?login=" + status;
     }
 
     private static void writeError(HttpServletResponse response, int status, String code) throws IOException {

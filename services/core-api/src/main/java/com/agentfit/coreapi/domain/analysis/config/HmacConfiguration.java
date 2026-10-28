@@ -11,9 +11,12 @@ import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 public class HmacConfiguration {
+    private static final Logger log = LoggerFactory.getLogger(HmacConfiguration.class);
     @Bean
     HmacKeyRing hmacKeyRing(
             @Value("${agentfit.hmac.current-key-id:}") String currentKeyId,
@@ -23,6 +26,7 @@ public class HmacConfiguration {
             @Value("${agentfit.hmac.previous-valid-until:}") String previousValidUntil) {
         Instant expiry = previousValidUntil == null || previousValidUntil.isBlank()
             ? null : Instant.parse(previousValidUntil);
+        log.info("HMAC configuration loaded keyId={} secretLength={}", currentKeyId, currentSecret.length());
         return HmacKeyRing.from(new HmacKeyRing.Configuration(
             emptyToNull(currentKeyId), emptyToNull(currentSecret), emptyToNull(previousKeyId),
             emptyToNull(previousSecret), expiry, Instant.now()));

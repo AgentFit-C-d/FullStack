@@ -1,0 +1,4 @@
+target/
+*.out
+*.err
+.m2/
