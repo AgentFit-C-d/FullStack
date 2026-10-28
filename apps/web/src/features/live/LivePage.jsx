@@ -11,7 +11,7 @@ import { canRenameProject, deleteProjectRequest, renameProjectRequest } from './
 import { confirmedProfileItems } from './profileItems.js'
 import { hasUnanalyzedPlanningInput } from './planningState.js'
 import { previewIsCurrent } from './previewState.js'
-import { recommendationFeedback, requiredCapabilityLabels } from './recommendationFeedback.js'
+import { capabilityLabel, recommendationFeedback, requiredCapabilityLabels } from './recommendationFeedback.js'
 import { createAndReadRecommendation } from './recommendationFlow.js'
 import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
@@ -65,10 +65,17 @@ export default function LivePage() {
   const [catalog, setCatalog] = useState(null)
   const [catalogTarget, setCatalogTarget] = useState(null)
   const [candidates, setCandidates] = useState(null)
+  const [candidateSuggestions, setCandidateSuggestions] = useState(null)
+  const [candidateSuggestionError, setCandidateSuggestionError] = useState(null)
   const [history, setHistory] = useState(null)
   const [selectedExportId, setSelectedExportId] = useState('')
   const [reportState, setReportState] = useState('')
   const [reportReason, setReportReason] = useState('')
+  const candidateSuggestionKey = `${projectId}:${recommendation?.recommendationId}:${recommendation?.validity}:${recommendation?.status}`
+  const visibleCandidateSuggestions = candidateSuggestions?.key === candidateSuggestionKey
+    ? candidateSuggestions.value : null
+  const visibleCandidateSuggestionError = candidateSuggestionError?.key === candidateSuggestionKey
+    ? candidateSuggestionError.message : ''
 
   const loadProjects = useCallback(async () => {
     const response = await apiRequest('/api/projects')
@@ -119,6 +126,19 @@ export default function LivePage() {
       } catch (cause) { if (cause.status === 404) { setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) } else throw cause }
     } else { setInputs(null); setRecommendation(null); setQuestionAnswers([]); setAnswerDrafts({}) }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    if (!projectId || !recommendation?.recommendationId || recommendation.validity === 'STALE'
+      || !['RECOMMENDED', 'NO_COMPATIBLE_TOOLS'].includes(recommendation.status)) {
+      return () => { active = false }
+    }
+    const key = `${projectId}:${recommendation.recommendationId}:${recommendation.validity}:${recommendation.status}`
+    apiRequest(`${projectPath(projectId)}/skill-candidate-suggestions`)
+      .then(result => { if (active) setCandidateSuggestions({ key, value: result }) })
+      .catch(cause => { if (active) setCandidateSuggestionError({ key, message: cause.message }) })
+    return () => { active = false }
+  }, [projectId, recommendation?.recommendationId, recommendation?.validity, recommendation?.status])
 
   useEffect(() => {
     let active = true
@@ -568,6 +588,20 @@ export default function LivePage() {
                   setPermissionChoices(previous => ({ ...previous, [permissionKey(key, mapping)]: policy }))
                   invalidatePreview()
                 }} />
+              {visibleCandidateSuggestions && <div>
+                <h3>관련 Skill 후보</h3>
+                <p>저장된 필요 기능과 Skill 이름이 연결된 후보입니다. 기능 제공·OS·Claude Code 버전·권한·도구 조합은 아직 확인되지 않았습니다.</p>
+                {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys?.length > 0 &&
+                  <p>관련 후보를 찾지 못한 필수 기능: {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys.map(capabilityLabel).join(', ')}</p>}
+                {visibleCandidateSuggestions.proposedCombinationExternalIds?.length > 0 &&
+                  <p>필수 기능 이름을 기준으로 묶은 후보: {visibleCandidateSuggestions.proposedCombinationExternalIds.join(', ')}. 실제 조합 호환 여부는 미확인입니다.</p>}
+                <ul>{(visibleCandidateSuggestions.items || []).map(item => <li key={item.externalId}>
+                  <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a>
+                  {' · '}{item.relatedCapabilityKeys.map(capabilityLabel).join(', ')}
+                  {' · '}<button type="button" disabled={busy} onClick={() => exportCandidate(item)}>선택해 ZIP 받기</button>
+                </li>)}</ul>
+              </div>}
+              {visibleCandidateSuggestionError && <p role="alert">관련 Skill 후보를 표시하지 못했습니다. {visibleCandidateSuggestionError}</p>}
               <QuestionAnswersEditor notices={recommendation.notices || []} answers={questionAnswers} drafts={answerDrafts} busy={busy}
                 current={recommendation.validity !== 'STALE'} onDraft={(id, value) => setAnswerDrafts(previous => ({ ...previous, [id]: value }))}
                 onSave={saveQuestionAnswer} />

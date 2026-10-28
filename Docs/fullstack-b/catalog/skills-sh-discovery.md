@@ -13,6 +13,8 @@ skills.sh의 [공식 API](https://www.skills.sh/docs/api) 또는 명시적인 �
 
 `SkillsShCandidateCollector.download(candidate)`는 고정 해시 후보의 실제 텍스트 파일을 다시 받는다. 검색 당시 해시와 다르면 거부하고, `SKILL.md` 필수·경로 탐색 금지·중복 경로 금지·파일 수/크기 제한을 적용한다. Markdown과 정해진 텍스트/스크립트 확장자만 ZIP에 보존하며 서버에서 실행하지 않는다. 로그인 사용자는 `POST /api/tool-candidates/export`에 후보 ID와 해시를 보내 선택한 Skill을 ZIP으로 받을 수 있다. ZIP에는 `.claude/skills/<slug>/` 파일과 출처·해시·호환성 미확인 고지가 들어간다. 이는 사용자의 명시적 선택이며 서버 카탈로그 설정이나 사용자의 환경에 자동 설치하지 않는다.
 
+`GET /api/projects/{projectId}/skill-candidate-suggestions`는 소유권을 확인한 프로젝트의 **최신 저장 추천 Capability**를 읽어 후보 이름과 대조한다. 응답의 `NAME_RULE`은 관련 주제 탐색 근거일 뿐 실제 기능 제공 증거가 아니다. 필수 기능을 이름 규칙상 묶는 최소 후보 조합을 계산하고 연결되지 않은 키를 반환한다. 조합 상태는 항상 `UNCONFIRMED`다. 프론트는 이 목록에서 사용자가 선택한 후보의 ZIP 다운로드를 제공한다. 기존 추천 저장·Preview·권한 승인에는 이 후보가 아직 들어가지 않는다.
+
 `SkillsShCandidateDownloadCommand`는 스냅샷에 있는 ID의 고정 파일을 **새 검토 디렉터리**로 원자적으로 저장한다. 대상 폴더가 이미 있거나 상세 응답의 해시가 바뀌면 덮어쓰지 않는다. Java 21 이상에서 Core를 컴파일하고 의존성 클래스패스를 준비한 뒤 `services/core-api`에서 다음처럼 실행한다.
 
 ```powershell

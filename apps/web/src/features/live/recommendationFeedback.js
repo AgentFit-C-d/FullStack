@@ -10,6 +10,8 @@ const capabilityLabels = {
   cap_ai_evaluation: 'AI 평가',
 }
 
+export const capabilityLabel = key => capabilityLabels[key] || key
+
 export function requiredCapabilityLabels(recommendation) {
   return [...new Set((recommendation?.capabilities || [])
     .filter(item => (item.necessity || item.need) === 'REQUIRED')

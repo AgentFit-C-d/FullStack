@@ -609,6 +609,46 @@ paths:
         "409": { description: The selected Skill changed since it was listed }
         "502": { description: skills.sh could not provide the pinned Skill files }
         "503": { description: Candidate snapshot is absent }
+  /api/projects/{projectId}/skill-candidate-suggestions:
+    get:
+      summary: Show skills.sh candidates related to the project's saved Capability needs
+      description: Name-based discovery hints. Related candidates do not establish function, environment, permission, dependency, or combination support.
+      operationId: getProjectSkillCandidateSuggestions
+      security:
+        - agentFitSession: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Related Skill candidates with explicit unconfirmed combination status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, proposedCombinationExternalIds, unmatchedRequiredCapabilityKeys, combinationStatus]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [externalId, name, sourceUrl, contentHash, relatedCapabilityKeys, evidence]
+                      properties:
+                        externalId: { type: string }
+                        name: { type: string }
+                        sourceUrl: { type: string, format: uri }
+                        contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+                        relatedCapabilityKeys: { type: array, items: { type: string } }
+                        evidence: { type: string, enum: [NAME_RULE] }
+                  unmatchedRequiredCapabilityKeys: { type: array, items: { type: string } }
+                  proposedCombinationExternalIds: { type: array, items: { type: string } }
+                  combinationStatus: { type: string, enum: [UNCONFIRMED] }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { description: Project is not owned or has no stored recommendation }
+        "409": { description: Stored recommendation is stale }
+        "503": { description: Candidate snapshot or latest recommendation service is unavailable }
 components:
   securitySchemes:
     agentFitSession:
