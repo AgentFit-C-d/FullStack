@@ -8,6 +8,7 @@ import com.agentfit.coreapi.recommendation.EnvironmentTarget;
 import com.agentfit.coreapi.recommendation.selection.PermissionMapping;
 import com.agentfit.coreapi.recommendation.selection.PermissionPolicy;
 import java.time.LocalDate;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +24,21 @@ class CatalogRevisionImpactTest {
         new VerifiedCombination(Set.of("tool-a", "tool-b"), TARGET);
     private static final VerificationEvidence EVIDENCE =
         new VerificationEvidence("https://example.org/review", LocalDate.parse("2026-10-10"));
+
+    @Test
+    void realClaudeCodeVersionChangeRequiresToolReevaluation() {
+        Path root = Path.of("..", "..", "catalog-candidates");
+        var before = CatalogBundleLoader.load(root.resolve(
+            "obra-tdd-windows-claude-2.1.270-verified"));
+        var after = CatalogBundleLoader.load(root.resolve(
+            "obra-tdd-windows-claude-2.1.310-risk-reviewed"));
+
+        var impact = CatalogRevisionImpact.compare(before, after);
+
+        assertTrue(impact.revisionChanged());
+        assertTrue(impact.toolsNeedingReview().contains(
+            "obra-superpowers-test-driven-development"));
+    }
 
     @Test
     void toolVersionChangeInvalidatesItsSupportAndContainingCombination() {

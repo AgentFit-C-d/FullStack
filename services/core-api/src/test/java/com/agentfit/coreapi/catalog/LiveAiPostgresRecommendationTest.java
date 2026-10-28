@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.agentfit.coreapi.domain.analysis.client.HttpAiAnalysisClient;
+import com.agentfit.coreapi.catalog.discovery.SkillCandidateSuggestionController;
 import com.agentfit.coreapi.domain.analysis.config.AiAnalysisClientConfiguration;
 import com.agentfit.coreapi.domain.analysis.service.HmacKeyRing;
 import com.agentfit.coreapi.domain.auth.entity.AuthenticatedPrincipal;
@@ -22,6 +23,7 @@ import com.agentfit.coreapi.integration.ab.JdbcPreviewStoreAdapter;
 import com.agentfit.coreapi.integration.ab.OwnerCheckedSnapshotReaderAdapter;
 import com.agentfit.coreapi.integration.ab.RecommendationInputsService;
 import com.agentfit.coreapi.recommendation.controller.RecommendationController;
+import com.agentfit.coreapi.recommendation.controller.OptionalRecommendationController;
 import com.agentfit.coreapi.recommendation.persistence.JdbcLatestRecommendationPorts;
 import com.agentfit.coreapi.catalog.PreviewCreationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -153,7 +155,13 @@ class LiveAiPostgresRecommendationTest {
                 var mvc = MockMvcBuilders.standaloneSetup(new RecommendationController(principals, ownership,
                     beans.getBeanProvider(RecommendationCreationService.class),
                     beans.getBeanProvider(RecommendationLatestDetailsService.class),
-                    beans.getBeanProvider(PreviewCreationService.class)))
+                    beans.getBeanProvider(PreviewCreationService.class)),
+                    new OptionalRecommendationController(principals, ownership,
+                        beans.getBeanProvider(RecommendationCreationService.class)),
+                    new SkillCandidateSuggestionController(principals, ownership,
+                        beans.getBeanProvider(RecommendationLatestDetailsService.class),
+                        Path.of("..", "..", "catalog-candidates", "skills-sh-candidates.json")
+                            .toAbsolutePath().normalize().toString()))
                     .setControllerAdvice(new GlobalExceptionHandler()).build();
                 String path = "/api/projects/" + project + "/recommendations";
                 var created = mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON)
@@ -185,6 +193,10 @@ class LiveAiPostgresRecommendationTest {
                     .andExpect(jsonPath("$.recommendationId").value(recommendationId))
                     .andExpect(jsonPath("$.status").value("RECOMMENDED"))
                     .andExpect(jsonPath("$.validity").value("CURRENT"));
+                mvc.perform(get("/api/projects/" + project + "/skill-candidate-suggestions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.combinationStatus").value("UNCONFIRMED"))
+                    .andExpect(jsonPath("$.items[0].evidence").value("NAME_RULE"));
                 String previewBody = "{\"basis\":" + createdJson.get("basis") + ","
                     + "\"recommendationId\":\"" + recommendationId + "\","
                     + "\"target\":{\"osFamily\":\"WINDOWS\",\"clientId\":\"" + clientId
@@ -209,7 +221,35 @@ class LiveAiPostgresRecommendationTest {
                     .get("previewId").asText();
                 assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM config_preview WHERE id = ?",
                     Integer.class, UUID.fromString(previewId)));
-                assertEquals(3, ownerChecks.get());
+                String optionalKey = jdbc.queryForObject(
+                    "SELECT capability_key FROM recommendation_capability WHERE recommendation_id = ? "
+                        + "AND necessity = 'NOT_REQUESTED' ORDER BY capability_key LIMIT 1",
+                    String.class, recommendation);
+                var optionalCreated = mvc.perform(post(path + "/optional")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"expectedVersions\":{\"project\":1,\"developer\":0,"
+                        + "\"environment\":1},\"optionalCapabilityKeys\":[\"" + optionalKey + "\"]}"))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+                var optionalJson = new ObjectMapper().readTree(
+                    optionalCreated.getResponse().getContentAsString());
+                UUID optionalRecommendation = UUID.fromString(optionalJson.get("recommendationId").asText());
+                assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recommendation_capability "
+                    + "WHERE recommendation_id = ? AND capability_key = ? AND necessity = 'OPTIONAL'",
+                    Integer.class, optionalRecommendation, optionalKey));
+                String optionalPreviewBody = "{\"basis\":" + optionalJson.get("basis") + ","
+                    + "\"recommendationId\":\"" + optionalRecommendation + "\","
+                    + "\"target\":{\"osFamily\":\"WINDOWS\",\"clientId\":\"" + clientId
+                    + "\",\"clientVersion\":\"" + clientVersion + "\"},"
+                    + "\"selectedToolKeys\":[\"" + toolKey + "\"],"
+                    + (realReviewCatalog
+                        ? "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"edit-project-files\",\"policy\":\"ASK_EACH_TIME\"},{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"run-project-tests\",\"policy\":\"ASK_EACH_TIME\"}],"
+                        : "\"permissionSelections\":[{\"toolKey\":\"" + toolKey + "\",\"mappingKey\":\"read\",\"policy\":\"ASK_EACH_TIME\"}],")
+                    + "\"existingState\":\"UNKNOWN\",\"providedFiles\":[],\"generatorVersion\":\"static-v1\"}";
+                mvc.perform(post("/api/projects/" + project + "/config-previews")
+                    .contentType(MediaType.APPLICATION_JSON).content(optionalPreviewBody))
+                    .andExpect(status().isCreated());
+                assertEquals(6, ownerChecks.get());
             }
         } finally {
             try (var connection = DriverManager.getConnection(jdbcUrl, user, password);

@@ -58,6 +58,7 @@ export default function LivePage() {
   const [installedComponentsKnown, setInstalledComponentsKnown] = useState(false)
   const [installedComponents, setInstalledComponents] = useState([])
   const [selectedKeys, setSelectedKeys] = useState([])
+  const [optionalCapabilityKeys, setOptionalCapabilityKeys] = useState([])
   const [permissionChoices, setPermissionChoices] = useState({})
   const [existingState, setExistingState] = useState('UNKNOWN')
   const [existingFileTargets, setExistingFileTargets] = useState([])
@@ -65,7 +66,10 @@ export default function LivePage() {
   const [catalog, setCatalog] = useState(null)
   const [catalogTarget, setCatalogTarget] = useState(null)
   const [candidates, setCandidates] = useState(null)
+  const [liveCandidates, setLiveCandidates] = useState(null)
+  const [skillQuery, setSkillQuery] = useState('')
   const [candidateSuggestions, setCandidateSuggestions] = useState(null)
+  const [projectSkillQuery, setProjectSkillQuery] = useState('')
   const [candidateSuggestionError, setCandidateSuggestionError] = useState(null)
   const [history, setHistory] = useState(null)
   const [selectedExportId, setSelectedExportId] = useState('')
@@ -74,6 +78,7 @@ export default function LivePage() {
   const candidateSuggestionKey = `${projectId}:${recommendation?.recommendationId}:${recommendation?.validity}:${recommendation?.status}`
   const visibleCandidateSuggestions = candidateSuggestions?.key === candidateSuggestionKey
     ? candidateSuggestions.value : null
+  const candidateSuggestionLive = candidateSuggestions?.key === candidateSuggestionKey && candidateSuggestions.live === true
   const visibleCandidateSuggestionError = candidateSuggestionError?.key === candidateSuggestionKey
     ? candidateSuggestionError.message : ''
 
@@ -87,6 +92,7 @@ export default function LivePage() {
     const base = projectPath(id)
     const current = await apiRequest(base)
     setDetail(current)
+    setOptionalCapabilityKeys([])
     setPlanningReady(hasUnanalyzedPlanningInput(current))
     setProjectRename(previous => previous?.projectId === id
       ? previous : { projectId: id, value: current.project.name })
@@ -361,6 +367,27 @@ export default function LivePage() {
     }, 'AI 필요 기능과 현재 카탈로그를 기준으로 추천 결과를 저장했습니다.')
   }
 
+  async function createOptionalRecommendation() {
+    if (inputDirty) { setError('역할·환경 변경 내용을 먼저 저장해 주세요.'); return }
+    if (optionalCapabilityKeys.length === 0) return
+    await run(async () => {
+      const base = projectPath(projectId)
+      await apiRequest(`${base}/recommendations/optional`, { method: 'POST', body: {
+        expectedVersions: { project: detail.project.version,
+          developer: inputs?.developer?.version || 0,
+          environment: inputs?.environment?.version || 0 },
+        optionalCapabilityKeys,
+      } })
+      const created = await apiRequest(`${base}/recommendations/latest`)
+      setRecommendation(created)
+      setQuestionAnswers([]); setAnswerDrafts({})
+      setSelectedKeys((created.items || []).map(item => item.toolKey))
+      setPermissionChoices(defaultPermissionChoices(offeredItems(created)))
+      setOptionalCapabilityKeys([])
+      invalidatePreview()
+    }, '선택한 추가 기능을 선택 후보로 반영해 추천을 다시 저장했습니다.')
+  }
+
   async function saveQuestionAnswer(noticeId) {
     const answer = answerDrafts[noticeId]?.trim()
     if (!answer || Array.from(answer).length > 4000) {
@@ -440,9 +467,28 @@ export default function LivePage() {
     await run(async () => setCandidates(await apiRequest('/api/tool-candidates')), '미검증 Skill 후보를 조회했습니다.')
   }
 
-  async function exportCandidate(item) {
+  async function searchSkills(event) {
+    event.preventDefault()
+    const query = skillQuery.trim()
+    if (query.length < 2 || query.length > 100) return
     await run(async () => {
-      const blob = await apiRequest('/api/tool-candidates/export', {
+      setLiveCandidates(await apiRequest(`/api/tool-candidates/search?${new URLSearchParams({ q: query, limit: '10' })}`))
+    }, 'skills.sh에서 Skill 후보를 검색했습니다.')
+  }
+
+  async function searchRelatedSkills(event) {
+    event.preventDefault()
+    const query = projectSkillQuery.trim()
+    if (!projectId || query.length < 2 || recommendation?.validity === 'STALE') return
+    await run(async () => {
+      const value = await apiRequest(`${projectPath(projectId)}/skill-candidate-suggestions/search?${new URLSearchParams({ q: query })}`)
+      setCandidateSuggestions({ key: candidateSuggestionKey, value, live: true })
+    }, '현재 프로젝트의 필요 기능과 실시간 Skill 검색 결과를 대조했습니다.')
+  }
+
+  async function exportCandidate(item, live = false) {
+    await run(async () => {
+      const blob = await apiRequest(live ? '/api/tool-candidates/live-export' : '/api/tool-candidates/export', {
         method: 'POST', body: { externalId: item.externalId, contentHash: item.contentHash }, download: true,
       })
       const url = URL.createObjectURL(blob)
@@ -536,8 +582,11 @@ export default function LivePage() {
           </> : <p>프로젝트를 선택해 주세요.</p>}</section>
         </div>
         <section className={styles.card}><h2>카탈로그와 Skill 후보</h2><p>카탈로그 도구는 추천 조합에 사용합니다. skills.sh 후보는 직접 선택해 파일을 받을 수 있으며, 호환·조합 판정이 없는 후보는 별도로 표시합니다.</p><div className={styles.row}><button type="button" disabled={busy} onClick={() => readCatalog()}>추천 카탈로그 조회</button>{inputs?.environment && <button type="button" disabled={busy || inputDirty} onClick={() => readCatalog(true)}>내 환경에 맞는 도구 조회</button>}<button type="button" disabled={busy} onClick={readCandidates}>Skill 후보 조회</button></div>
+          <form onSubmit={searchSkills} className={styles.row}><input aria-label="skills.sh 검색어" placeholder="Skill 이름·작업 검색" value={skillQuery} maxLength={100} onChange={event => setSkillQuery(event.target.value)} /><button disabled={busy || skillQuery.trim().length < 2}>skills.sh 검색</button></form>
           {catalog && <div><p>카탈로그 버전: {catalog.revision} · 도구 {catalog.items?.length || 0}개{catalogTarget && ` · ${catalogTarget}`}</p><ul>{(catalog.items || []).map(item => <li key={item.key}><strong>{item.name}</strong> ({item.key}) · {item.kind}<details><summary>지원·기능 근거</summary><p>제공 기능: {(item.capabilityKeys || []).join(', ') || '없음'}</p>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">원본 링크</a>}<ul>{(item.support || []).map(support => <li key={support.key}>{support.osFamily} / {support.clientId} / {support.clientVersion} · {support.verified ? '검증 기록 있음' : '미검증'}</li>)}</ul></details></li>)}</ul>{catalog.items?.length === 0 && <p>해당 환경에 승인된 도구가 없습니다.</p>}</div>}
           {candidates && <div><p>{candidates.source} · 후보 {candidates.candidates?.length || 0}개 · 환경·조합 미확인</p><ul>{(candidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · <button type="button" disabled={busy} onClick={() => exportCandidate(item)}>선택해 ZIP 받기</button></li>)}</ul></div>}
+          {liveCandidates && <div><p>실시간 검색 결과 {liveCandidates.candidates?.length || 0}개 · 검증되지 않은 후보입니다. 선택 시 원격 내용의 해시를 다시 확인합니다.</p><ul>{(liveCandidates.candidates || []).map(item => <li key={item.externalId}><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a> · <button type="button" disabled={busy} onClick={() => exportCandidate(item, true)}>선택해 ZIP 받기</button></li>)}</ul></div>}
+          {(candidates || liveCandidates) && <p>후보 ZIP에는 프로젝트의 <code>.claude/skills/</code> 적용 위치, 외부 인증 확인, 무해한 Client 확인, 이전 폴더 복구 방법을 담은 안내가 포함됩니다. 설치와 실행 검증은 사용자가 직접 진행합니다.</p>}
         </section>
         {detail && <>
           <section className={styles.card} id="planning-input"><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
@@ -576,8 +625,23 @@ export default function LivePage() {
             <button type="button" disabled={busy || !inputReady} onClick={createRecommendation}>추천 생성</button>
             {recommendation && <>
               <p>결과: <strong>{recommendation.status}</strong> · {recommendation.validity || '새 추천'}</p>
+              {recommendation.validity === 'STALE' && <p role="alert">저장 당시 프로젝트·환경·카탈로그 조건이 현재와 달라 이 추천으로 새 미리보기나 승인을 진행할 수 없습니다. 현재 입력을 확인한 뒤 추천 생성을 다시 눌러 주세요.</p>}
               {requiredCapabilityLabels(recommendation).length > 0 && <p>필수 기능: {requiredCapabilityLabels(recommendation).join(', ')}</p>}
+              {(recommendation.capabilities || []).length > 0 && <details><summary>기능 판정과 입력 근거</summary><ul>{recommendation.capabilities.map(claim =>
+                <li key={claim.key}><strong>{capabilityLabel(claim.key)}</strong> · {claim.necessity} · {claim.reason}
+                  {claim.inputRefs?.length > 0 && <span> · 입력 참조: {claim.inputRefs.join(', ')}</span>}</li>)}</ul></details>}
               {recommendationFeedback(recommendation) && <p>{recommendationFeedback(recommendation)}</p>}
+              {(recommendation.capabilities || []).some(claim => claim.necessity === 'NOT_REQUESTED') &&
+                <div><h3>추가로 고려할 기능</h3><p>AI가 요청되지 않았다고 판정한 기능도 사용자가 명시적으로 선택해 후보를 다시 찾을 수 있습니다. 필수 기능은 변경되지 않습니다.</p>
+                  <div className={styles.row}>{(recommendation.capabilities || []).filter(claim => claim.necessity === 'NOT_REQUESTED').map(claim =>
+                    <label key={claim.key}><input type="checkbox" checked={optionalCapabilityKeys.includes(claim.key)}
+                      onChange={event => setOptionalCapabilityKeys(previous => event.target.checked
+                        ? [...previous, claim.key] : previous.filter(key => key !== claim.key))} />{capabilityLabel(claim.key)}</label>)}</div>
+                  <button type="button" disabled={busy || !inputReady || optionalCapabilityKeys.length === 0}
+                    onClick={createOptionalRecommendation}>선택 기능으로 재추천</button>
+                </div>}
+              {(recommendation.capabilities || []).some(claim => claim.necessity === 'OPTIONAL') &&
+                <p>추가 고려 기능: {(recommendation.capabilities || []).filter(claim => claim.necessity === 'OPTIONAL').map(claim => capabilityLabel(claim.key)).join(', ')}</p>}
               <p>현재 정적 설정 생성은 개별 권한 거부를 표현할 수 없습니다. 도구 전체를 빼려면 선택을 해제하세요.</p>
               <RecommendationItems recommendation={recommendation} selectedKeys={selectedKeys} permissionChoices={permissionChoices}
                 onSelect={(key, checked) => {
@@ -588,9 +652,10 @@ export default function LivePage() {
                   setPermissionChoices(previous => ({ ...previous, [permissionKey(key, mapping)]: policy }))
                   invalidatePreview()
                 }} />
+              <form onSubmit={searchRelatedSkills} className={styles.row}><input aria-label="프로젝트 관련 Skill 검색어" placeholder="필요 작업 검색" value={projectSkillQuery} maxLength={100} onChange={event => setProjectSkillQuery(event.target.value)} /><button disabled={busy || recommendation.validity === 'STALE' || projectSkillQuery.trim().length < 2}>관련 Skill 실시간 검색</button></form>
               {visibleCandidateSuggestions && <div>
                 <h3>관련 Skill 후보</h3>
-                <p>저장된 필요 기능과 Skill 이름이 연결된 후보입니다. 기능 제공·OS·Claude Code 버전·권한·도구 조합은 아직 확인되지 않았습니다.</p>
+                <p>{candidateSuggestionLive ? 'skills.sh 실시간 검색' : '저장된 후보 목록'}과 필요 기능을 이름 기준으로 연결했습니다. 기능 제공·OS·Claude Code 버전·권한·도구 조합은 아직 확인되지 않았습니다.</p>
                 {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys?.length > 0 &&
                   <p>관련 후보를 찾지 못한 필수 기능: {visibleCandidateSuggestions.unmatchedRequiredCapabilityKeys.map(capabilityLabel).join(', ')}</p>}
                 {visibleCandidateSuggestions.proposedCombinationExternalIds?.length > 0 &&
@@ -598,7 +663,7 @@ export default function LivePage() {
                 <ul>{(visibleCandidateSuggestions.items || []).map(item => <li key={item.externalId}>
                   <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.name}</a>
                   {' · '}{item.relatedCapabilityKeys.map(capabilityLabel).join(', ')}
-                  {' · '}<button type="button" disabled={busy} onClick={() => exportCandidate(item)}>선택해 ZIP 받기</button>
+                  {' · '}<button type="button" disabled={busy} onClick={() => exportCandidate(item, candidateSuggestionLive)}>선택해 ZIP 받기</button>
                 </li>)}</ul>
               </div>}
               {visibleCandidateSuggestionError && <p role="alert">관련 Skill 후보를 표시하지 못했습니다. {visibleCandidateSuggestionError}</p>}

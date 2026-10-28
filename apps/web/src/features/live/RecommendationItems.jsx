@@ -1,5 +1,6 @@
 import { permissionKey, previewPolicies } from './permissions.js'
 import { riskReviewText } from './recommendationItems.js'
+import { capabilityLabel } from './recommendationFeedback.js'
 
 function ToolItems({ items, selectedKeys, permissionChoices, onSelect, onPermissionChange }) {
   if (!items?.length) return null
@@ -7,16 +8,21 @@ function ToolItems({ items, selectedKeys, permissionChoices, onSelect, onPermiss
     <label><input type="checkbox" checked={selectedKeys.includes(item.toolKey)}
       onChange={event => onSelect(item.toolKey, event.target.checked)} /> {item.name} ({item.toolKey})</label>
     {item.reason && <p>추천 근거: {item.reason}</p>}
+    <p>카탈로그 도구 버전: {item.catalogVersion} · 지원 조건: {item.supportKey}</p>
+    {item.coveredRequiredCapabilities?.length > 0 && <p>충족하는 필수 기능: {item.coveredRequiredCapabilities.map(capabilityLabel).join(', ')}</p>}
+    {item.coveredOptionalCapabilities?.length > 0 && <p>충족하는 선택 기능: {item.coveredOptionalCapabilities.map(capabilityLabel).join(', ')}</p>}
+    {item.supportEvidence && <p>지원 확인: {item.supportEvidence.checkedAt} · <a href={item.supportEvidence.sourceUrl} target="_blank" rel="noopener noreferrer">확인 자료</a></p>}
     <p>{riskReviewText(item.riskReview)}</p>
+    {item.riskReview?.evidence && <p>위험 검토: {item.riskReview.evidence.checkedAt} · <a href={item.riskReview.evidence.sourceUrl} target="_blank" rel="noopener noreferrer">확인 자료</a></p>}
     {item.sourceUrl && <p>출처: <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">도구 원문</a></p>}
     {selectedKeys.includes(item.toolKey) && (item.permissionOptions || []).map(option =>
-      <label key={option.mappingKey}>{option.mappingKey} 권한
+      <label key={option.mappingKey}>{option.mappingKey} 권한 · {option.required ? '필수' : '선택'}
         <select value={permissionChoices[permissionKey(item.toolKey, option.mappingKey)] ?? option.defaultPolicy}
           onChange={event => onPermissionChange(item.toolKey, option.mappingKey, event.target.value)}>
           {previewPolicies(option).map(policy => <option key={policy} value={policy}>
             {policy === 'ASK_EACH_TIME' ? '매번 확인' : '항상 허용'}
           </option>)}
-        </select>
+        </select>{option.evidence && <small>확인일 {option.evidence.checkedAt} · <a href={option.evidence.sourceUrl} target="_blank" rel="noopener noreferrer">권한 근거</a></small>}
       </label>)}
   </li>)}</ul>
 }

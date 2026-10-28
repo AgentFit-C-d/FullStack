@@ -119,6 +119,9 @@ public final class AiCapabilityIntake {
     public static boolean isApprovedSourceField(String field) {
         if (blank(field)) return false;
         if (APPROVED_DIRECT_SOURCE_FIELDS.contains(field)) return true;
+        if (field.startsWith("user.optional.")) {
+            return CapabilityKey.keys().contains(field.substring("user.optional.".length()));
+        }
 
         if (field.startsWith("developer.responsibility.")) {
             try {

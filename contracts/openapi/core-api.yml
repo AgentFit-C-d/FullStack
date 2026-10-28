@@ -419,6 +419,44 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/ProjectNotFound" }
         "409": { $ref: "#/components/responses/VersionConflict" }
+  /api/projects/{projectId}/recommendations/optional:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      summary: Re-evaluate a recommendation with explicit user-selected optional Capabilities
+      description: Only AI NOT_REQUESTED claims may be added as optional. The saved reason attributes the selection to the user rather than the AI or document.
+      operationId: createOptionalRecommendation
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersions, optionalCapabilityKeys]
+              properties:
+                expectedVersions:
+                  $ref: "#/components/schemas/RecommendationCreateRequest/properties/expectedVersions"
+                optionalCapabilityKeys:
+                  type: array
+                  minItems: 1
+                  maxItems: 9
+                  uniqueItems: true
+                  items: { type: string }
+      responses:
+        "201":
+          description: New recommendation with explicit optional user intent saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecommendationResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfRejected" }
+        "404": { $ref: "#/components/responses/ProjectNotFound" }
+        "409": { $ref: "#/components/responses/RecommendationConflict" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
   /api/projects/{projectId}/recommendations/{recommendationId}/answers:
     parameters:
       - $ref: "#/components/parameters/ProjectId"
@@ -609,6 +647,57 @@ paths:
         "409": { description: The selected Skill changed since it was listed }
         "502": { description: skills.sh could not provide the pinned Skill files }
         "503": { description: Candidate snapshot is absent }
+  /api/tool-candidates/search:
+    get:
+      summary: Search current skills.sh candidates by name or task
+      description: Uses the public discovery endpoint and pins each returned content hash. These are unverified candidates, separate from approved Catalog tools.
+      operationId: searchSkillCandidates
+      security:
+        - agentFitSession: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        "200":
+          description: Current candidates with pinned content hashes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SkillCandidateSearchResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+        "502": { description: skills.sh source unavailable }
+  /api/tool-candidates/live-export:
+    post:
+      summary: Export a selected live search result after checking its pinned hash again
+      operationId: exportLiveSkillCandidate
+      security:
+        - agentFitSession: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalId, contentHash]
+              properties:
+                externalId: { type: string }
+                contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+      responses:
+        "200":
+          description: ZIP with pinned Skill files, provenance and application/recovery guidance
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { description: Remote Skill hash changed since the search }
+        "502": { description: skills.sh source unavailable }
   /api/projects/{projectId}/skill-candidate-suggestions:
     get:
       summary: Show skills.sh candidates related to the project's saved Capability needs
@@ -649,6 +738,29 @@ paths:
         "404": { description: Project is not owned or has no stored recommendation }
         "409": { description: Stored recommendation is stale }
         "503": { description: Candidate snapshot or latest recommendation service is unavailable }
+  /api/projects/{projectId}/skill-candidate-suggestions/search:
+    get:
+      summary: Match a live skills.sh search to saved project Capability needs
+      description: Returns name-based related candidates and an unconfirmed combination; does not assert client or tool compatibility.
+      operationId: searchProjectSkillCandidateSuggestions
+      security:
+        - agentFitSession: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        "200": { description: Related candidates with UNCONFIRMED combination status }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { description: Project is not owned or has no stored recommendation }
+        "409": { description: Stored recommendation is stale }
+        "422": { $ref: "#/components/responses/InvalidInput" }
+        "502": { description: skills.sh source unavailable }
 components:
   securitySchemes:
     agentFitSession:
@@ -915,6 +1027,24 @@ components:
             project: { type: integer, minimum: 1 }
             developer: { type: integer, minimum: 0 }
             environment: { type: integer, minimum: 0 }
+    SkillCandidateSearchResponse:
+      type: object
+      required: [source, verificationStatus, candidates]
+      properties:
+        source: { type: string, enum: [skills.sh] }
+        verificationStatus: { type: string, enum: [UNVERIFIED] }
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [externalId, name, source, sourceUrl, contentHash, observedAt]
+            properties:
+              externalId: { type: string }
+              name: { type: string }
+              source: { type: string }
+              sourceUrl: { type: string, format: uri }
+              contentHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+              observedAt: { type: string, format: date-time }
     ProfileConfirmationRequest:
       type: object
       required: [expectedDraftVersion, requestId]
