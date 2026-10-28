@@ -60,6 +60,18 @@ public final class SkillsShCandidateExportController {
             .body(zip);
     }
 
+    @PostMapping("/api/tool-candidates/live-export")
+    public ResponseEntity<byte[]> exportLive(HttpServletRequest request,
+            @RequestBody ExportRequest selection) {
+        principals.resolve(request).orElseThrow(UnauthenticatedException::new);
+        if (selection == null) throw new IllegalArgumentException("candidate selection required");
+        byte[] zip = exporter.exportPinned(selection.externalId(), selection.contentHash());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=agentfit-skill-candidate.zip")
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .body(zip);
+    }
+
     @ExceptionHandler(SkillsShCandidateSnapshot.InvalidSnapshotException.class)
     public ResponseEntity<Map<String, String>> invalidSnapshot() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

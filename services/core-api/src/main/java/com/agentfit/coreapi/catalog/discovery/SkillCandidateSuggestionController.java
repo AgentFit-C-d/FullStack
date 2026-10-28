@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Project-scoped related Skill candidates; compatibility and combination remain unconfirmed. */
@@ -31,14 +33,24 @@ public final class SkillCandidateSuggestionController {
     private final ProjectOwnershipGuard ownership;
     private final ObjectProvider<RecommendationLatestDetailsService> latest;
     private final String snapshotPath;
+    private final SkillsShCandidateCollector collector;
 
+    @Autowired
     public SkillCandidateSuggestionController(SessionPrincipalResolver principals,
             ProjectOwnershipGuard ownership, ObjectProvider<RecommendationLatestDetailsService> latest,
             @Value("${agentfit.skills-sh.snapshot-path:}") String snapshotPath) {
+        this(principals, ownership, latest, snapshotPath,
+            SkillsShCandidateCollector.publicExperimental());
+    }
+
+    SkillCandidateSuggestionController(SessionPrincipalResolver principals,
+            ProjectOwnershipGuard ownership, ObjectProvider<RecommendationLatestDetailsService> latest,
+            String snapshotPath, SkillsShCandidateCollector collector) {
         this.principals = principals;
         this.ownership = ownership;
         this.latest = latest;
         this.snapshotPath = snapshotPath;
+        this.collector = collector;
     }
 
     @GetMapping("/api/projects/{projectId}/skill-candidate-suggestions")
@@ -72,9 +84,40 @@ public final class SkillCandidateSuggestionController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
     }
 
+    @GetMapping("/api/projects/{projectId}/skill-candidate-suggestions/search")
+    public ResponseEntity<SkillCandidateSuggestionMatcher.Result> search(
+            HttpServletRequest request, @PathVariable String projectId,
+            @RequestParam("q") String query) {
+        AuthenticatedPrincipal principal = principals.resolve(request)
+            .orElseThrow(UnauthenticatedException::new);
+        ownership.requireOwned(principal, projectId);
+        var service = latest.getIfAvailable();
+        if (service == null) return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        var recommendation = service.latest(projectId);
+        if (recommendation == null) return ResponseEntity.notFound().build();
+        if (recommendation.summary().validity() != RecommendationReadModel.Validity.CURRENT) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        Map<JdbcRecommendationMetadataWriter.Necessity, Set<String>> byNecessity =
+            recommendation.capabilities().stream().collect(Collectors.groupingBy(
+                JdbcRecommendationMetadataWriter.Capability::necessity,
+                Collectors.mapping(JdbcRecommendationMetadataWriter.Capability::key,
+                    Collectors.toUnmodifiableSet())));
+        var result = SkillCandidateSuggestionMatcher.suggest(collector.search(query, 5),
+            byNecessity.getOrDefault(JdbcRecommendationMetadataWriter.Necessity.REQUIRED, Set.of()),
+            byNecessity.getOrDefault(JdbcRecommendationMetadataWriter.Necessity.OPTIONAL, Set.of()));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
+    }
+
     @ExceptionHandler(SkillsShCandidateSnapshot.InvalidSnapshotException.class)
     public ResponseEntity<Map<String, String>> invalidSnapshot() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of("code", "SKILL_CANDIDATES_UNAVAILABLE"));
+    }
+
+    @ExceptionHandler(SkillsShCandidateCollector.DiscoveryException.class)
+    public ResponseEntity<Map<String, String>> sourceUnavailable() {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+            .body(Map.of("code", "SKILL_SOURCE_UNAVAILABLE"));
     }
 }

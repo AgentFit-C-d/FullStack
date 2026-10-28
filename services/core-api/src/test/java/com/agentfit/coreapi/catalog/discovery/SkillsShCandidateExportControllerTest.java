@@ -62,6 +62,20 @@ class SkillsShCandidateExportControllerTest {
             .andExpect(status().isConflict());
     }
 
+    @Test
+    void liveSearchCandidateExportsWithoutStaticSnapshot() throws Exception {
+        when(principals.resolve(any())).thenReturn(Optional.of(mock(AuthenticatedPrincipal.class)));
+        var controller = new SkillsShCandidateExportController(principals, "",
+            candidate -> new SkillsShCandidateCollector.SkillPackage(candidate.contentHash(),
+                Map.of("SKILL.md", "# Live")));
+        MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new GlobalExceptionHandler()).build()
+            .perform(post("/api/tool-candidates/live-export").contentType("application/json")
+                .content("{\"externalId\":\"owner/repo/live-skill\",\"contentHash\":\""
+                    + "c".repeat(64) + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "application/zip"));
+    }
+
     private Path snapshot() {
         Path path = directory.resolve("candidates.json");
         SkillsShCandidateSnapshot.refresh(path, List.of(new SkillCandidate(

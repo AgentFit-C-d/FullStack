@@ -18,6 +18,10 @@ import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
 import com.agentfit.coreapi.recommendation.persistence.JdbcRecommendationMetadataWriter;
 import java.nio.file.Path;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +67,31 @@ class SkillCandidateSuggestionControllerTest {
         when(principals.resolve(any())).thenReturn(Optional.empty());
         mvc(snapshotFile()).perform(get("/api/projects/project-1/skill-candidate-suggestions"))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void liveSearchMatchesRemoteCandidatesToOwnedProjectNeeds() throws Exception {
+        var principal = mock(AuthenticatedPrincipal.class);
+        when(principals.resolve(any())).thenReturn(Optional.of(principal));
+        when(ownership.requireOwned(principal, "project-1")).thenReturn(mock(Project.class));
+        when(latest.latest("project-1")).thenReturn(snapshot(RecommendationReadModel.Validity.CURRENT));
+        SkillsShCandidateCollector.Transport remote = (uri, token) -> {
+            String json = uri.getPath().equals("/api/search")
+                ? "{\"skills\":[{\"id\":\"owner/repo/run-tests\",\"name\":\"run-tests\",\"source\":\"owner/repo\"}]}"
+                : "{\"hash\":\"" + "b".repeat(64) + "\"}";
+            return new SkillsShCandidateCollector.Response(200, json.getBytes(StandardCharsets.UTF_8));
+        };
+        var collector = SkillsShCandidateCollector.publicExperimental(remote,
+            URI.create("https://skills.sh"), Clock.fixed(Instant.parse("2026-10-28T00:00:00Z"), ZoneOffset.UTC));
+        when(latestProvider.getIfAvailable()).thenReturn(latest);
+        var controller = new SkillCandidateSuggestionController(principals, ownership,
+            latestProvider, "", collector);
+        MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new GlobalExceptionHandler()).build()
+            .perform(get("/api/projects/project-1/skill-candidate-suggestions/search")
+                .param("q", "tests"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].contentHash").value("b".repeat(64)))
+            .andExpect(jsonPath("$.items[0].relatedCapabilityKeys[0]").value("cap_test_execution"));
     }
 
     private MockMvc mvc(Path snapshot) {

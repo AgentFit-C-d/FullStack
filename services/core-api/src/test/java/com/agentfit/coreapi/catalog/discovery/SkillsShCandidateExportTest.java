@@ -36,6 +36,9 @@ class SkillsShCandidateExportTest {
             assertTrue(files.get("AGENTFIT-SKILL-SOURCE.txt").contains("UNVERIFIED"));
             assertTrue(files.get("AGENTFIT-SKILL-SOURCE.txt").contains("https://skills.sh/owner/repo/example"));
             assertTrue(files.get("AGENTFIT-SKILL-SOURCE.txt").contains("a".repeat(64)));
+            assertTrue(files.get("AGENTFIT-APPLY.md").contains(".claude/skills/example/"));
+            assertTrue(files.get("AGENTFIT-APPLY.md").contains("claude --version"));
+            assertTrue(files.get("AGENTFIT-APPLY.md").contains("복원"));
         }
     }
 
@@ -60,6 +63,31 @@ class SkillsShCandidateExportTest {
             new SkillsShCandidateCollector.SkillPackage("b".repeat(64), Map.of("SKILL.md", "# Changed")));
         assertThrows(IllegalArgumentException.class,
             () -> exporter.export(snapshot(), "owner/repo/example", "a".repeat(64)));
+    }
+
+    @Test
+    void liveSearchSelectionCanExportWithoutStaticSnapshot() throws Exception {
+        var exporter = new SkillsShCandidateExport(candidate ->
+            new SkillsShCandidateCollector.SkillPackage(candidate.contentHash(),
+                Map.of("SKILL.md", "# Live skill")));
+        byte[] zip = exporter.exportPinned("owner/repo/live-skill", "c".repeat(64));
+        try (var input = new ZipInputStream(new ByteArrayInputStream(zip), StandardCharsets.UTF_8)) {
+            Map<String, String> files = new java.util.HashMap<>();
+            for (var entry = input.getNextEntry(); entry != null; entry = input.getNextEntry()) {
+                files.put(entry.getName(), new String(input.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            assertEquals("# Live skill", files.get(".claude/skills/live-skill/SKILL.md"));
+            assertTrue(files.get("AGENTFIT-SKILL-SOURCE.txt").contains("c".repeat(64)));
+        }
+    }
+
+    @Test
+    void liveSearchSelectionRejectsChangedHash() {
+        var exporter = new SkillsShCandidateExport(candidate ->
+            new SkillsShCandidateCollector.SkillPackage("d".repeat(64),
+                Map.of("SKILL.md", "# Changed")));
+        assertThrows(IllegalArgumentException.class,
+            () -> exporter.exportPinned("owner/repo/live-skill", "c".repeat(64)));
     }
 
     private Path snapshot() {
