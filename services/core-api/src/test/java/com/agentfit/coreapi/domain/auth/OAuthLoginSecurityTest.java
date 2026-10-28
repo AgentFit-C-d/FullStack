@@ -37,7 +37,7 @@ class OAuthLoginSecurityTest {
                 .param("error", "access_denied")
                 .param("error_description", "provider-secret"))
             .andExpect(status().is3xxRedirection())
-            .andExpect(header().string("Location", "/?login=failed"));
+            .andExpect(header().string("Location", "http://localhost:5173/?login=failed"));
     }
 
     @Test

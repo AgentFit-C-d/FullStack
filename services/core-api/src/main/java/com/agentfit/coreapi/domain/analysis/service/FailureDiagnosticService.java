@@ -73,6 +73,9 @@ public final class FailureDiagnosticService {
 
     @Scheduled(fixedDelayString = "${agentfit.analysis.failure-diagnostic.cleanup-interval-seconds:3600}000")
     public int purgeExpired() {
+        if (!enabled) {
+            return 0;
+        }
         return jdbc.update("DELETE FROM analysis_failure_diagnostic WHERE expires_at <= ?", Instant.now(clock));
     }
 

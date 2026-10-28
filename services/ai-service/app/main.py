@@ -1,6 +1,8 @@
+import os
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import os
 
 from app.health import health_payload
 from app.internal_analysis import authenticate_analysis_request
@@ -11,8 +13,10 @@ from app.ai_v2.needs import build_needs
 from app.ai_v2.rank import rank_candidates
 
 app = FastAPI(title="AgentFit AI Service", version="0.1.0")
+logger = logging.getLogger(__name__)
 key_ring: HmacKeyRing | None = None
 replay_guard = ReplayGuard()
+analysis_service = None
 provider_name = os.environ.get("AGENTFIT_AI_V2_PROVIDER", "deterministic")
 if provider_name == "solar":
     provider = SolarProvider(os.environ.get("UPSTAGE_API_KEY", ""))
@@ -28,8 +32,15 @@ analysis_core = AnalysisCore(provider)
 
 @app.on_event("startup")
 def validate_hmac_configuration() -> None:
-    global key_ring
+    global key_ring, analysis_service
     key_ring = HmacKeyRing.from_env()
+    try:
+        from app.analysis.config import read_config
+        from app.analysis.service import AnalysisService
+
+        analysis_service = AnalysisService(read_config(os.environ))
+    except (ImportError, ValueError):
+        analysis_service = None
 
 
 @app.get("/health")
@@ -77,6 +88,15 @@ async def process_analysis(request: Request):
         input_payload = payload["input"]
         if not isinstance(input_payload, dict):
             raise ValueError("INVALID_ANALYSIS_REQUEST")
+        if "inputRef" in input_payload:
+            if analysis_service is None:
+                return _failure(authenticated.request_id, "AI_SERVICE_NOT_CONFIGURED", 503)
+            try:
+                return _context(authenticated, await analysis_service.analyze(input_payload))
+            except Exception as error:
+                code = getattr(error, "code", "ANALYSIS_FAILED")
+                logger.exception("AI analysis failed code=%s", code)
+                return _failure(authenticated.request_id, str(code), 503)
         kind = input_payload.get("inputKind", input_payload.get("kind"))
         document_id = input_payload.get("documentId", authenticated.request_id)
         deadline = input_payload.get("deadline", payload.get("deadline"))

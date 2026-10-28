@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "required": ["fields", "quotes"],
+  "additionalProperties": false,
+  "properties": {
+    "fields": {"type": "object", "additionalProperties": {"type": ["string", "array", "null"]}},
+    "quotes": {"type": "object", "additionalProperties": {"type": "array"}}
+  }
+}
