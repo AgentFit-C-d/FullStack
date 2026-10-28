@@ -44,8 +44,7 @@ class AiV2AnalysisToRecommendationIntegrationTest {
             Map<?, ?> request = new ObjectMapper().readValue(exchange.getRequestBody().readAllBytes(), Map.class);
             Map<?, ?> payload = (Map<?, ?>) request.get("input");
             List<?> facts = (List<?>) payload.get("facts");
-            assertTrue(facts.contains(Map.of("id", "profile.projectType", "field", "project_type", "value", "web")));
-            assertTrue(facts.contains(Map.of("id", "profile.domain", "field", "domain", "value", "education")));
+            assertTrue(facts.contains(Map.of("id", "profile.item.features.0", "field", "features", "value", "document search")));
             assertTrue(facts.contains(Map.of("id", "developer.responsibility.0", "field", "features", "value", "API 검증")));
             List<Map<String, Object>> claims = CapabilityKey.keys().stream().sorted().map(key -> Map.of(
                 "capabilityKey", key,

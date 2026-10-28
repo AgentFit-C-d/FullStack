@@ -4,13 +4,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import com.agentfit.coreapi.catalog.RecommendationLatestDetailsService;
 import com.agentfit.coreapi.global.exception.BusinessException;
 import com.agentfit.coreapi.global.exception.ErrorCode;
 import com.agentfit.coreapi.recommendation.RecommendationDecision;
 import com.agentfit.coreapi.recommendation.RecommendationReadModel;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
@@ -18,12 +23,19 @@ import org.springframework.transaction.annotation.Isolation;
 @Service
 public class RecommendationQuestionAnswerService {
     private final JdbcTemplate jdbc;
-    private final RecommendationLatestDetailsService latest;
+    private final Supplier<RecommendationLatestDetailsService> latest;
 
     public RecommendationQuestionAnswerService(JdbcTemplate jdbc,
                                                RecommendationLatestDetailsService latest) {
         this.jdbc = jdbc;
-        this.latest = latest;
+        this.latest = () -> latest;
+    }
+
+    @Autowired
+    public RecommendationQuestionAnswerService(JdbcTemplate jdbc,
+            ObjectProvider<RecommendationLatestDetailsService> latest) {
+        this.jdbc = jdbc;
+        this.latest = latest::getIfAvailable;
     }
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -34,7 +46,12 @@ public class RecommendationQuestionAnswerService {
         UUID notice = UUID.fromString(noticeId);
         if (actorId == null) throw new IllegalArgumentException("authenticated UUID actor required");
         String value = RecommendationQuestionAnswer.validatedAnswer(answer);
-        var snapshot = latest.latest(projectId);
+        var current = latest.get();
+        if (current == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "recommendation reader unavailable");
+        }
+        var snapshot = current.latest(projectId);
         if (snapshot == null || snapshot.summary() == null
             || !recommendation.toString().equals(snapshot.summary().recommendationId())
             || snapshot.summary().validity() != RecommendationReadModel.Validity.CURRENT
