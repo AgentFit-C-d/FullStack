@@ -162,10 +162,26 @@ public class ProjectService {
 
     @Transactional
     public PlanningInputMetadataResponse replaceInput(AuthenticatedPrincipal principal, String projectId, long expectedVersion, MultipartFile file, String inputText) {
-        Project current=ownershipGuard.requireOwned(principal,projectId); Project locked=repository.findByIdForUpdate(projectId).orElse(current);
-        if(locked.version()!=expectedVersion) throw new VersionConflictException(expectedVersion,locked.version());
-        if(analysisAttemptRepository.findProcessingByProjectId(projectId).isPresent()) throw new IllegalStateException("Cannot replace input while analysis is processing");
-        long revision=(locked.currentInputRevision()==null?0:locked.currentInputRevision())+1; PlanningInput input=inputValidator.validate(projectId,revision,file,inputText); inputRepository.save(input); repository.updateInputRevision(projectId,revision,locked.version()+1,Instant.now()); return PlanningInputMetadataResponse.from(input);
+        Project current = ownershipGuard.requireOwned(principal, projectId);
+        Project locked = repository.findByIdForUpdate(projectId).orElse(current);
+        if (locked.version() != expectedVersion) {
+            throw new VersionConflictException(expectedVersion, locked.version());
+        }
+        if (analysisAttemptRepository.findProcessingByProjectId(projectId).isPresent()) {
+            throw new IllegalStateException("Cannot replace input while analysis is processing");
+        }
+
+        long revision = locked.currentInputRevision() == null
+                ? 1
+                : locked.currentInputRevision() + 1;
+        PlanningInput input = inputValidator.validate(projectId, revision, file, inputText);
+        inputRepository.save(input);
+        repository.updateInputRevision(
+                projectId,
+                revision,
+                locked.version() + 1,
+                Instant.now());
+        return PlanningInputMetadataResponse.from(input);
     }
 
     @Transactional(readOnly = true)

@@ -7,6 +7,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required"),
     CSRF_INVALID(HttpStatus.FORBIDDEN, "CSRF token is invalid"),
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "Project not found"),
+    ANALYSIS_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "Analysis result not found"),
     INVALID_INPUT(HttpStatus.UNPROCESSABLE_ENTITY, "Request validation failed"),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "The project changed; reload and retry"),
     PROFILE_NOT_CONFIRMED(HttpStatus.CONFLICT, "Review and confirm the A draft before requesting recommendations"),

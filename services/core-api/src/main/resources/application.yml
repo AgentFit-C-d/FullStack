@@ -15,7 +15,7 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
-            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
+            redirect-uri: ${AGENTFIT_GITHUB_REDIRECT_URI:http://localhost:8080/api/login/oauth2/code/github}
             scope:
               - user:email
   session:
