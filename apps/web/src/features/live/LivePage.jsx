@@ -399,7 +399,8 @@ export default function LivePage() {
       })
       setQuestionAnswers(previous => [...previous.filter(item => item.noticeId !== noticeId), saved])
       setAnswerDrafts(previous => ({ ...previous, [noticeId]: saved.answer }))
-    }, '추가 질문의 답변을 저장했습니다. 추천을 갱신하려면 관련 기획·환경 입력을 수정하고 다시 실행해야 합니다.')
+      await loadProject(projectId)
+    }, '환경 답변을 저장하고 입력을 갱신했습니다. 새 추천을 실행해 주세요.')
   }
 
   async function createPreview(compareExisting = false) {
