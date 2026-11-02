@@ -106,6 +106,7 @@ public final class RecommendationInputsService {
                 jdbc.update("UPDATE developer_profile SET version = version + 1, role = ?, responsibilities = CAST(? AS jsonb), updated_at = ? WHERE project_id = ?",
                     role, json, Timestamp.from(now), id);
             }
+            recordInputAudit(id, "DEVELOPER_PROFILE_UPDATED", "DEVELOPER_PROFILE", "developer_profile");
             return current + 1;
         });
     }
@@ -198,8 +199,17 @@ public final class RecommendationInputsService {
                 jdbc.update("INSERT INTO environment_auth_readiness (id, environment_profile_id, service_id, state, created_at) VALUES (?, ?, ?, ?, ?)",
                     UUID.randomUUID(), environmentId, normalizedName(auth.serviceId()), auth.state(), Timestamp.from(now));
             }
+            recordInputAudit(id, "ENVIRONMENT_PROFILE_UPDATED", "ENVIRONMENT_PROFILE", "environment_profile");
             return version + 1;
         });
+    }
+
+    private void recordInputAudit(UUID projectId, String event, String targetType, String table) {
+        int written = jdbc.update("INSERT INTO audit_event (id, project_id, actor_id, event, outcome, target_type, target_id, occurred_at) "
+                + "SELECT ?, p.id, p.user_id, ?, 'SUCCEEDED', ?, t.id, CURRENT_TIMESTAMP "
+                + "FROM project p JOIN " + table + " t ON t.project_id = p.id WHERE p.id = ?",
+            UUID.randomUUID(), event, targetType, projectId);
+        if (written != 1) throw new IllegalStateException("input Audit was not saved");
     }
 
     private void requireConfirmedAndLock(UUID projectId) {

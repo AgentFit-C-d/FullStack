@@ -114,5 +114,8 @@ class EnvironmentQuestionAnswerPostgresTest {
         assertEquals(2, inputs.saveEnvironment(project.toString(), 1, "WINDOWS", "claude-code", "2.1.311", true, List.of()));
         assertEquals(first.runtimes(), inputs.current(project.toString()).environment().runtimes());
         assertEquals(first.authReadiness(), inputs.current(project.toString()).environment().authReadiness());
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM audit_event WHERE project_id = ? AND event = 'ENVIRONMENT_PROFILE_UPDATED'", Integer.class, project));
+        assertEquals(1, inputs.saveDeveloper(project.toString(), 0, "FULLSTACK", List.of("API 개발")));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_event WHERE project_id = ? AND event = 'DEVELOPER_PROFILE_UPDATED'", Integer.class, project));
     }
 }
