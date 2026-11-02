@@ -4,17 +4,14 @@ import com.agentfit.coreapi.domain.analysis.client.AiAnalysisClient;
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttempt;
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisAttemptContext;
 import com.agentfit.coreapi.domain.analysis.entity.AnalysisInputLease;
-import com.agentfit.coreapi.domain.analysis.entity.AnalysisResult;
 import com.agentfit.coreapi.domain.analysis.repository.AnalysisAttemptRepository;
 import com.agentfit.coreapi.domain.analysis.repository.AnalysisInputLeaseRepository;
-import com.agentfit.coreapi.domain.analysis.repository.AnalysisResultRepository;
 import com.agentfit.coreapi.domain.project.entity.PlanningInput;
-import com.agentfit.coreapi.domain.project.entity.Project;
 import com.agentfit.coreapi.domain.project.repository.PlanningInputRepository;
-import com.agentfit.coreapi.domain.project.repository.ProjectRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -27,40 +24,37 @@ public class AnalysisExecutionScheduler {
 
     private final AnalysisAttemptRepository attempts;
     private final AnalysisInputLeaseRepository leases;
-    private final AnalysisResultRepository results;
     private final PlanningInputRepository inputs;
-    private final ProjectRepository projects;
     private final InternalInputAccessService inputAccess;
     private final AnalysisExecutionService execution;
-    private final ProjectAnalysisService analysisService;
+    private final AnalysisWorkerTerminalCoordinator terminal;
     private final Clock clock;
+    private final long leaseSeconds;
 
     public AnalysisExecutionScheduler(
             AnalysisAttemptRepository attempts,
             AnalysisInputLeaseRepository leases,
-            AnalysisResultRepository results,
             PlanningInputRepository inputs,
-            ProjectRepository projects,
             InternalInputAccessService inputAccess,
             AnalysisExecutionService execution,
-            ProjectAnalysisService analysisService,
-            Clock clock) {
+            AnalysisWorkerTerminalCoordinator terminal,
+            Clock clock,
+            @Value("${agentfit.analysis.worker-lease-seconds:180}") long leaseSeconds) {
         this.attempts = attempts;
         this.leases = leases;
-        this.results = results;
         this.inputs = inputs;
-        this.projects = projects;
         this.inputAccess = inputAccess;
         this.execution = execution;
-        this.analysisService = analysisService;
+        this.terminal = terminal;
         this.clock = clock;
+        if (leaseSeconds < 1) throw new IllegalArgumentException("worker lease must be positive");
+        this.leaseSeconds = leaseSeconds;
     }
 
     @Scheduled(fixedDelayString = "${agentfit.analysis.execution-interval-seconds:1}000")
     public void executePending() {
-        for (AnalysisAttempt attempt : attempts.findProcessingAttempts()) {
-            executeOne(attempt);
-        }
+        Instant now = Instant.now(clock);
+        attempts.claimNext(now, now.plusSeconds(leaseSeconds)).ifPresent(this::executeOne);
     }
 
     void executeOne(AnalysisAttempt attempt) {
@@ -81,29 +75,14 @@ public class AnalysisExecutionScheduler {
                     attempt.contractVersion(),
                     attempt.deadlineAt(),
                     attempt.state());
-            Project project = projects.findByIdAndOwnerUuid(
-                            attempt.projectId(),
-                            attempt.ownerUuid())
-                    .orElseThrow(() -> new IllegalArgumentException("Project is not found"));
             AiAnalysisClient.AnalysisResponse response = execution.execute(
                     context,
                     buildAiInput(attempt, input, lease));
-            if (!new com.agentfit.coreapi.domain.project.service.ResultPersistenceGuard(value -> value)
-                    .canPersist(context, project, Instant.now(clock))) {
-                throw new IllegalStateException("Analysis result is no longer valid");
-            }
-            results.save(new AnalysisResult(
-                    attempt.id(),
-                    response.requestId(),
-                    response.generation(),
-                    response.contractVersion(),
-                    response.result(),
-                    Instant.now(clock)));
-            analysisService.complete(attempt, "SUCCEEDED", null);
+            terminal.succeed(attempt, response);
         } catch (AiAnalysisClient.NotAcceptedException exception) {
-            analysisService.complete(attempt, "FAILED", "AI_SERVICE_NOT_ACCEPTED");
+            terminal.fail(attempt, "AI_SERVICE_NOT_ACCEPTED");
         } catch (RuntimeException exception) {
-            analysisService.complete(attempt, "FAILED", safeErrorCode(exception));
+            terminal.fail(attempt, safeErrorCode(exception));
         }
     }
 

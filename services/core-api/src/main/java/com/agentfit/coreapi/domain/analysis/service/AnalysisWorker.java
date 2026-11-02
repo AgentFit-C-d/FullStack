@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 /** Polls one Core-owned analysis attempt. Claiming happens before, and terminal persistence after, the AI call. */
 @Component
-@ConditionalOnProperty(name = "agentfit.analysis.worker.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "agentfit.analysis.legacy-worker.enabled", havingValue = "true")
 public class AnalysisWorker {
     private final AnalysisAttemptRepository attempts;
     private final PlanningInputRepository inputs;
