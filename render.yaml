@@ -2,8 +2,7 @@ databases:
   - name: agentfit-test-db
     plan: free
     region: singapore
-    databaseName: agentfit
-    user: agentfit
+    postgresMajorVersion: "16"
     ipAllowList: []
 
 envVarGroups:
