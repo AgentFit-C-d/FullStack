@@ -15,6 +15,8 @@ import { capabilityLabel, recommendationFeedback, requiredCapabilityLabels } fro
 import { createAndReadRecommendation } from './recommendationFlow.js'
 import { comparisonTargets, providedFilesForPreview } from './existingFiles.js'
 import ProfileItemsEditor from './ProfileItemsEditor.jsx'
+import AnalysisReviewDetails from './AnalysisReviewDetails.jsx'
+import { analysisReviewFields, applyAnalysisCandidate, confirmedMatchesDraft } from './analysisReview.js'
 import InstalledComponentsEditor from './InstalledComponentsEditor.jsx'
 import ExistingFilesEditor from './ExistingFilesEditor.jsx'
 import QuestionAnswersEditor from './QuestionAnswersEditor.jsx'
@@ -102,7 +104,7 @@ export default function LivePage() {
     setProjectRename(previous => previous?.projectId === id
       ? previous : { projectId: id, value: current.project.name })
     if (isProfile(current.draft)) {
-      const review = current.confirmed?.sourceDraftId === current.draft.id
+      const review = confirmedMatchesDraft(current.confirmed, current.draft)
         ? current.confirmed : current.draft
       setProfileEdit({ projectName: review.projectName || current.project.name,
         projectType: review.projectType || '', domain: review.domain || '' })
@@ -570,15 +572,17 @@ export default function LivePage() {
   }
 
   const draft = isProfile(detail?.draft) ? detail.draft : null
+  const analysisFields = draft ? analysisReviewFields(draft.fieldMetadata) : []
   const confirmed = detail?.confirmed?.kind === 'CONFIRMED' ? detail.confirmed : null
-  const reviewProfile = confirmed?.sourceDraftId === draft?.id ? confirmed : draft
+  const confirmedForDraft = confirmedMatchesDraft(confirmed, draft)
+  const reviewProfile = confirmedForDraft ? confirmed : draft
   const profileChanged = reviewProfile && (
     profileEdit.projectName.trim() !== (reviewProfile.projectName || '')
     || (profileEdit.projectType.trim() || null) !== (reviewProfile.projectType || null)
     || (profileEdit.domain.trim() || null) !== (reviewProfile.domain || null)
     || JSON.stringify(profileItems) !== JSON.stringify(reviewProfile.items || [])
   )
-  const profileNeedsConfirmation = draft && (!confirmed || confirmed.sourceDraftId !== draft.id || profileChanged)
+  const profileNeedsConfirmation = draft && (!confirmedForDraft || profileChanged)
   const attempt = detail?.latestAttempt
   const inputReady = inputs?.developer && inputs?.environment
   const inputDirty = inputsDirty(inputs, { role, responsibilities, osFamily, clientId,
@@ -619,12 +623,21 @@ export default function LivePage() {
           <section className={styles.card} id="planning-input"><h2>2. 기획 자료와 AI 분석</h2><p>PDF·Markdown 파일 또는 텍스트를 서버에 저장합니다. 한 번에 한 방식만 전송합니다.</p><form onSubmit={savePlanning} className={styles.stack}><input aria-label="기획 파일" type="file" accept=".pdf,.md,.markdown" onChange={event => { setPlanningFile(event.target.files[0] || null); if (event.target.files[0]) setPlanningText('') }} /><textarea aria-label="기획 텍스트" placeholder="직접 입력" value={planningText} onChange={event => { setPlanningText(event.target.value); if (event.target.value) setPlanningFile(null) }} /><div className={styles.row}><button disabled={busy}>자료 저장</button><button type="button" disabled={busy || !planningReady || attempt?.state === 'PROCESSING'} onClick={startAnalysis}>AI 분석 시작</button><button type="button" disabled={busy} onClick={() => loadProject(projectId).catch(cause => setError(cause.message))}>상태 새로고침</button></div></form><p>새 분석은 이 화면에서 기획 자료를 저장한 뒤 시작할 수 있습니다.</p><p>최근 분석: {attempt?.state || '없음'} {attempt?.errorCode && `· 오류 ${attempt.errorCode}`}</p></section>
           {draft && <section className={styles.card} id="profile-review">
             <h2>3. 분석 초안 확인</h2>
-            <p>{confirmed?.sourceDraftId === draft.id ? '확정된 항목을 수정할 수 있습니다.' : `DRAFT v${draft.version} · 문서 추출 결과를 검토하고 전체 항목을 확정합니다.`}</p>
+            <p>{confirmedForDraft ? '확정된 항목을 수정할 수 있습니다.' : `DRAFT v${draft.version} · 문서 추출 결과를 검토하고 전체 항목을 확정합니다.`}</p>
             <div className={styles.grid3}>
               <label>프로젝트명<input value={profileEdit.projectName} onChange={event => setProfileEdit({ ...profileEdit, projectName: event.target.value })} /></label>
               <label>서비스 유형<input value={profileEdit.projectType} onChange={event => setProfileEdit({ ...profileEdit, projectType: event.target.value })} /></label>
               <label>도메인<input value={profileEdit.domain} onChange={event => setProfileEdit({ ...profileEdit, domain: event.target.value })} /></label>
             </div>
+            <AnalysisReviewDetails fields={analysisFields} onApply={candidate => {
+              try {
+                const next = applyAnalysisCandidate(profileEdit, profileItems, candidate)
+                setProfileEdit(next.profile)
+                setProfileItems(next.items)
+                setError('')
+                setNotice('후보를 편집 내용에 반영했습니다. 기획 정보를 확인하고 확정 저장해 주세요.')
+              } catch (cause) { setError(cause.message) }
+            }} />
             <details><summary>기획 항목 편집 ({profileItems.length}개)</summary>
               <ProfileItemsEditor items={profileItems} onChange={setProfileItems} onError={setError} />
             </details>

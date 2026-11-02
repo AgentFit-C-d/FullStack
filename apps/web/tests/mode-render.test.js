@@ -34,7 +34,8 @@ test('만료된 추천의 추가 질문은 이전 답변을 보여주되 새 저
     busy: false, current: false, onDraft() {}, onSave() {},
   }))
   assert.match(html, /이전 추천의 질문/)
-  assert.match(html, /disabled=""[^>]*>답변 저장/)
+  assert.match(html, /href="#recommendation-inputs"/)
+  assert.doesNotMatch(html, /답변 저장/)
 })
 
 test('Analysis 실제 렌더링에서 시연 진입은 demo에만 보이고 결과 버튼은 비활성이다', () => {

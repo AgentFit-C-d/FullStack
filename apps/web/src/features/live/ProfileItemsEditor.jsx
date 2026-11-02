@@ -20,7 +20,7 @@ export default function ProfileItemsEditor({ items, onChange, onError }) {
         <input aria-label={`${item.fieldKey} 항목 ${index + 1}`} value={item.name}
           onChange={event => onChange(renameProfileItem(items, index, event.target.value))} />
       </label>
-      {item.source === 'DOCUMENT' && <small>근거: {item.evidence || '없음'}</small>}
+      {item.source === 'DOCUMENT' && item.evidence && item.evidence !== '[]' && <small>근거: {item.evidence}</small>}
       <button type="button" onClick={() => onChange(items.filter((_, position) => position !== index))}>삭제</button>
     </li>)}</ul>
     <form onSubmit={add}>
