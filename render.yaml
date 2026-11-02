@@ -1,0 +1,104 @@
+databases:
+  - name: agentfit-test-db
+    plan: free
+    region: singapore
+    databaseName: agentfit
+    user: agentfit
+    ipAllowList: []
+
+envVarGroups:
+  - name: agentfit-test-hmac
+    envVars:
+      - key: AGENTFIT_HMAC_CURRENT_KEY_ID
+        value: render-test-v1
+      - key: AGENTFIT_HMAC_CURRENT_SECRET
+        generateValue: true
+
+services:
+  - type: web
+    name: agentfit-test-ai
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/AgentFit-C-d/FullStack
+    branch: chore/render-deployment-test
+    dockerContext: .
+    dockerfilePath: ./infra/docker/ai-service.Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: agentfit-test-hmac
+      - key: AGENTFIT_AI_V2_PROVIDER
+        value: solar
+      - key: UPSTAGE_API_KEY
+        sync: false
+
+  - type: web
+    name: agentfit-test-core
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/AgentFit-C-d/FullStack
+    branch: chore/render-deployment-test
+    dockerContext: .
+    dockerfilePath: ./infra/docker/core-api.Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: agentfit-test-hmac
+      - key: PORT
+        value: "10000"
+      - key: SERVER_PORT
+        value: "10000"
+      - key: SERVER_FORWARD_HEADERS_STRATEGY
+        value: framework
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70
+      - key: RENDER_DATABASE_URL
+        fromDatabase:
+          name: agentfit-test-db
+          property: connectionString
+      - key: AGENTFIT_DB_USERNAME
+        fromDatabase:
+          name: agentfit-test-db
+          property: user
+      - key: AGENTFIT_DB_PASSWORD
+        fromDatabase:
+          name: agentfit-test-db
+          property: password
+      - key: AGENTFIT_WEB_ORIGIN
+        value: https://agentfit-test-web.onrender.com
+      - key: AGENTFIT_GITHUB_REDIRECT_URI
+        value: https://agentfit-test-web.onrender.com/api/login/oauth2/code/github
+      - key: AGENTFIT_COOKIE_SECURE
+        value: "true"
+      - key: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_SCOPE
+        value: read:user
+      - key: SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE
+        value: 10MB
+      - key: SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE
+        value: 11MB
+      - key: AGENTFIT_AI_SERVICE_ANALYSIS_URL
+        value: https://agentfit-test-ai.onrender.com/internal/v1/analysis
+      - key: AGENTFIT_AI_SERVICE_NEEDS_URL
+        value: https://agentfit-test-ai.onrender.com/internal/v1/skills/needs
+      - key: AGENTFIT_AI_SERVICE_RANK_URL
+        value: https://agentfit-test-ai.onrender.com/internal/v1/skills/rank
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+
+  - type: web
+    name: agentfit-test-web
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/AgentFit-C-d/FullStack
+    branch: chore/render-deployment-test
+    dockerContext: ./apps/web
+    dockerfilePath: ./apps/web/Dockerfile.render
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: CORE_API_ORIGIN
+        value: https://agentfit-test-core.onrender.com

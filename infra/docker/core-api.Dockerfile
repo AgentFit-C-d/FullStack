@@ -9,5 +9,6 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 COPY --from=builder /workspace/services/core-api/target/*.jar /app/core-api.jar
+COPY infra/render/start-core.sh /app/start-core.sh
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/core-api.jar"]
+ENTRYPOINT ["sh", "/app/start-core.sh"]
