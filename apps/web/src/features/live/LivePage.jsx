@@ -113,7 +113,7 @@ export default function LivePage() {
       if (savedInputs.environment) {
         setOsFamily(savedInputs.environment.osFamily)
         setClientId(savedInputs.environment.clientId)
-        setClientVersion(savedInputs.environment.clientVersion)
+        setClientVersion(savedInputs.environment.clientVersion || '')
         setInstalledComponentsKnown(savedInputs.environment.installedComponentsKnown)
         setInstalledComponents(savedInputs.environment.installedComponents || [])
       } else {

@@ -39,9 +39,15 @@ services:
     environment:
       AGENTFIT_DB_URL: jdbc:postgresql://db:5432/agentfit
       AGENTFIT_AI_SERVICE_URL: http://ai:8001/internal/v1/analysis
+      AGENTFIT_AI_SERVICE_NEEDS_URL: http://ai:8001/internal/v1/skills/needs
+      AGENTFIT_AI_SERVICE_RANK_URL: http://ai:8001/internal/v1/skills/rank
+      AGENTFIT_CATALOG_DIRECTORY: /opt/agentfit/catalog
+      AGENTFIT_CATALOG_APPROVED_HASH: e220a4a01e8865779c78464e722dbb24dff112c7e44475c284a54c4316661527
       AGENTFIT_WEB_ORIGIN: http://localhost:5173
       AGENTFIT_GITHUB_REDIRECT_URI: ${AGENTFIT_GITHUB_REDIRECT_URI:-http://localhost:8080/api/login/oauth2/code/github}
       AGENTFIT_COOKIE_SECURE: "false"
+    volumes:
+      - ./catalog-candidates/obra-tdd-windows-claude-2.1.310-risk-reviewed:/opt/agentfit/catalog:ro
     depends_on:
       db:
         condition: service_healthy

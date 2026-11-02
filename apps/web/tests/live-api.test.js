@@ -61,7 +61,7 @@ test('설치 상태는 사용자 선언에 따라서만 KNOWN으로 저장한다
   [{ toolKey: 'skill-a', version: null }])
   assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '2.1.270', true,
     [{ toolKey: 'skill-a' }, { toolKey: 'skill-a' }]), /중복 불가/)
-  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '', true), /Client 버전/)
+  assert.equal(environmentProfileBody(1, 'WINDOWS', 'claude-code', '', true).clientVersion, null)
 })
 
 test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 처리한다', async () => {

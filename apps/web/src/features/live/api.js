@@ -38,20 +38,20 @@ export async function loadSession() {
 }
 
 export function environmentProfileBody(expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents = []) {
-  if (!osFamily?.trim() || !clientId?.trim() || !clientVersion?.trim()) {
-    throw new Error('OS·AI Client·Client 버전을 확인해 입력해 주세요.')
+  if (!osFamily?.trim() || !clientId?.trim()) {
+    throw new Error('OS·AI Client를 확인해 입력해 주세요.')
   }
   const components = installedComponentsKnown ? installedComponents.map(item => ({
     toolKey: item.toolKey.trim(), version: item.version?.trim() || null,
   })) : []
-  if (components.length > 50 || components.some(item => !item.toolKey || Array.from(item.toolKey).length > 200
+  if (components.length > 30 || components.some(item => !item.toolKey || Array.from(item.toolKey).length > 200
     || item.version && Array.from(item.version).length > 200)
-    || new Set(components.map(item => item.toolKey)).size !== components.length) {
-    throw new Error('설치 도구는 최대 50개이며, 이름은 필수·중복 불가입니다. 버전은 선택 입력입니다.')
+    || new Set(components.map(item => item.toolKey.toLowerCase())).size !== components.length) {
+    throw new Error('설치 도구는 최대 30개이며, 이름은 필수·중복 불가입니다. 버전은 선택 입력입니다.')
   }
   return {
     expectedVersion, osFamily: osFamily.trim().toUpperCase(), clientId: clientId.trim(),
-    clientVersion: clientVersion.trim(), installedComponentsKnown, installedComponents: components,
+    clientVersion: clientVersion?.trim() || null, installedComponentsKnown, installedComponents: components,
   }
 }
 

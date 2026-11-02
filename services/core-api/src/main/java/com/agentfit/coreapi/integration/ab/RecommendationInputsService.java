@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -98,7 +99,7 @@ public final class RecommendationInputsService {
             String clientId, String clientVersion, boolean installedComponentsKnown,
             List<InstalledComponent> components) {
         if (expectedVersion < 0 || !text(osFamily, 30) || !text(clientId, 200)
-            || !text(clientVersion, 200) || components == null || components.size() > 50
+            || clientVersion != null && !text(clientVersion, 200) || components == null || components.size() > 30
             || !installedComponentsKnown && !components.isEmpty()) {
             throw new IllegalArgumentException("invalid environment profile input");
         }
@@ -106,7 +107,7 @@ public final class RecommendationInputsService {
         for (InstalledComponent component : components) {
             if (component == null || !text(component.toolKey(), 200)
                 || component.version() != null && !text(component.version(), 200)
-                || !keys.add(component.toolKey())) {
+                || !keys.add(normalizedName(component.toolKey()))) {
                 throw new IllegalArgumentException("invalid installed component declaration");
             }
         }
@@ -133,7 +134,7 @@ public final class RecommendationInputsService {
             for (int ordinal = 0; ordinal < components.size(); ordinal++) {
                 InstalledComponent component = components.get(ordinal);
                 jdbc.update("INSERT INTO environment_installed_component (id, environment_profile_id, ordinal, name, normalized_name, version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), environmentId, ordinal, component.toolKey(), component.toolKey(),
+                    UUID.randomUUID(), environmentId, ordinal, component.toolKey().trim(), normalizedName(component.toolKey()),
                     component.version(), Timestamp.from(now));
             }
             return version + 1;
@@ -150,7 +151,11 @@ public final class RecommendationInputsService {
     }
 
     private static boolean text(String value, int max) {
-        return value != null && !value.isBlank() && value.length() <= max;
+        return value != null && !value.isBlank()
+            && value.codePointCount(0, value.length()) <= max;
+    }
+    static String normalizedName(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 
     private record EnvironmentRow(UUID id, long version) {}
