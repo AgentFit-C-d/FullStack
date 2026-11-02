@@ -34,6 +34,8 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 agentfit:
+  internal:
+    ai-service-token: ${AI_SERVICE_TOKEN:}
   skills-sh:
     snapshot-path: ${AGENTFIT_SKILLS_SH_SNAPSHOT_PATH:}
   ai-service:

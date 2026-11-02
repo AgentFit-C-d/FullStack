@@ -12,6 +12,10 @@ envVarGroups:
         value: render-test-v1
       - key: AGENTFIT_HMAC_CURRENT_SECRET
         generateValue: true
+  - name: agentfit-test-internal-input
+    envVars:
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
 
 services:
   - type: web
@@ -26,6 +30,9 @@ services:
     healthCheckPath: /health
     envVars:
       - fromGroup: agentfit-test-hmac
+      - fromGroup: agentfit-test-internal-input
+      - key: API_INTERNAL_URL
+        value: https://agentfit-test-core.onrender.com
       - key: AGENTFIT_AI_V2_PROVIDER
         value: solar
       - key: UPSTAGE_API_KEY
@@ -43,6 +50,13 @@ services:
     healthCheckPath: /health
     envVars:
       - fromGroup: agentfit-test-hmac
+      - fromGroup: agentfit-test-internal-input
+      - key: AGENTFIT_CATALOG_DIRECTORY
+        value: /opt/agentfit/catalog
+      - key: AGENTFIT_CATALOG_APPROVED_HASH
+        value: e220a4a01e8865779c78464e722dbb24dff112c7e44475c284a54c4316661527
+      - key: AGENTFIT_SKILLS_SH_SNAPSHOT_PATH
+        value: /opt/agentfit/discovery/skills-sh-candidates.json
       - key: PORT
         value: "10000"
       - key: SERVER_PORT
