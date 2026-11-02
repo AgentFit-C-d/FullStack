@@ -2,6 +2,16 @@
 
 `chore/render-deployment-test` 브랜치를 기준으로 `render.yaml` Blueprint를 사용한다.
 
+## 2026-11-02 배포 상태
+
+- [웹](https://agentfit-test-web.onrender.com): `live`, `/health` 200, `/app` 200
+- [Core API](https://agentfit-test-core.onrender.com): `live`, `/health` 200, Flyway v10 적용
+- [AI](https://agentfit-test-ai.onrender.com): `live`, `/health` 200, Solar 키 설정
+- [PostgreSQL](https://dashboard.render.com/d/dpg-dbk18lec6qcc73d7sbqg-a): `available`, 무료 DB 만료 예정 2026-12-02
+- Web의 `/api/auth/get-session` 200, `/api/auth/csrf` 204를 확인했다.
+
+GitHub OAuth Client ID와 Secret은 별도 Render용 앱을 만들 때까지 자리 표시자다. 따라서 아직 로그인과 인증 후 전체 흐름은 검증하지 않았다. 두 값을 Core 서비스의 Environment에서 교체하고 재배포해야 한다.
+
 ## 구성
 
 - `agentfit-test-web`: React 정적 파일과 `/api/` HTTPS 프록시
@@ -13,10 +23,9 @@
 
 ## 최초 연결
 
-1. Render Dashboard에서 이 저장소의 `render.yaml`을 Blueprint로 연결하고 배포 테스트 브랜치를 선택한다.
-2. 초기 생성 화면에서 `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `UPSTAGE_API_KEY`를 각각 입력한다. 값을 Git이나 문서에 넣지 않는다.
-3. GitHub OAuth App의 Authorization callback URL에 `https://agentfit-test-web.onrender.com/api/login/oauth2/code/github`를 등록한다. 기존 로컬 콜백도 사용할 경우 별도의 OAuth App이 필요하다.
-4. Web `/health`, Core `/health`, AI `/health`와 프로젝트 생성 → 기획서 저장 → 분석 → 확정 → 추천 → 설정 ZIP 경로를 순서대로 확인한다.
+1. GitHub에서 Render용 별도 OAuth App을 만든다. Authorization callback URL은 `https://agentfit-test-web.onrender.com/api/login/oauth2/code/github`로 지정한다.
+2. Render Core 서비스의 Environment에서 `GITHUB_CLIENT_ID`와 `GITHUB_CLIENT_SECRET`의 자리 표시자를 새 앱의 값으로 교체하고 배포한다. 값을 Git이나 문서에 넣지 않는다.
+3. 로그인 후 프로젝트 생성 → 기획서 저장 → 분석 → 확정 → 추천 → 설정 ZIP 경로를 순서대로 확인한다.
 
 ## 데이터와 운영 범위
 
