@@ -81,7 +81,7 @@ export function environmentProfileBody(expectedVersion, osFamily, clientId, clie
 
 export function planningInputBody(expectedVersion, inputText, file) {
   const body = new FormData()
-  body.append('expectedVersion', new Blob([JSON.stringify(expectedVersion)], { type: 'application/json' }))
+  body.append('expectedVersion', String(expectedVersion))
   if (file) body.append('file', file)
   else body.append('inputText', inputText)
   return body

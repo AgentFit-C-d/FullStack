@@ -41,10 +41,9 @@ test('읽기 요청은 CSRF 요청 없이 서버 오류 상태를 전달한다',
   assert.equal(projectPath('project id'), '/api/projects/project%20id')
 })
 
-test('기획 자료의 버전은 Spring RequestPart가 읽는 JSON 숫자로 전송한다', async () => {
+test('기획 자료의 버전은 Spring RequestParam이 읽는 폼 숫자로 전송한다', () => {
   const body = planningInputBody(1, '데모 기획', null)
-  assert.equal(body.get('expectedVersion').type, 'application/json')
-  assert.equal(await body.get('expectedVersion').text(), '1')
+  assert.equal(body.get('expectedVersion'), '1')
   assert.equal(body.get('inputText'), '데모 기획')
   assert.equal(body.get('file'), null)
 })
