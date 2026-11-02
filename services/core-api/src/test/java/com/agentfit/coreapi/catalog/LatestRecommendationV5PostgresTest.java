@@ -103,6 +103,15 @@ class LatestRecommendationV5PostgresTest {
         assertEquals("FULL_STACK", current.developer().role());
         assertEquals(2, current.environment().version());
         assertEquals("example-tool", current.environment().installedComponents().get(0).toolKey());
+        assertThrows(IllegalArgumentException.class, () -> inputs.saveEnvironment(projectId.toString(), 2,
+            "WINDOWS", "example-client", null, true, List.of(
+                new RecommendationInputsService.InstalledComponent(" Test-Tool ", null),
+                new RecommendationInputsService.InstalledComponent("test-tool", null))));
+        assertEquals(3, inputs.saveEnvironment(projectId.toString(), 2,
+            "WINDOWS", "example-client", null, true, List.of(
+                new RecommendationInputsService.InstalledComponent(" Test-Tool ", null))));
+        assertEquals(null, inputs.current(projectId.toString()).environment().clientVersion());
+        assertEquals("test-tool", inputs.current(projectId.toString()).environment().installedComponents().get(0).toolKey());
     }
 
     @Test

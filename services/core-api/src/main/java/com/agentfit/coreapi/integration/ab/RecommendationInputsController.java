@@ -19,7 +19,10 @@ public final class RecommendationInputsController {
     public record DeveloperRequest(long expectedVersion, String role, List<String> responsibilities) {}
     public record EnvironmentRequest(long expectedVersion, String osFamily, String clientId,
                                      String clientVersion, boolean installedComponentsKnown,
-                                     List<RecommendationInputsService.InstalledComponent> installedComponents) {}
+                                     List<RecommendationInputsService.InstalledComponent> installedComponents,
+                                     String osVersion, String configurationKnowledge, Boolean runtimesKnown,
+                                     List<RecommendationInputsService.Runtime> runtimes,
+                                     List<RecommendationInputsService.AuthReadiness> authReadiness) {}
     public record SavedVersion(long version) {}
 
     private final SessionPrincipalResolver principals;
@@ -52,8 +55,17 @@ public final class RecommendationInputsController {
     public SavedVersion environment(HttpServletRequest request, @PathVariable String projectId,
             @RequestBody EnvironmentRequest body) {
         ownership.requireOwned(principals.resolve(request).orElseThrow(UnauthenticatedException::new), projectId);
+        if (body.osVersion() == null && body.configurationKnowledge() == null && body.runtimesKnown() == null
+            && body.runtimes() == null && body.authReadiness() == null) {
+            return new SavedVersion(inputs.saveEnvironment(projectId, body.expectedVersion(),
+                body.osFamily(), body.clientId(), body.clientVersion(), body.installedComponentsKnown(),
+                body.installedComponents()));
+        }
         return new SavedVersion(inputs.saveEnvironment(projectId, body.expectedVersion(),
             body.osFamily(), body.clientId(), body.clientVersion(), body.installedComponentsKnown(),
-            body.installedComponents()));
+            body.installedComponents(), body.osVersion(),
+            body.configurationKnowledge() == null ? "UNKNOWN" : body.configurationKnowledge(),
+            Boolean.TRUE.equals(body.runtimesKnown()), body.runtimes() == null ? List.of() : body.runtimes(),
+            body.authReadiness() == null ? List.of() : body.authReadiness()));
     }
 }

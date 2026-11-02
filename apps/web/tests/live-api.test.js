@@ -41,10 +41,9 @@ test('읽기 요청은 CSRF 요청 없이 서버 오류 상태를 전달한다',
   assert.equal(projectPath('project id'), '/api/projects/project%20id')
 })
 
-test('기획 자료의 버전은 Spring RequestPart가 읽는 JSON 숫자로 전송한다', async () => {
+test('기획 자료의 버전은 Spring RequestParam이 읽는 폼 숫자로 전송한다', () => {
   const body = planningInputBody(1, '데모 기획', null)
-  assert.equal(body.get('expectedVersion').type, 'application/json')
-  assert.equal(await body.get('expectedVersion').text(), '1')
+  assert.equal(body.get('expectedVersion'), '1')
   assert.equal(body.get('inputText'), '데모 기획')
   assert.equal(body.get('file'), null)
 })
@@ -61,7 +60,7 @@ test('설치 상태는 사용자 선언에 따라서만 KNOWN으로 저장한다
   [{ toolKey: 'skill-a', version: null }])
   assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '2.1.270', true,
     [{ toolKey: 'skill-a' }, { toolKey: 'skill-a' }]), /중복 불가/)
-  assert.throws(() => environmentProfileBody(1, 'WINDOWS', 'claude-code', '', true), /Client 버전/)
+  assert.equal(environmentProfileBody(1, 'WINDOWS', 'claude-code', '', true).clientVersion, null)
 })
 
 test('Core 재시작 후 문자열 null 세션 응답을 로그아웃 상태로 처리한다', async () => {

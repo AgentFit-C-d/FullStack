@@ -37,27 +37,51 @@ export async function loadSession() {
   return value
 }
 
-export function environmentProfileBody(expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents = []) {
-  if (!osFamily?.trim() || !clientId?.trim() || !clientVersion?.trim()) {
-    throw new Error('OS·AI Client·Client 버전을 확인해 입력해 주세요.')
+export function environmentProfileBody(expectedVersion, osFamily, clientId, clientVersion, installedComponentsKnown, installedComponents = [], extra = null) {
+  if (!osFamily?.trim() || !clientId?.trim()) {
+    throw new Error('OS·AI Client를 확인해 입력해 주세요.')
   }
   const components = installedComponentsKnown ? installedComponents.map(item => ({
     toolKey: item.toolKey.trim(), version: item.version?.trim() || null,
   })) : []
-  if (components.length > 50 || components.some(item => !item.toolKey || Array.from(item.toolKey).length > 200
+  if (components.length > 30 || components.some(item => !item.toolKey || Array.from(item.toolKey).length > 200
     || item.version && Array.from(item.version).length > 200)
-    || new Set(components.map(item => item.toolKey)).size !== components.length) {
-    throw new Error('설치 도구는 최대 50개이며, 이름은 필수·중복 불가입니다. 버전은 선택 입력입니다.')
+    || new Set(components.map(item => item.toolKey.toLowerCase())).size !== components.length) {
+    throw new Error('설치 도구는 최대 30개이며, 이름은 필수·중복 불가입니다. 버전은 선택 입력입니다.')
+  }
+  const lines = value => (value || '').split('\n').map(line => line.trim()).filter(Boolean)
+  const runtimes = extra?.runtimesKnown ? lines(extra.runtimeText).map(line => {
+    const [name, version, ...rest] = line.split('|').map(part => part.trim())
+    if (!name || rest.length || Array.from(name).length > 200 || Array.from(version || '').length > 200) {
+      throw new Error('실행 환경은 줄마다 이름 | 버전 형식으로 입력해 주세요.')
+    }
+    return { name, version: version || null }
+  }) : []
+  const authReadiness = lines(extra?.authText).map(line => {
+    const [serviceId, state, ...rest] = line.split('|').map(part => part.trim())
+    if (!serviceId || rest.length || !['READY', 'NOT_READY', 'UNKNOWN'].includes(state)
+      || Array.from(serviceId).length > 200) {
+      throw new Error('인증 준비는 줄마다 서비스 | READY·NOT_READY·UNKNOWN 형식으로 입력해 주세요.')
+    }
+    return { serviceId, state }
+  })
+  const unique = items => new Set(items.map(item => item.toLowerCase())).size === items.length
+  if (runtimes.length > 30 || authReadiness.length > 30
+    || !unique(runtimes.map(item => item.name)) || !unique(authReadiness.map(item => item.serviceId))) {
+    throw new Error('실행 환경·인증 준비는 각각 최대 30개이며 이름은 중복될 수 없습니다.')
   }
   return {
     expectedVersion, osFamily: osFamily.trim().toUpperCase(), clientId: clientId.trim(),
-    clientVersion: clientVersion.trim(), installedComponentsKnown, installedComponents: components,
+    clientVersion: clientVersion?.trim() || null, installedComponentsKnown, installedComponents: components,
+    ...(extra && { osVersion: extra.osVersion?.trim() || null,
+      configurationKnowledge: extra.configurationKnowledge || 'UNKNOWN',
+      runtimesKnown: !!extra.runtimesKnown, runtimes, authReadiness }),
   }
 }
 
 export function planningInputBody(expectedVersion, inputText, file) {
   const body = new FormData()
-  body.append('expectedVersion', new Blob([JSON.stringify(expectedVersion)], { type: 'application/json' }))
+  body.append('expectedVersion', String(expectedVersion))
   if (file) body.append('file', file)
   else body.append('inputText', inputText)
   return body

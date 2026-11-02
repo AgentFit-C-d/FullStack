@@ -7,7 +7,12 @@ export function inputChanges(saved, form) {
       || JSON.stringify(developer.responsibilities || []) !== JSON.stringify(responsibilities),
     environment: !environment || environment.osFamily !== form.osFamily.trim().toUpperCase()
     || environment.clientId !== form.clientId.trim()
-    || environment.clientVersion !== form.clientVersion.trim()
+    || (environment.clientVersion || '') !== form.clientVersion.trim()
+    || (environment.osVersion || '') !== (form.osVersion || '').trim()
+    || (environment.configurationKnowledge || 'UNKNOWN') !== (form.configurationKnowledge || 'UNKNOWN')
+    || !!environment.runtimesKnown !== !!form.runtimesKnown
+    || !!form.runtimesKnown && (environment.runtimes || []).map(item => `${item.name}${item.version ? ` | ${item.version}` : ''}`).join('\n') !== (form.runtimeText || '').trim()
+    || (environment.authReadiness || []).map(item => `${item.serviceId} | ${item.state}`).join('\n') !== (form.authText || '').trim()
     || environment.installedComponentsKnown !== form.installedComponentsKnown
     || JSON.stringify(environment.installedComponents || []) !== JSON.stringify(
       form.installedComponentsKnown ? (form.installedComponents || []).map(item => ({
