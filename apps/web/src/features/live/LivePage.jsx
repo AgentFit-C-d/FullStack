@@ -55,6 +55,11 @@ export default function LivePage() {
   const [osFamily, setOsFamily] = useState('WINDOWS')
   const [clientId, setClientId] = useState('claude-code')
   const [clientVersion, setClientVersion] = useState('')
+  const [osVersion, setOsVersion] = useState('')
+  const [configurationKnowledge, setConfigurationKnowledge] = useState('UNKNOWN')
+  const [runtimesKnown, setRuntimesKnown] = useState(false)
+  const [runtimeText, setRuntimeText] = useState('')
+  const [authText, setAuthText] = useState('')
   const [installedComponentsKnown, setInstalledComponentsKnown] = useState(false)
   const [installedComponents, setInstalledComponents] = useState([])
   const [selectedKeys, setSelectedKeys] = useState([])
@@ -114,10 +119,17 @@ export default function LivePage() {
         setOsFamily(savedInputs.environment.osFamily)
         setClientId(savedInputs.environment.clientId)
         setClientVersion(savedInputs.environment.clientVersion || '')
+        setOsVersion(savedInputs.environment.osVersion || '')
+        setConfigurationKnowledge(savedInputs.environment.configurationKnowledge || 'UNKNOWN')
+        setRuntimesKnown(!!savedInputs.environment.runtimesKnown)
+        setRuntimeText((savedInputs.environment.runtimes || []).map(item => `${item.name}${item.version ? ` | ${item.version}` : ''}`).join('\n'))
+        setAuthText((savedInputs.environment.authReadiness || []).map(item => `${item.serviceId} | ${item.state}`).join('\n'))
         setInstalledComponentsKnown(savedInputs.environment.installedComponentsKnown)
         setInstalledComponents(savedInputs.environment.installedComponents || [])
       } else {
         setOsFamily('WINDOWS'); setClientId('claude-code'); setClientVersion('')
+        setOsVersion(''); setConfigurationKnowledge('UNKNOWN'); setRuntimesKnown(false)
+        setRuntimeText(''); setAuthText('')
         setInstalledComponentsKnown(false)
         setInstalledComponents([])
       }
@@ -293,7 +305,8 @@ export default function LivePage() {
   }
 
   async function saveInputs() {
-    const form = { role, responsibilities, osFamily, clientId, clientVersion,
+    const form = { role, responsibilities, osFamily, clientId, clientVersion, osVersion,
+      configurationKnowledge, runtimesKnown, runtimeText, authText,
       installedComponentsKnown, installedComponents }
     const changes = inputChanges(inputs, form)
     if (!changes.developer && !changes.environment) {
@@ -303,11 +316,13 @@ export default function LivePage() {
     await run(async () => {
       const base = projectPath(projectId)
       const pendingDeveloper = { role, responsibilities }
-      const pendingEnvironment = { osFamily, clientId, clientVersion, installedComponentsKnown,
+      const pendingEnvironment = { osFamily, clientId, clientVersion, osVersion,
+        configurationKnowledge, runtimesKnown, runtimeText, authText, installedComponentsKnown,
         installedComponents }
       const environmentBody = changes.environment ? environmentProfileBody(
         inputs?.environment?.version || 0, osFamily, clientId, clientVersion,
-        installedComponentsKnown, installedComponents) : null
+        installedComponentsKnown, installedComponents, { osVersion, configurationKnowledge,
+          runtimesKnown, runtimeText, authText }) : null
       if (changes.developer) {
         try {
           await apiRequest(`${base}/developer-profile`, {
@@ -324,6 +339,11 @@ export default function LivePage() {
           setOsFamily(pendingEnvironment.osFamily)
           setClientId(pendingEnvironment.clientId)
           setClientVersion(pendingEnvironment.clientVersion)
+          setOsVersion(pendingEnvironment.osVersion)
+          setConfigurationKnowledge(pendingEnvironment.configurationKnowledge)
+          setRuntimesKnown(pendingEnvironment.runtimesKnown)
+          setRuntimeText(pendingEnvironment.runtimeText)
+          setAuthText(pendingEnvironment.authText)
           setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
           setInstalledComponents(pendingEnvironment.installedComponents)
           throw cause
@@ -342,6 +362,11 @@ export default function LivePage() {
           setOsFamily(pendingEnvironment.osFamily)
           setClientId(pendingEnvironment.clientId)
           setClientVersion(pendingEnvironment.clientVersion)
+          setOsVersion(pendingEnvironment.osVersion)
+          setConfigurationKnowledge(pendingEnvironment.configurationKnowledge)
+          setRuntimesKnown(pendingEnvironment.runtimesKnown)
+          setRuntimeText(pendingEnvironment.runtimeText)
+          setAuthText(pendingEnvironment.authText)
           setInstalledComponentsKnown(pendingEnvironment.installedComponentsKnown)
           setInstalledComponents(pendingEnvironment.installedComponents)
           throw new Error(`${changes.developer ? '역할은 저장됐지만 ' : ''}환경 저장은 실패했습니다. 최신 버전을 불러왔습니다. ${cause.message}`, { cause })
@@ -557,7 +582,8 @@ export default function LivePage() {
   const attempt = detail?.latestAttempt
   const inputReady = inputs?.developer && inputs?.environment
   const inputDirty = inputsDirty(inputs, { role, responsibilities, osFamily, clientId,
-    clientVersion, installedComponentsKnown, installedComponents })
+    clientVersion, osVersion, configurationKnowledge, runtimesKnown, runtimeText, authText,
+    installedComponentsKnown, installedComponents })
   const previewReady = !!preview && !inputDirty && previewIsCurrent(previewRequest, recommendation, preview)
 
   return <div className={styles.page}>
@@ -612,8 +638,13 @@ export default function LivePage() {
               <label>OS<input value={osFamily} onChange={event => { setOsFamily(event.target.value); invalidatePreview() }} /></label>
               <label>AI Client<input value={clientId} onChange={event => { setClientId(event.target.value); invalidatePreview() }} /></label>
               <label>Client 버전<input value={clientVersion} onChange={event => { setClientVersion(event.target.value); invalidatePreview() }} /></label>
+              <label>OS 버전<input value={osVersion} onChange={event => { setOsVersion(event.target.value); invalidatePreview() }} /></label>
+              <label>기존 설정 상태<select value={configurationKnowledge} onChange={event => { setConfigurationKnowledge(event.target.value); invalidatePreview() }}><option value="UNKNOWN">모름</option><option value="USER_SAYS_EMPTY">기존 설정 없음</option><option value="HAS_EXISTING">기존 설정 있음</option></select></label>
             </div>
             <label>담당 업무 (줄마다 하나)<textarea value={responsibilities} onChange={event => setResponsibilities(event.target.value)} /></label>
+            <label><input type="checkbox" checked={runtimesKnown} onChange={event => { setRuntimesKnown(event.target.checked); invalidatePreview() }} />실행 환경을 알고 있음</label>
+            {runtimesKnown && <label>실행 환경 (줄마다 이름 | 버전)<textarea value={runtimeText} onChange={event => { setRuntimeText(event.target.value); invalidatePreview() }} placeholder="Node.js | 20" /></label>}
+            <label>외부 서비스 인증 준비 (줄마다 서비스 | READY·NOT_READY·UNKNOWN)<textarea value={authText} onChange={event => { setAuthText(event.target.value); invalidatePreview() }} placeholder="GitHub | READY" /></label>
             <InstalledComponentsEditor known={installedComponentsKnown} items={installedComponents}
               onKnownChange={setInstalledComponentsKnown} onChange={setInstalledComponents} />
             <p>AI Client 버전은 설치 상태를 확인해 직접 입력해 주세요. 확인되지 않은 버전을 임의로 채우지 않습니다.</p>

@@ -360,10 +360,21 @@ paths:
                 osFamily: { type: string, maxLength: 30 }
                 clientId: { type: string, maxLength: 200 }
                 clientVersion: { type: string, maxLength: 200 }
+                osVersion: { type: string, nullable: true, maxLength: 200 }
+                configurationKnowledge: { type: string, enum: [UNKNOWN, USER_SAYS_EMPTY, HAS_EXISTING] }
+                runtimesKnown: { type: boolean }
+                runtimes:
+                  type: array
+                  maxItems: 30
+                  items: { $ref: "#/components/schemas/EnvironmentRuntimeInput" }
+                authReadiness:
+                  type: array
+                  maxItems: 30
+                  items: { $ref: "#/components/schemas/EnvironmentAuthReadinessInput" }
                 installedComponentsKnown: { type: boolean }
                 installedComponents:
                   type: array
-                  maxItems: 50
+                  maxItems: 30
                   items: { $ref: "#/components/schemas/InstalledComponentInput" }
       responses:
         "200": { $ref: "#/components/responses/SavedInputVersion" }
@@ -897,10 +908,31 @@ components:
         osFamily: { type: string }
         clientId: { type: string }
         clientVersion: { type: string }
+        osVersion: { type: string, nullable: true }
+        configurationKnowledge: { type: string, enum: [UNKNOWN, USER_SAYS_EMPTY, HAS_EXISTING] }
+        runtimesKnown: { type: boolean }
+        runtimes:
+          type: array
+          items: { $ref: "#/components/schemas/EnvironmentRuntimeInput" }
+        authReadiness:
+          type: array
+          items: { $ref: "#/components/schemas/EnvironmentAuthReadinessInput" }
         installedComponentsKnown: { type: boolean }
         installedComponents:
           type: array
           items: { $ref: "#/components/schemas/InstalledComponentInput" }
+    EnvironmentRuntimeInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+        version: { type: string, nullable: true, maxLength: 200 }
+    EnvironmentAuthReadinessInput:
+      type: object
+      required: [serviceId, state]
+      properties:
+        serviceId: { type: string, maxLength: 200 }
+        state: { type: string, enum: [READY, NOT_READY, UNKNOWN] }
     HealthResponse:
       type: object
       required:

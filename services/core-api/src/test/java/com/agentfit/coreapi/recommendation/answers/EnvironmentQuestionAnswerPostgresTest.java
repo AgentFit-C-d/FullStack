@@ -94,4 +94,25 @@ class EnvironmentQuestionAnswerPostgresTest {
             () -> transaction.executeWithoutResult(ignored -> service.save(project.toString(), recommendation.toString(),
                 notice.toString(), answer, owner)));
     }
+
+    @Test void environmentDetailsSurviveSaveReadAndLegacyQuestionUpdate() {
+        var dataSource = new DriverManagerDataSource(url + "?currentSchema=" + schema, user, password);
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO \"USER\" (id, name) VALUES (?, 'owner')", owner);
+        jdbc.update("INSERT INTO project (id, user_id, name, version, current_step, created_at, updated_at) VALUES (?, ?, 'test', 1, 'RECOMMENDATION', now(), now())", project, owner);
+        jdbc.update("INSERT INTO project_profile (id, project_id, kind, version, field_metadata, confirmed_by, confirmed_at, created_at, updated_at) VALUES (?, ?, 'CONFIRMED', 1, '{}'::jsonb, ?, now(), now(), now())", profile, project, owner);
+        var inputs = new RecommendationInputsService(dataSource);
+        assertEquals(1, inputs.saveEnvironment(project.toString(), 0, "WINDOWS", "claude-code", "2.1.310",
+            true, List.of(), "11", "HAS_EXISTING", true,
+            List.of(new RecommendationInputsService.Runtime("Node.js", "20")),
+            List.of(new RecommendationInputsService.AuthReadiness("GitHub", "READY"))));
+        var first = inputs.current(project.toString()).environment();
+        assertEquals("11", first.osVersion());
+        assertEquals("HAS_EXISTING", first.configurationKnowledge());
+        assertEquals(List.of(new RecommendationInputsService.Runtime("node.js", "20")), first.runtimes());
+        assertEquals(List.of(new RecommendationInputsService.AuthReadiness("github", "READY")), first.authReadiness());
+        assertEquals(2, inputs.saveEnvironment(project.toString(), 1, "WINDOWS", "claude-code", "2.1.311", true, List.of()));
+        assertEquals(first.runtimes(), inputs.current(project.toString()).environment().runtimes());
+        assertEquals(first.authReadiness(), inputs.current(project.toString()).environment().authReadiness());
+    }
 }
