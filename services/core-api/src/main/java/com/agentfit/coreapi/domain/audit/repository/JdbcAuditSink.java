@@ -23,6 +23,13 @@ public class JdbcAuditSink implements AuditSink {
                 Timestamp.from(event.occurredAt()), event.reason());
             return;
         }
+        if (event.projectUuid() != null) {
+            jdbc.update("INSERT INTO audit_event (id, actor_id, project_id, event, outcome, occurred_at, reason_code) "
+                    + "SELECT ?, p.user_id, p.id, ?, ?, ?, ? FROM project p WHERE p.id = ?",
+                java.util.UUID.randomUUID(), event.action(), event.result(),
+                Timestamp.from(event.occurredAt()), event.reason(), event.projectUuid());
+            return;
+        }
         jdbc.update("INSERT INTO AUDIT (actor_id, project_id, action, result, occurred_at, reason) VALUES (?, ?, ?, ?, ?, ?)",
             event.actorId(), event.projectId(), event.action(), event.result(),
             Timestamp.from(event.occurredAt()), event.reason());
