@@ -33,6 +33,6 @@ env.docker
 apps/web/node_modules/
 apps/web/dist/
 
-# Local skills.sh discovery and triage state (not an approved Catalog release)
-catalog-candidates/skills-sh-candidates.json
+# Public skills.sh candidate snapshot is bundled for the Render candidate list.
+# It is discovery metadata, separate from the approved Catalog release.
 catalog-candidates/skills-sh-decisions.json
