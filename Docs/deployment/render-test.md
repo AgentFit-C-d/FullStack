@@ -6,11 +6,13 @@
 
 - [웹](https://agentfit-test-web.onrender.com): `live`, `/health` 200, `/app` 200
 - [Core API](https://agentfit-test-core.onrender.com): `live`, `/health` 200, Flyway v10 적용
-- [AI](https://agentfit-test-ai.onrender.com): `live`, `/health` 200, Solar 키 설정
+- [AI](https://agentfit-test-ai.onrender.com): `live`, `/health` 200, Solar 키와 Core 원문 조회 주소·토큰 설정
 - [PostgreSQL](https://dashboard.render.com/d/dpg-dbk18lec6qcc73d7sbqg-a): `available`, 무료 DB 만료 예정 2026-12-02
 - Web의 `/api/auth/get-session` 200, `/api/auth/csrf` 204를 확인했다.
 
-GitHub OAuth Client ID와 Secret은 별도 Render용 앱을 만들 때까지 자리 표시자다. 따라서 아직 로그인과 인증 후 전체 흐름은 검증하지 않았다. 두 값을 Core 서비스의 Environment에서 교체하고 재배포해야 한다.
+별도 Render용 GitHub OAuth App의 Client ID와 Secret을 Core 서비스에 설정했고, 로그인 후 `/app` 진입을 확인했다.
+
+분석에서 `AI_SERVICE_NOT_ACCEPTED`가 발생한 원인은 AI 서비스에 Core 원문 조회용 `API_INTERNAL_URL`과 공유 `AI_SERVICE_TOKEN`이 빠져 503을 반환한 것이다. 두 서비스가 동일한 Render 환경 그룹의 토큰을 쓰도록 연결했다. 카탈로그·후보 조회 실패는 Core 이미지에 데이터 파일과 해당 경로 설정이 빠진 것이 원인이었다. `e1d094f`에서 이미지와 설정을 보완했고 Core가 `live` 상태가 된 것을 확인했다. **인증 후 세 기능의 재시도 결과는 아직 확인 중이다.** 기존 실패 분석은 자동 재시도되지 않으므로 새 분석 요청이 필요하다.
 
 ## 구성
 
@@ -26,6 +28,8 @@ GitHub OAuth Client ID와 Secret은 별도 Render용 앱을 만들 때까지 자
 1. GitHub에서 Render용 별도 OAuth App을 만든다. Authorization callback URL은 `https://agentfit-test-web.onrender.com/api/login/oauth2/code/github`로 지정한다.
 2. Render Core 서비스의 Environment에서 `GITHUB_CLIENT_ID`와 `GITHUB_CLIENT_SECRET`의 자리 표시자를 새 앱의 값으로 교체하고 배포한다. 값을 Git이나 문서에 넣지 않는다.
 3. 로그인 후 프로젝트 생성 → 기획서 저장 → 분석 → 확정 → 추천 → 설정 ZIP 경로를 순서대로 확인한다.
+
+`추천 카탈로그 조회`는 이미지에 포함한 실물 카탈로그를, `Skill 후보 조회`는 빌드 시점에 포함한 skills.sh 후보 스냅샷을 읽는다. 별도의 skills.sh 검색은 실시간 검색 API를 사용한다. 후보 스냅샷은 자동 갱신되지 않는다.
 
 ## 데이터와 운영 범위
 
