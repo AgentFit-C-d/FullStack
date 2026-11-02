@@ -4,11 +4,11 @@
 
 ## 먼저 읽을 파일
 
-1. [현재 상태](STATUS.md): B01–B12 체크리스트와 구현/미구현 경계.
+1. [현재 상태](STATUS.md): 통합 develop 기준 구현 범위와 실제 누락 항목. [2026-11-02 요구사항 대조](integration/develop-b-requirements-audit-2026-11-02.md)에서 PRD FSB-01~12와 코드·DB 검증 결과를 확인한다.
    [최종화 기준 비교](integration/finalization-baseline-2026-10-25.md)는 `develop`과 기존 `demo` 변경의 반영 범위와 남은 기능 경계를 정리한다.
    [별도 AI 저장소 계약 비교](integration/external-ai-contract-alignment-2026-10-27.md)는 현재 Core와 외부 AI 저장소의 요청·인증·응답 차이 및 인계 기준을 정리한다.
-2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): B05–B12의 완료 조건과 A·AI·Catalog 인계 입력.
-3. [다음 작업](NEXT-STEPS.md): A·AI·팀 검증에 의존하는 항목과 후속 구현 순서.
+2. [1차 완료 게이트](PHASE1-CLOSEOUT.md): 이전 단계의 완료 조건 기록. 현재 연동 상태는 STATUS를 따른다.
+3. [다음 작업](NEXT-STEPS.md): 이미 통합된 A·AI 코드에 맞춰 수정할 입력 계약·실행 설정·추천 연결 순서.
 4. [A·AI 연동 계약 제안](integration/ab-ai-contract-proposal.md)과 [B 연동 포트 인계안](integration/b-integration-ports-proposal.md): 입력·출력·미합의 항목과 실제 Java 경계.
 5. 필요한 기능 폴더의 안내: [Catalog](catalog/README.md) · [추천·선택](recommendation/README.md) · [Preview·설정](configuration/README.md).
 6. Java 구현 위치는 [코드 길잡이](CODE-MAP.md)에서 기능별로 찾는다.
@@ -53,7 +53,7 @@ FullStack/Docs/
 | 최소 생성 이력 메타데이터 | `configuration/history/` | [생성 이력](archive/plans/configuration/history/generation-history-plan.md) |
 | Preview·승인·생성 이력·적용 보고의 B5–B9 JDBC 기록 | `configuration/persistence/` | [PostgreSQL 인계](db/postgresql-schema-handoff.md) |
 
-B 구현은 `develop`에 병합된 Phase 1–3과 `feat/fullstack-b-finalization`의 서비스 연결 코드를 기준으로 본다. 실제 API 화면은 `/app/live`이며, `/demo` 단계 화면은 메모리 시연이다.
+B 구현은 PR #11까지 병합된 `develop`을 기준으로 본다. 실제 B API 화면은 `/app/live`이고 새 분석 화면은 `/analysis.html`이다. 두 화면의 검토·확정 흐름은 아직 통합 보완이 필요하다. `/demo` 단계 화면은 메모리 시연이다.
 
 ## 1차 구현 수준 기록
 
